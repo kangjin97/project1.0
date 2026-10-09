@@ -12,7 +12,7 @@ import 'features/groups/group_page.dart';
 import 'features/groups/groups_page.dart';
 import 'features/groups/join_page.dart';
 import 'features/home/home_shell.dart';
-import 'features/home/placeholder_page.dart';
+import 'features/schedule/my_schedule_page.dart';
 
 final routerProvider = Provider<GoRouter>((ref) {
   final auth = Supabase.instance.client.auth;
@@ -43,11 +43,7 @@ final routerProvider = Provider<GoRouter>((ref) {
         routes: [
           GoRoute(
             path: '/schedule',
-            builder: (_, _) => const PlaceholderPage(
-              title: 'My schedule',
-              icon: Icons.calendar_month_outlined,
-              message: 'Your plans across all groups will show up here.',
-            ),
+            builder: (_, _) => const MySchedulePage(),
           ),
           GoRoute(
             path: '/groups',

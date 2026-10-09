@@ -6,6 +6,7 @@ Source of truth: `supabase/migrations/`. Test coverage: `supabase/tests/database
 |---|---|
 | `20261002000000_init.sql` | Profiles, groups, invites, activities, photos, types, schedules, change log, notifications, RLS, RPCs, storage bucket, realtime publication |
 | `20261009000000_labels_and_type_merges.sql` | Personal labels, `group_activities.source_type_name`, `type_merges`, label filing and re-filing, merge RPCs |
+| `20261010000000_list_schedule.sql` | `list_schedule` read model for the schedule screens |
 
 ## Tables
 
@@ -131,6 +132,7 @@ See [`ai/endpoints.md`](ai/endpoints.md) for parameters, return shapes and error
 | `remove_type_merge(rule_id)` | Undo one merge rule |
 | `create_schedule_entry(...)`, `reschedule_entry(...)`, `add_entry_participants(...)` | Scheduling with clash checks |
 | `find_clashes(...)` | Overlapping entries per user |
+| `list_schedule(from, to, tz, group?, include_unscheduled?)` | Entries in a date window with group/activity/participant names; personal or group view |
 
 Internal (not executable by clients): `resolve_group_type`, `apply_participants`, and the trigger functions.
 
@@ -160,6 +162,6 @@ The `supabase_realtime` publication includes `schedule_entries`, `schedule_parti
 
 ## Known gaps
 
-- `profiles.timezone` is never set by the app, so all-day clash checks currently use UTC.
+- `profiles.timezone` is set by the app on sign-in; users who haven't signed in since keep `UTC`.
 - The trigger functions `handle_new_user`, `handle_new_group`, `log_change`, `notify_invitee`, `revert_entries_to_events` and `touch_updated` still have `execute` granted to `authenticated`. This is harmless, because Postgres refuses to call a trigger function outside a trigger, but it could be revoked for tidiness.
 - Group deletion is allowed by policy, but there's no UI for it.

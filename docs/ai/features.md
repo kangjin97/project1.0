@@ -67,29 +67,39 @@ Status legend: **Done** = DB + UI + tests. **DB only** = schema/RPCs/tests exist
 - Runs in memory on the loaded list. If groups grow large, move to server-side filtering (PostgREST filters or an RPC).
 - UI: `activities_page.dart` (`_apply`), `group_activities_tab.dart` (`_apply`).
 
-## F8. Schedules, clash detection, events — DB only
-- Entries belong to a group; either an activity or an event (title only). Timing: all-day, timed, or unscheduled (events only).
-- Adding people adds them directly; clashes (all-day clashes with everything that day, in each person's timezone) return a confirmation payload; forcing saves with `clash` status, notifies, and logs.
-- Any member can swap in an activity for an event or another activity (logged with who did it); members remove entries; participants leave or acknowledge clashes.
-- DB: `schedule_entries`, `schedule_participants`, `create_schedule_entry`, `reschedule_entry`, `add_entry_participants`, `find_clashes`, `apply_participants`, `entry_range`.
-- Tests: `core_rules.test.sql` (clash, force, acknowledge, reschedule, replace event, delete → event).
-- **To build:** My schedule screen (`/schedule`, day/week/month), group Schedule tab, entry sheet (activity or event, all-day/time range, member picker, clash dialog), replace-event flow, set `profiles.timezone` from the device (e.g. `flutter_timezone`).
+## F8. Schedules, clash detection, events — Done
+- Entries belong to a group; either an activity or an event (title only). Timing: timed (may run past midnight), all-day, or "no date yet" (events only).
+- Adding people adds them directly; if anyone is busy the planner sees a clash dialog listing who has what (all-day clashes with everything that day, in each person's time zone; other groups' entries show as "Busy"). Proceeding saves with `clash` status for those people, notifies them and logs it.
+- **My schedule** (`/schedule`): entries the user is in, across groups, with a **List | Week | Month** switch on every screen size (phones default to List, ≥720 px to Week).
+  - List: day-by-day agenda from today (4 weeks, "Show 4 more weeks").
+  - Week: all-day row + hourly blocks, overlaps side by side, opens at 8am. Phones get single-letter days, a slim hour gutter and title-only blocks.
+  - Month: six-week grid with titles; on phones, coloured dots (primary = yours, red = clash).
+  - Week/Month have ‹ › Today navigation; tapping a day opens that day's list with "Add". On phone calendars the add button is a small round FAB.
+- **Group Schedule tab**: "Ideas · not scheduled yet" events first, then the next 8 weeks of the group's entries (all members' plans; the user's highlighted).
+- **Entry detail sheet**: when, who (clash badges), change time (re-checks clashes), add people (checks new people), replace event with activity / swap activity, rename event, view activity, leave, remove for everyone, history. If the user has a clash: "Keep both" or "Leave this".
+- **Add to schedule** from: My schedule FAB, group Schedule tab, and the activity detail page (per group).
+- The device's IANA time zone is saved to `profiles.timezone` on sign-in (used by all-day clash checks).
+- UI: `features/schedule/my_schedule_page.dart`, `calendar_views.dart` (`WeekView`, `MonthView`), `schedule_widgets.dart` (`EntryTile`, `AgendaList`, `confirmClashes`, time labels), `entry_editor.dart` (`showEntryEditor`, `showRescheduleEditor`), `entry_detail_sheet.dart` (`showEntryDetail`, `describeEntryChange`); `features/groups/group_schedule_tab.dart`.
+- Data: `data/schedule_models.dart` (`ScheduleEntry`, `ScheduleParticipant`, `ScheduleClash`, `ScheduleResult`, `EntryTiming`, date helpers), `data/schedule_repository.dart` (`list`, `create`, `reschedule`, `addParticipants`, `setActivity`, `rename`, `delete`, `leave`, `acknowledgeClash`, `history`, `syncProfileTimezone`); providers `scheduleProvider(ScheduleQuery)`, `entryHistoryProvider(id)`; helper `invalidateSchedule`.
+- DB: `schedule_entries`, `schedule_participants`, `list_schedule`, `create_schedule_entry`, `reschedule_entry`, `add_entry_participants`, `find_clashes`, `apply_participants`, `entry_range`.
+- Tests: `core_rules.test.sql` (clash, force, acknowledge, reschedule, replace event, delete → event), `list_schedule.test.sql` (personal vs group view, windows, time zones, privacy).
+- Gaps: past entries aren't browsable on phones (agenda starts today); no drag-to-reschedule; no recurring entries.
 
-## F9. Notifications — DB only
-- Kinds: `group_invitation`, `added_to_entry`, `schedule_clash`.
+## F9. Notifications — DB only (planned as its own branch)
+- Kinds: `group_invitation`, `added_to_entry`, `schedule_clash` (the schedule feature already writes the last two).
 - **To build:** notifications screen/badge, mark read (`PATCH notifications {read_at}`), realtime subscription, optional push.
 
 ## F10. Change log — Done for activities, DB for everything else
 - Every insert/update/delete on core tables is logged by trigger with actor and before/after.
-- Shown on the activity detail page only. **To build:** per-group and per-entry log views.
+- Shown on the activity detail page and the schedule entry sheet. **To build:** per-group log view.
 
 ---
 
 ## Backlog (priority order suggested)
-1. F8 schedule UI and timezone capture.
-2. F9 notifications UI.
-3. Realtime subscriptions for group activities, schedules and notifications.
-4. Group log view (F10), invite link management (F3), delete group / transfer ownership (F2).
-5. Profile editing (display name, avatar).
-6. Server-side search if lists get large (F7).
+1. F9 notifications UI (own branch).
+2. Realtime subscriptions for group activities, schedules and notifications.
+3. Group log view (F10), invite link management (F3), delete group / transfer ownership (F2).
+4. Profile editing (display name, avatar).
+5. Server-side search if lists get large (F7).
+6. Browsing past schedule entries on phones; drag-to-reschedule.
 7. Recurring entries, push notifications (out of scope for v1 per `SPEC.md`).

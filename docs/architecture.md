@@ -37,9 +37,9 @@ There is no custom server. The Flutter app talks to Supabase directly, and **eve
 |---|---|---|
 | `/auth?next=` | `AuthPage` | Sign in or sign up. Signed-out users are redirected here with `next`, so invite links survive sign-in. |
 | `/join/:token` | `JoinPage` | Previews and joins a group from an invite link. Outside the shell. |
-| `/schedule` | `PlaceholderPage` | Schedule UI is not built yet. |
+| `/schedule` | `MySchedulePage` | List / Week / Month switch on all sizes; phones default to List, wide screens to Week. |
 | `/groups` | `GroupsPage` | Groups list and pending invitations. |
-| `/groups/:id` | `GroupPage` | Tabs: Activities, Schedule (placeholder), Members, Types. |
+| `/groups/:id` | `GroupPage` | Tabs: Activities, Schedule, Members, Types. |
 | `/activities` | `ActivitiesPage` | My activities. |
 | `/activities/:id` | `ActivityDetailPage` | Any activity the user can see. Opened with `context.push` so Back returns to where you came from. |
 
@@ -111,10 +111,12 @@ When `activities.personal_type_id` or `personal_types.name` changes, a trigger r
 
 `remove_type_merge(rule)` deletes the rule and re-resolves the activities whose `source_type_name` matched it.
 
-### Scheduling with clash checks (database only so far)
+### Scheduling with clash checks
 
 `create_schedule_entry(..., p_force)` first calls `find_clashes` for the chosen people.
 - **Clashes and `p_force = false`:** it returns `{status: 'clash', clashes}` and saves nothing.
 - **Otherwise:** it inserts the entry, marks clashing participants `status = 'clash'`, notifies them, and logs a `clash_override`.
 
 All-day entries cover the whole day in each participant's `profiles.timezone`. Titles of entries in groups the caller isn't in come back as "Busy".
+
+In the app, `EntryEditorPage` calls without force first; on a clash it shows `confirmClashes` and, if the planner proceeds, calls again with `p_force: true`. Lists come from `list_schedule`; the entry sheet watches the same `scheduleProvider(query)` as the list it was opened from, so it updates in place after each action.

@@ -10,6 +10,7 @@ import '../../data/groups_repository.dart';
 import '../../data/models.dart';
 import '../../widgets/async_body.dart';
 import '../../widgets/dialogs.dart';
+import '../schedule/entry_editor.dart';
 import 'activity_form_page.dart';
 import 'activity_widgets.dart';
 import 'share_activity_sheet.dart';
@@ -204,6 +205,11 @@ class _GroupsSection extends ConsumerWidget {
                                   if (context.mounted) showError(context, e);
                                 }
                               },
+                            ),
+                            IconButton(
+                              tooltip: 'Add to ${s.groupName}’s schedule',
+                              icon: const Icon(Icons.edit_calendar_outlined),
+                              onPressed: () => showEntryEditor(context, groupId: s.groupId, activityId: activityId),
                             ),
                             IconButton(
                               tooltip: 'Remove from ${s.groupName}',

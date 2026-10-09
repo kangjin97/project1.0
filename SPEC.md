@@ -163,9 +163,9 @@ Notes:
 | 4 | Activities, photos, sharing, per-group types | Done |
 | 4a | Personal labels and type merging | Done |
 | 5 | Search & filter (my activities and group) | Done |
-| 6 | Schedules: entries, participants, clash detection | Database done; UI next |
-| 7 | Events and replacement | Database done; UI next |
-| 8 | Change-log views and notifications | Activity history done; group log and notifications UI to do |
+| 6 | Schedules: entries, participants, clash detection | Done |
+| 7 | Events and replacement | Done |
+| 8 | Change-log views and notifications | Activity and entry history done; group log and notifications UI to do |
 
 Details and backlog: [`docs/ai/features.md`](docs/ai/features.md).
 

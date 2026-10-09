@@ -11,6 +11,7 @@ import '../../data/models.dart';
 import '../../widgets/async_body.dart';
 import '../../widgets/dialogs.dart';
 import 'group_activities_tab.dart';
+import 'group_schedule_tab.dart';
 import 'group_types_tab.dart';
 
 class GroupPage extends ConsumerWidget {
@@ -79,10 +80,7 @@ class GroupPage extends ConsumerWidget {
           builder: (_) => TabBarView(
             children: [
               GroupActivitiesTab(groupId: groupId),
-              const EmptyState(
-                icon: Icons.calendar_month_outlined,
-                message: 'The group’s plans and events will show up here.',
-              ),
+              GroupScheduleTab(groupId: groupId),
               _MembersTab(groupId: groupId),
               GroupTypesTab(groupId: groupId),
             ],
