@@ -13,7 +13,9 @@ A web and mobile app for friends to plan things to do together: collect activity
 | **User** | Has a unique username, email, and a personal schedule. |
 | **Group** | A set of users. Has its own activity types, shared activities, and events. |
 | **Activity** | A real thing to do (name, description, location, price, URL, photos). Starts private to its owner; becomes visible to a group once shared into it. |
-| **Activity type** | A label defined per group (e.g. "Food", "Outdoors"). Each group creates and edits its own. |
+| **Activity type** | A category defined per group (e.g. "Food", "Outdoors"). Each group creates and edits its own. |
+| **Label** | A user's own private category for their activities (e.g. "yummy"). When shared, it decides the activity's group type. |
+| **Type merge** | A group rule folding several labels/types into one type (e.g. "yummy" + "goodfood" → "Food"). |
 | **Schedule entry** | Something on users' schedules at a date/time. Either linked to an activity, or an **event** (placeholder with only a name). |
 | **Event** | An ad-hoc placeholder in a group, e.g. "eat some steak". Any group member can later replace it with a real activity. |
 
@@ -29,21 +31,29 @@ A web and mobile app for friends to plan things to do together: collect activity
 - Any member can leave a group.
 
 ### 2.2 Activities
-- Fields: `name` (required), `description`, `location`, `price_min`, `price_max`, `currency`, `url`, photos.
+- Fields: `name` (required), `description`, `location`, `price_min`, `price_max`, `currency`, `url`, photos, and the owner's **label** (optional, see §2.3).
 - New activities are private to the owner.
-- **Sharing:** the owner (or any member of a group it's already in) shares it into a group and **must pick an activity type** for that group.
+- **Sharing:** the owner (or any member of a group it's already in) shares it into a group. If the activity has a label, it is filed automatically (§2.3); otherwise the sharer **must pick an activity type** for that group. The sharer can always override and pick a type by hand.
 - **One source of truth:** there is a single activity record. Edits by the owner or any member of any group it's shared into apply everywhere — all groups and the owner's view see the same data. (Rationale: corrections like a fixed price or address should reach everyone.)
 - Any group member can change the activity's **type within their group**.
 - **Only the owner can delete** an activity (see §4.4 for effects).
 
-### 2.3 Activity types
-- Each group creates, renames, and deletes its own types.
-- Deleting a type in use requires reassigning affected activities to another type.
+### 2.3 Activity types, labels and merging
+- Each group creates, renames, and deletes its own types. Deleting a type in use requires reassigning its activities first.
+- **Labels:** each user keeps private labels and can put one on each of their activities. Only the owner sees or sets an activity's label.
+- **Filing by label:** when a labelled activity is shared, its group type is
+  1. the merge target, if the group has a merge rule for that label name; otherwise
+  2. the group type with the same name; otherwise
+  3. a new group type with that name.
+  Names match ignoring case and surrounding spaces.
+- **Merging:** any member can merge types into one (an existing type or a new name). Their activities move now, and activities shared later with any of those labels go to the merged type. A merge can be undone per label, which moves those activities back to a type of that name.
+- **Label changes follow through:** if the owner changes or renames an activity's label, the activity is re-filed in every group it's in (into a merged type where one applies), overriding any manual type change. Deleting a label leaves group types unchanged.
 
-### 2.4 Search & filter (within a group)
-- Text search on name, description, location.
-- Filters: activity type, price range (e.g. "max ≤ 30"), has URL / has photos, added by.
-- Sort: newest, name, price.
+### 2.4 Search & filter
+- **My activities:** text search on name, description, location, label; filters: label, private/shared, max budget.
+- **Group activities:** text search on name, description, location, type; filters: type, max budget, added by.
+- Sort: newest, name, price (cheapest first).
+- Not yet: has URL / has photos filters.
 
 ### 2.5 Schedules
 - Every user has a schedule showing all entries they participate in, across all groups.
@@ -83,46 +93,25 @@ Users can view the log per activity, per schedule entry, and per group.
 
 ## 3. Data model (Postgres)
 
-```text
-profiles            id (= auth.users.id), username UNIQUE, email, display_name, avatar_path, created_at
+The full, current schema is documented in [`docs/database.md`](docs/database.md) (source of truth: `supabase/migrations/`). Main tables:
 
-groups              id, name, created_by → profiles, created_at
-group_members       group_id → groups, user_id → profiles, role ('owner' | 'member'), joined_at
-                    PK (group_id, user_id)
-group_invite_links  id, group_id, token UNIQUE, created_by, expires_at NULL, max_uses NULL, use_count
-group_invitations   id, group_id, invitee_id → profiles, invited_by, status ('pending'|'accepted'|'declined'), created_at
-
-activities          id, owner_id → profiles, name, description, location,
-                    price_min NUMERIC NULL, price_max NUMERIC NULL, currency CHAR(3),
-                    url, created_at, updated_at, updated_by → profiles, deleted_at NULL
-activity_photos     id, activity_id → activities, storage_path, position, uploaded_by
-
-activity_types      id, group_id → groups, name, UNIQUE (group_id, name)
-group_activities    group_id → groups, activity_id → activities, type_id → activity_types,
-                    added_by → profiles, added_at
-                    PK (group_id, activity_id)
-
-schedule_entries    id, group_id → groups (NOT NULL), activity_id → activities NULL,
-                    title NULL,             -- required when activity_id IS NULL (event)
-                    all_day BOOLEAN, date DATE NULL,
-                    start_at TIMESTAMPTZ NULL, end_at TIMESTAMPTZ NULL,
-                    created_by → profiles, created_at, updated_at, updated_by
-                    CHECK (activity_id IS NOT NULL OR title IS NOT NULL)
-                    CHECK (all_day OR start_at IS NULL OR end_at > start_at)
-schedule_participants entry_id → schedule_entries, user_id → profiles,
-                    status ('added' | 'clash'), added_by, added_at
-                    PK (entry_id, user_id)
-
-change_log          id, actor_id → profiles, group_id NULL, entity_type, entity_id,
-                    action, before JSONB NULL, after JSONB NULL, created_at
-notifications       id, user_id → profiles, kind, payload JSONB, read_at NULL, created_at
-```
+| Table | Holds |
+|---|---|
+| `profiles` | Username, display name, timezone (one per auth user) |
+| `groups`, `group_members` | Groups and membership with roles |
+| `group_invite_links`, `group_invitations` | Invite codes and direct invites |
+| `activities`, `activity_photos` | Activities (incl. owner's `personal_type_id`) and their photos |
+| `personal_types` | Users' private labels |
+| `activity_types`, `type_merges` | Per-group types and merge rules |
+| `group_activities` | Activity shared into a group, with its type and `source_type_name` |
+| `schedule_entries`, `schedule_participants` | Plans/events and who's in them |
+| `change_log`, `notifications` | Audit trail and in-app notifications |
 
 Notes:
 - **Event** = `schedule_entries` row with `activity_id IS NULL`. Replacing it sets `activity_id`; `title` is kept for history.
 - Activity type lives on `group_activities`, so one activity can have a different type in each group.
 - `change_log` is written by database triggers, so no client can skip logging.
-- Clash check is a Postgres function (`check_clashes(user_ids, date, start_at, end_at, all_day)`) called before insert/update; it returns conflicting entries per user.
+- Clash checks are Postgres functions (`find_clashes`, used by `create_schedule_entry` / `reschedule_entry` / `add_entry_participants`).
 
 ---
 
@@ -164,22 +153,29 @@ Notes:
 
 ---
 
-## 6. Build order
+## 6. Build order and status
 
-1. Supabase project: schema, RLS policies, triggers (change log), clash-check function
-2. Flutter app shell: auth, profiles, routing (web + mobile)
-3. Groups, membership, invites
-4. Activities, photos, sharing, per-group types
-5. Group search & filter
-6. Schedules: entries, participants, clash detection
-7. Events and replacement
-8. Change-log views and notifications
+| # | Step | Status |
+|---|---|---|
+| 1 | Supabase project: schema, RLS policies, triggers (change log), clash-check function | Done |
+| 2 | Flutter app shell: auth, profiles, routing (web + mobile) | Done |
+| 3 | Groups, membership, invites | Done |
+| 4 | Activities, photos, sharing, per-group types | Done |
+| 4a | Personal labels and type merging | Done |
+| 5 | Search & filter (my activities and group) | Done |
+| 6 | Schedules: entries, participants, clash detection | Database done; UI next |
+| 7 | Events and replacement | Database done; UI next |
+| 8 | Change-log views and notifications | Activity history done; group log and notifications UI to do |
+
+Details and backlog: [`docs/ai/features.md`](docs/ai/features.md).
 
 ---
 
 ## 7. Open points
 
+- Decisions made so far (including assumptions awaiting confirmation) are logged in [`docs/ai/decisions.md`](docs/ai/decisions.md).
 - Can members **remove an activity from the group** (unshare), or only remove its schedule entries? Assumed: any member can unshare; it's logged.
+- Should "similar" labels merge automatically (fuzzy matching)? Currently only explicit merge rules and exact (case-insensitive) names.
 - Recurring entries (e.g. weekly game night): out of scope for v1.
 - Push notifications on mobile vs. in-app only for v1.
 - Time zones: store UTC (`timestamptz`), display in each user's local zone.
