@@ -64,4 +64,4 @@ The Supabase CLI may be at `~/.local/bin/supabase` rather than on `PATH`.
 - Dart: Riverpod `FutureProvider` / `.family`; `AsyncBody` for loading and error states; `showError` and `friendlyError` for errors; `promptText` and `confirm` dialogs; Material 3. Models in `data/models.dart` with `fromJson` and a `columns` select string when they embed relations.
 - SQL: snake_case; `timestamptz`; soft delete only for activities; composite FKs to keep rows inside one group (`(type_id, group_id)`, `(group_id, activity_id)`) or owned by one user (`(personal_type_id, owner_id)`).
 - Comments explain *why*. Match the surrounding density.
-- Git: the current feature branch is `activities-feature`. Commit messages end with a `Co-Authored-By` line when an agent writes them.
+- Git: work on `main`, which tracks `origin` (github.com/kangjin97/project1.0). Use a short-lived branch only for risky or PR-reviewed work, and merge it back. Commit as `Ng Kang Jin <kangjin_97@hotmail.com>` (set in the repo config). Commit messages end with a `Co-Authored-By` line when an agent writes them.
