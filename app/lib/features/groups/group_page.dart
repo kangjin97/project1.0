@@ -10,6 +10,8 @@ import '../../data/groups_repository.dart';
 import '../../data/models.dart';
 import '../../widgets/async_body.dart';
 import '../../widgets/dialogs.dart';
+import 'group_activities_tab.dart';
+import 'group_types_tab.dart';
 
 class GroupPage extends ConsumerWidget {
   const GroupPage({super.key, required this.groupId});
@@ -76,16 +78,13 @@ class GroupPage extends ConsumerWidget {
           value: group,
           builder: (_) => TabBarView(
             children: [
-              const EmptyState(
-                icon: Icons.local_activity_outlined,
-                message: 'Activities shared into this group will show up here.',
-              ),
+              GroupActivitiesTab(groupId: groupId),
               const EmptyState(
                 icon: Icons.calendar_month_outlined,
                 message: 'The group’s plans and events will show up here.',
               ),
               _MembersTab(groupId: groupId),
-              _TypesTab(groupId: groupId),
+              GroupTypesTab(groupId: groupId),
             ],
           ),
         ),
@@ -121,6 +120,7 @@ class _MembersTab extends ConsumerWidget {
                   FilledButton.icon(
                     onPressed: () => showModalBottomSheet(
                       context: context,
+                      useRootNavigator: true,
                       isScrollControlled: true,
                       showDragHandle: true,
                       builder: (_) => _InviteSheet(groupId: groupId),
@@ -313,83 +313,6 @@ class _InviteSheetState extends ConsumerState<_InviteSheet> {
             ),
           ],
         ),
-      ),
-    );
-  }
-}
-
-// ---- Activity types ---------------------------------------------------------
-
-class _TypesTab extends ConsumerWidget {
-  const _TypesTab({required this.groupId});
-
-  final String groupId;
-
-  Future<void> _run(BuildContext context, WidgetRef ref, Future<void> Function() action) async {
-    try {
-      await action();
-      ref.invalidate(typesProvider(groupId));
-    } catch (e) {
-      if (context.mounted) showError(context, e);
-    }
-  }
-
-  @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final repo = ref.read(groupsRepositoryProvider);
-    return AsyncBody(
-      value: ref.watch(typesProvider(groupId)),
-      builder: (types) => ListView(
-        padding: const EdgeInsets.symmetric(vertical: 8),
-        children: [
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-            child: Text(
-              'Types label the activities shared into this group. Everyone in the group can edit them.',
-              style: Theme.of(context).textTheme.bodyMedium,
-            ),
-          ),
-          for (final t in types)
-            ListTile(
-              leading: const Icon(Icons.label_outline),
-              title: Text(t.name),
-              trailing: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  IconButton(
-                    tooltip: 'Rename',
-                    icon: const Icon(Icons.edit_outlined),
-                    onPressed: () async {
-                      final name = await promptText(context,
-                          title: 'Rename type', label: 'Name', action: 'Save', initial: t.name);
-                      if (name == null || name.trim().isEmpty || !context.mounted) return;
-                      await _run(context, ref, () => repo.renameType(t.id, name));
-                    },
-                  ),
-                  IconButton(
-                    tooltip: 'Delete',
-                    icon: const Icon(Icons.delete_outline),
-                    onPressed: () => _run(context, ref, () => repo.deleteType(t.id)),
-                  ),
-                ],
-              ),
-            ),
-          Padding(
-            padding: const EdgeInsets.all(16),
-            child: Align(
-              alignment: Alignment.centerLeft,
-              child: OutlinedButton.icon(
-                onPressed: () async {
-                  final name = await promptText(context, title: 'New type', label: 'Name', action: 'Add');
-                  if (name == null || name.trim().isEmpty || !context.mounted) return;
-                  await _run(context, ref, () => repo.addType(groupId, name));
-                },
-                icon: const Icon(Icons.add),
-                label: const Text('Add type'),
-              ),
-            ),
-          ),
-        ],
       ),
     );
   }

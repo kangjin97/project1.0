@@ -15,7 +15,7 @@ class GroupsRepository {
         .from('groups')
         .select('id, name, group_members(count)')
         .inFilter('id', ids)
-        .order('created_at');
+        .order('created_at', ascending: true);
     return rows.map(Group.fromJson).toList();
   }
 
@@ -40,7 +40,7 @@ class GroupsRepository {
         .from('group_members')
         .select('role, profiles(id, username, display_name)')
         .eq('group_id', groupId)
-        .order('joined_at');
+        .order('joined_at', ascending: true);
     return rows.map(Member.fromJson).toList();
   }
 
@@ -88,7 +88,7 @@ class GroupsRepository {
         .select('id, groups(name), inviter:profiles!group_invitations_invited_by_fkey(username)')
         .eq('invitee_id', _me)
         .eq('status', 'pending')
-        .order('created_at');
+        .order('created_at', ascending: true);
     return rows.map(Invitation.fromJson).toList();
   }
 
@@ -108,8 +108,8 @@ class GroupsRepository {
   // ---- Activity types ------------------------------------------------------
 
   Future<List<ActivityType>> types(String groupId) async {
-    final rows = await _db.from('activity_types').select('id, name').eq('group_id', groupId).order('name');
-    return rows.map(ActivityType.fromJson).toList();
+    final rows = await _db.from('activity_types').select('id, name').eq('group_id', groupId);
+    return rows.map(ActivityType.fromJson).toList()..sort((a, b) => a.name.toLowerCase().compareTo(b.name.toLowerCase()));
   }
 
   Future<void> addType(String groupId, String name) =>
@@ -119,6 +119,29 @@ class GroupsRepository {
       _db.from('activity_types').update({'name': name.trim()}).eq('id', id);
 
   Future<void> deleteType(String id) => _db.from('activity_types').delete().eq('id', id);
+
+  // ---- Type merging --------------------------------------------------------
+
+  Future<List<TypeMerge>> merges(String groupId) async {
+    final rows = await _db
+        .from('type_merges')
+        .select('id, source_name, target_type_id')
+        .eq('group_id', groupId)
+        .order('source_name', ascending: true);
+    return rows.map(TypeMerge.fromJson).toList();
+  }
+
+  /// Merges [sourceTypeIds] into [targetTypeId], or into a type named [targetName].
+  Future<void> mergeTypes(String groupId, List<String> sourceTypeIds, {String? targetTypeId, String? targetName}) =>
+      _db.rpc('merge_types', params: {
+        'p_group': groupId,
+        'p_source_type_ids': sourceTypeIds,
+        'p_target_type_id': targetTypeId,
+        'p_target_name': targetName,
+      });
+
+  /// Activities that came in with that label return to a type of that name.
+  Future<void> removeMerge(String mergeId) => _db.rpc('remove_type_merge', params: {'p_merge': mergeId});
 }
 
 final groupsRepositoryProvider = Provider((_) => GroupsRepository());
@@ -133,6 +156,9 @@ final groupProvider =
 
 final membersProvider =
     FutureProvider.family<List<Member>, String>((ref, id) => ref.watch(groupsRepositoryProvider).members(id));
+
+final mergesProvider =
+    FutureProvider.family<List<TypeMerge>, String>((ref, id) => ref.watch(groupsRepositoryProvider).merges(id));
 
 final typesProvider =
     FutureProvider.family<List<ActivityType>, String>((ref, id) => ref.watch(groupsRepositoryProvider).types(id));

@@ -9,13 +9,41 @@ const _tabs = [
 ];
 
 /// Bottom navigation on phones, a side rail on wider screens.
-class HomeShell extends StatelessWidget {
-  const HomeShell({super.key, required this.location, required this.child});
+class HomeShell extends StatefulWidget {
+  const HomeShell({super.key, required this.child});
 
-  final String location;
   final Widget child;
 
+  @override
+  State<HomeShell> createState() => _HomeShellState();
+}
+
+class _HomeShellState extends State<HomeShell> {
+  GoRouter? _router;
+
+  // Read the location from the router itself so the selected tab is never stale.
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    final router = GoRouter.of(context);
+    if (router != _router) {
+      _router?.routerDelegate.removeListener(_onRouteChanged);
+      _router = router..routerDelegate.addListener(_onRouteChanged);
+    }
+  }
+
+  @override
+  void dispose() {
+    _router?.routerDelegate.removeListener(_onRouteChanged);
+    super.dispose();
+  }
+
+  void _onRouteChanged() {
+    if (mounted) setState(() {});
+  }
+
   int get _index {
+    final location = _router?.routerDelegate.currentConfiguration.uri.path ?? '';
     final i = _tabs.indexWhere((t) => location.startsWith(t.path));
     return i < 0 ? 0 : i;
   }
@@ -24,6 +52,7 @@ class HomeShell extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final child = widget.child;
     final wide = MediaQuery.sizeOf(context).width >= 720;
     if (!wide) {
       return Scaffold(

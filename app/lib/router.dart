@@ -5,6 +5,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
+import 'features/activities/activities_page.dart';
+import 'features/activities/activity_detail_page.dart';
 import 'features/auth/auth_page.dart';
 import 'features/groups/group_page.dart';
 import 'features/groups/groups_page.dart';
@@ -37,7 +39,7 @@ final routerProvider = Provider<GoRouter>((ref) {
         builder: (_, state) => JoinPage(token: state.pathParameters['token']!),
       ),
       ShellRoute(
-        builder: (_, state, child) => HomeShell(location: state.matchedLocation, child: child),
+        builder: (_, _, child) => HomeShell(child: child),
         routes: [
           GoRoute(
             path: '/schedule',
@@ -59,11 +61,13 @@ final routerProvider = Provider<GoRouter>((ref) {
           ),
           GoRoute(
             path: '/activities',
-            builder: (_, _) => const PlaceholderPage(
-              title: 'My activities',
-              icon: Icons.local_activity_outlined,
-              message: 'Activities you create will show up here.',
-            ),
+            builder: (_, _) => const ActivitiesPage(),
+            routes: [
+              GoRoute(
+                path: ':id',
+                builder: (_, state) => ActivityDetailPage(activityId: state.pathParameters['id']!),
+              ),
+            ],
           ),
         ],
       ),
