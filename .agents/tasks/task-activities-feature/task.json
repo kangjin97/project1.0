@@ -1,7 +1,0 @@
-{
-  "task_id": "task-activities-feature",
-  "task_description": "Implement the Activities feature for the Group Planner Flutter+Supabase app: Activity and GroupActivity models, ActivitiesRepository with Riverpod providers, ActivitiesPage screen (list, FAB, create/edit/delete/share), Group page Activities tab (list, share button, unshare), and router wiring.",
-  "status": "pending",
-  "feature_order": ["FEAT-001", "FEAT-002"],
-  "blocked_reason": null
-}
