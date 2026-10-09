@@ -1,0 +1,31 @@
+{
+  "id": "FEAT-001",
+  "type": "feat",
+  "description": "Data layer: add Activity and GroupActivity models to models.dart; create activities_repository.dart with ActivitiesRepository class and Riverpod providers. Mirrors the groups_repository.dart pattern exactly.",
+  "status": "pending",
+  "steps": [
+    "Step 1 — models.dart: Add the Activity class after the existing Invitation class. Fields: id (String), ownerId (String), name (String), description (String?), createdAt (DateTime), photoUrls (List<String> = const []). fromJson parses: j['id'], j['owner_id'] → ownerId, j['name'], j['description'], DateTime.parse(j['created_at']) → createdAt. No defaultActivityTypeId field — the activities table has no such column.",
+    "Step 2 — models.dart: Add the GroupActivity class after Activity. Fields: groupId (String), activityId (String), typeId (String), sharedById (String), sharedAt (DateTime), activity (Activity), typeName (String?), sharedByUsername (String?). fromJson parses: j['group_id'], j['activity_id'], j['type_id'], j['added_by'] → sharedById, DateTime.parse(j['added_at']) → sharedAt, Activity.fromJson(j['activities'] as Map<String, dynamic>) → activity, (j['activity_types'] as Map?)?['name'] as String? → typeName, (j['sharer'] as Map?)?['username'] as String? → sharedByUsername. NOTE: the select alias in the repository is 'sharer' (not 'profiles') to avoid ambiguity.",
+    "Step 3 — Create app/lib/data/activities_repository.dart. Top of file: same _db / _me helpers as groups_repository.dart. Import flutter_riverpod and models.dart. Class ActivitiesRepository with these methods:",
+    "  fetchMyActivities(): select 'id, owner_id, name, description, created_at' from 'activities', eq('owner_id', _me), isFilter('deleted_at', null), order('created_at', ascending: false). Return rows.map(Activity.fromJson).toList().",
+    "  createActivity({required String name, String? description, String? defaultActivityTypeId}): insert into activities: {'name': name.trim(), if (description?.trim().isNotEmpty ?? false) 'description': description!.trim()}. Do NOT send defaultActivityTypeId to Supabase.",
+    "  updateActivity({required String id, required String name, String? description, String? defaultActivityTypeId}): update activities set {'name': name.trim(), 'description': description?.trim().isNotEmpty == true ? description!.trim() : null} where id = id. Do NOT send defaultActivityTypeId.",
+    "  deleteActivity(String id): call _db.rpc('delete_activity', params: {'p_activity': id}). Do NOT use UPDATE SET deleted_at — the RPC handles cascade effects.",
+    "  fetchGroupActivities(String groupId): select from group_activities: 'group_id, activity_id, type_id, added_by, added_at, activities(id, owner_id, name, description, created_at), activity_types(name), sharer:profiles!group_activities_added_by_fkey(username)'. Filter eq('group_id', groupId), order('added_at'). Return rows.map(GroupActivity.fromJson).toList().",
+    "  shareActivityToGroup({required String activityId, required String groupId, required String activityTypeId}): insert into group_activities: {'group_id': groupId, 'activity_id': activityId, 'type_id': activityTypeId}.",
+    "  unshareActivityFromGroup({required String groupId, required String activityId}): delete from group_activities where group_id = groupId AND activity_id = activityId. NOTE: parameter is (groupId, activityId) NOT a single groupActivityId string — the table has no UUID id column.",
+    "Step 4 — Add providers at bottom of activities_repository.dart: activitiesRepositoryProvider = Provider((_) => ActivitiesRepository()), myActivitiesProvider = FutureProvider<List<Activity>>((ref) => ref.watch(activitiesRepositoryProvider).fetchMyActivities()), groupActivitiesProvider = FutureProvider.family<List<GroupActivity>, String>((ref, groupId) => ref.watch(activitiesRepositoryProvider).fetchGroupActivities(groupId)). Do NOT redeclare friendlyError — it lives in groups_repository.dart."
+  ],
+  "acceptance_criteria": [
+    "Activity class exists in models.dart with fromJson that parses id, owner_id, name, description, created_at",
+    "GroupActivity class exists in models.dart with fromJson that parses the nested activities join, activity_types name, and sharer username",
+    "activities_repository.dart exists with ActivitiesRepository class containing all 7 methods",
+    "activitiesRepositoryProvider, myActivitiesProvider, and groupActivitiesProvider are defined at file scope",
+    "flutter build web --no-version-check exits 0 with no errors after these changes"
+  ],
+  "verification": [
+    "cd /Users/kangjin/Documents/group-planner/app && flutter build web --no-version-check"
+  ],
+  "blocked_reason": null,
+  "findings": ""
+}

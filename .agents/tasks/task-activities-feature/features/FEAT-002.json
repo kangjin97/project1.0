@@ -1,0 +1,47 @@
+{
+  "id": "FEAT-002",
+  "type": "feat",
+  "description": "UI layer: create ActivitiesPage at app/lib/features/activities/activities_page.dart; update Group Activities tab in group_page.dart; wire /activities route in router.dart. Depends on FEAT-001 being committed. All UI follows the existing patterns: ConsumerWidget, AsyncBody, dialogs.dart helpers, Material 3.",
+  "status": "pending",
+  "steps": [
+    "Step 1 — Create directory app/lib/features/activities/ and new file activities_page.dart. All four widgets live in this one file (matching group_page.dart pattern).",
+
+    "Step 1a — ActivitiesPage (ConsumerWidget): Scaffold with AppBar(title: Text('My Activities')), FloatingActionButton(onPressed: () => _openCreateSheet(context, ref), child: Icon(Icons.add)), body: RefreshIndicator(onRefresh: invalidate + await ref.read(myActivitiesProvider.future), child: AsyncBody<List<Activity>>(value: ref.watch(myActivitiesProvider), builder: (list) { if (list.isEmpty) return EmptyState(...); return ListView(padding: EdgeInsets.only(bottom: 96), children: [for (a in list) _ActivityTile(activity: a)]); })). Helper _openCreateSheet: showModalBottomSheet(isScrollControlled: true, showDragHandle: true, builder: (_) => _ActivityFormSheet()). Helper _openEditSheet: same but passing activity parameter. Helper _openShareSheet: showModalBottomSheet for _ShareToGroupSheet.",
+
+    "Step 1b — _ActivityTile (ConsumerWidget, activity: Activity): Card(margin: EdgeInsets.symmetric(horizontal: 16, vertical: 4)) wrapping ListTile. Leading: CircleAvatar(child: Text(a.name.characters.first.toUpperCase())). Title: Text(a.name). Subtitle: a.description?.isNotEmpty == true ? Text(a.description!, maxLines: 2, overflow: TextOverflow.ellipsis) : null. Trailing: PopupMenuButton<String> with items ('edit','Edit'), ('delete','Delete'), ('share','Share to group'). onSelected: edit → _openEditSheet(context, ref, a) then ref.invalidate(myActivitiesProvider); delete → confirm dialog (title: 'Delete ${a.name}?', message: 'This will permanently delete the activity.', action: 'Delete') then repo.deleteActivity(a.id) then ref.invalidate(myActivitiesProvider); share → _openShareSheet(context, ref, a). All mutating actions wrapped in try/catch → showError(context, e). Always check context.mounted before acting after await.",
+
+    "Step 1c — _ActivityFormSheet (ConsumerStatefulWidget, optional Activity? activity): Two TextEditingControllers (name initialized to activity?.name ?? '', description to activity?.description ?? ''). Dispose both. showDragHandle built into the showModalBottomSheet call. Widget body: Padding(padding: EdgeInsets.only(bottom: MediaQuery.viewInsetsOf(context).bottom, left: 16, right: 16, top: 8), child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.stretch, children: [Text(activity == null ? 'New activity' : 'Edit activity', style: titleLarge), SizedBox(height: 16), TextField(controller: _nameCtrl, decoration: InputDecoration(labelText: 'Name *', border: OutlineInputBorder()), autofocus: activity == null), SizedBox(height: 12), TextField(controller: _descCtrl, decoration: InputDecoration(labelText: 'Description', border: OutlineInputBorder()), maxLines: 3, textInputAction: TextInputAction.newline), SizedBox(height: 16), FilledButton(onPressed: _submit, child: Text(activity == null ? 'Create' : 'Save')), SizedBox(height: 8)])). _submit: validate name non-empty (showMessage if empty), call createActivity or updateActivity, Navigator.pop(context), wrapped in try/catch → showError.",
+
+    "Step 1d — _ShareToGroupSheet (ConsumerStatefulWidget, required Activity activity): State: String? _selectedGroupId, String? _selectedTypeId. Watches myGroupsProvider and (when _selectedGroupId != null) typesProvider(_selectedGroupId!). Layout: Padding similar to _ActivityFormSheet. Title 'Share to group'. DropdownButtonFormField<String> for group (items from groups list, value: _selectedGroupId, onChanged: (v) => setState(() { _selectedGroupId = v; _selectedTypeId = null; })). DropdownButtonFormField<String> for type (disabled when _selectedGroupId is null, items from typesProvider watch, value: _selectedTypeId, onChanged: (v) => setState(() => _selectedTypeId = v)). FilledButton 'Share'. onPressed: validate both non-null, await repo.shareActivityToGroup(...), ref.invalidate(groupActivitiesProvider(_selectedGroupId!)), Navigator.pop(context), showMessage(context, 'Shared to group!'). try/catch → showError. Imports needed: groups_repository.dart for myGroupsProvider and typesProvider; activities_repository.dart for activitiesRepositoryProvider and groupActivitiesProvider.",
+
+    "Step 2 — Update app/lib/features/groups/group_page.dart: Add import at top: import '../../data/activities_repository.dart'; Also add GroupActivity to the models import if not already there (models.dart is already imported). Replace the first EmptyState child in the TabBarView (Activities tab, index 0) with _ActivitiesTab(groupId: groupId). Add three new private classes after the _TypesTab class:",
+
+    "Step 2a — _ActivitiesTab (ConsumerWidget, required String groupId): Returns AsyncBody<List<GroupActivity>>(value: ref.watch(groupActivitiesProvider(groupId)), builder: (list) => ListView(padding: EdgeInsets.symmetric(vertical: 8), children: [Padding(padding: EdgeInsets.symmetric(horizontal: 16, vertical: 8), child: Align(alignment: Alignment.centerLeft, child: FilledButton.icon(onPressed: () => _openGroupShareSheet(context, ref), icon: Icon(Icons.add), label: Text('Share an activity')))), if (list.isEmpty) EmptyState(icon: Icons.local_activity_outlined, message: 'No activities shared yet.') else for (ga in list) _GroupActivityTile(groupActivity: ga, groupId: groupId)])). Helper _openGroupShareSheet: showModalBottomSheet(isScrollControlled: true, showDragHandle: true, builder: (_) => _GroupShareSheet(groupId: groupId)).",
+
+    "Step 2b — _GroupActivityTile (ConsumerWidget, required GroupActivity groupActivity, required String groupId): ListTile. Leading: CircleAvatar(child: Text(groupActivity.activity.name.characters.first.toUpperCase())). Title: Text(groupActivity.activity.name). Subtitle: Text('${groupActivity.typeName ?? 'Unknown type'} · @${groupActivity.sharedByUsername ?? '?'}', overflow: TextOverflow.ellipsis). Trailing: PopupMenuButton<String> with item ('unshare', 'Remove from group'). onSelected: confirm(context, title: 'Remove from group?', message: \"This won't delete the activity — it'll just be removed from this group.\", action: 'Remove'), if ok: await repo.unshareActivityFromGroup(groupId: groupId, activityId: groupActivity.activityId), ref.invalidate(groupActivitiesProvider(groupId)). try/catch → showError. Check context.mounted.",
+
+    "Step 2c — _GroupShareSheet (ConsumerStatefulWidget, required String groupId): State: String? _selectedActivityId, String? _selectedTypeId. Watches myActivitiesProvider and groupActivitiesProvider(groupId) for filtering. Computes alreadySharedIds = {ga.activityId for ga in groupActivities.value ?? []}. Computes available = (myActivities.value ?? []).where((a) => !alreadySharedIds.contains(a.id)).toList(). Layout same padding pattern. Title 'Share an activity'. DropdownButtonFormField<String> for available activities (items from available list, display activity.name). DropdownButtonFormField<String> for types from typesProvider(groupId). FilledButton 'Share'. onPressed: validate both, await repo.shareActivityToGroup(activityId: _selectedActivityId!, groupId: groupId, activityTypeId: _selectedTypeId!), ref.invalidate(groupActivitiesProvider(groupId)), Navigator.pop(context), showMessage(context, 'Activity shared!'). try/catch → showError. If available is empty and loaded, show a Text('All your activities are already shared into this group.') instead of the activity dropdown.",
+
+    "Step 3 — Update app/lib/router.dart: Add import: import 'features/activities/activities_page.dart'; Change the GoRoute for path '/activities' builder from PlaceholderPage(...) to const ActivitiesPage(). Keep the existing import of placeholder_page.dart — it is still used by the '/schedule' route."
+  ],
+  "acceptance_criteria": [
+    "app/lib/features/activities/activities_page.dart exists with ActivitiesPage, _ActivityTile, _ActivityFormSheet, _ShareToGroupSheet",
+    "Navigating to /activities renders ActivitiesPage (not the old placeholder)",
+    "ActivitiesPage shows EmptyState when user has no activities and a FAB to create",
+    "Tapping FAB opens a bottom sheet with Name and Description fields",
+    "Each activity in the list has a popup menu with Edit, Delete, Share to group",
+    "Delete shows a confirmation dialog before calling repo.deleteActivity",
+    "Share to group opens a sheet where user picks a group then a type",
+    "group_page.dart Activities tab shows a list of shared activities with type and @username",
+    "Each group activity has a Remove from group menu item with a confirmation dialog",
+    "A FilledButton.icon 'Share an activity' at the top of the Group Activities tab opens a share sheet",
+    "The share sheet in the group context filters out already-shared activities",
+    "router.dart /activities route returns ActivitiesPage, not PlaceholderPage",
+    "flutter build web --no-version-check exits 0 with no errors"
+  ],
+  "verification": [
+    "cd /Users/kangjin/Documents/group-planner/app && flutter build web --no-version-check"
+  ],
+  "blocked_reason": null,
+  "findings": ""
+}

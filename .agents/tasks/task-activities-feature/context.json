@@ -1,0 +1,32 @@
+{
+  "project_type": "Flutter web/mobile app + Supabase backend (Postgres, Auth, RLS)",
+  "language": "Dart 3.10.9 / Flutter",
+  "build_system": "Flutter SDK; no workspace tooling. Run flutter commands from the app/ subdirectory.",
+  "test_framework": "flutter_test is present but no tests exist yet. Verification = successful web build.",
+  "build_command": "cd /Users/kangjin/Documents/group-planner/app && flutter build web --no-version-check",
+  "test_command": "cd /Users/kangjin/Documents/group-planner/app && flutter build web --no-version-check",
+  "verification_instructions": "Run `cd /Users/kangjin/Documents/group-planner/app && flutter build web --no-version-check`. A zero exit code with no compilation errors confirms success. Do NOT run `flutter run` without the --web-port flag.",
+  "snapshot_or_generated_files": null,
+  "environment_constraints": "Port 3000 is used by the running dev server; never bind to it in scripts. Xcode 14.2 is too old for iOS/macOS builds; target web only. The app currently runs via: flutter run -d web-server --web-hostname 127.0.0.1 --web-port 3000 --no-version-check",
+  "contribution_requirements": "No AGENTS.md or CONTRIBUTING.md. Follow the conventions already present in the codebase exactly.",
+  "key_patterns": "1) Repository: plain Dart class, Supabase calls via `_db` helper, wrapped by a Riverpod `Provider`; async reads use `FutureProvider` or `FutureProvider.family`; `friendlyError()` translates DB errors to human strings. 2) UI: `ConsumerWidget` (never StatefulWidget for state) with `ref.watch(someProvider)`; `AsyncBody<T>` for all async data; `ref.invalidate()` for refresh after mutations. 3) All user interactions (text input, confirm, errors) go through dialogs.dart helpers: `promptText`, `confirm`, `showError`, `showMessage`. 4) Sheets: `showModalBottomSheet(isScrollControlled: true, showDragHandle: true, builder: ...)`. 5) Material 3 buttons: FilledButton (primary), FilledButton.tonal (secondary), OutlinedButton, TextButton. 6) Empty states: `EmptyState(icon: ..., message: ...)` from async_body.dart. 7) Characters extension used for `.characters.first.toUpperCase()` on display names.",
+  "relevant_files": [
+    "/Users/kangjin/Documents/group-planner/app/lib/data/models.dart",
+    "/Users/kangjin/Documents/group-planner/app/lib/data/groups_repository.dart",
+    "/Users/kangjin/Documents/group-planner/app/lib/features/groups/groups_page.dart",
+    "/Users/kangjin/Documents/group-planner/app/lib/features/groups/group_page.dart",
+    "/Users/kangjin/Documents/group-planner/app/lib/widgets/async_body.dart",
+    "/Users/kangjin/Documents/group-planner/app/lib/widgets/dialogs.dart",
+    "/Users/kangjin/Documents/group-planner/app/lib/router.dart",
+    "/Users/kangjin/Documents/group-planner/app/lib/main.dart",
+    "/Users/kangjin/Documents/group-planner/app/lib/features/home/home_shell.dart",
+    "/Users/kangjin/Documents/group-planner/supabase/migrations/20261002000000_init.sql"
+  ],
+  "directory_structure": "app/lib/data/ — models.dart + repository files; app/lib/features/{auth,groups,home}/ — feature pages; app/lib/widgets/ — AsyncBody, dialogs; app/lib/router.dart — GoRouter config; app/lib/main.dart — app entry; supabase/migrations/ — DB schema and RLS",
+  "db_schema_notes": {
+    "activities": "id (uuid), owner_id (uuid FK profiles), name (text), description (text?), location (text?), price_min, price_max, currency, url, created_at, updated_at, updated_by, deleted_at. NO default_activity_type_id column.",
+    "group_activities": "PK is (group_id, activity_id). Columns: group_id, activity_id, type_id (FK to activity_types with composite FK including group_id), added_by (FK profiles), added_at. No UUID id column.",
+    "activity_types": "id (uuid), group_id (uuid FK groups), name (text). Unique index on (group_id, lower(name)).",
+    "delete_activity_rpc": "Security-definer RPC `delete_activity(p_activity uuid)`: checks caller is owner, deletes from group_activities (triggering revert_entries_to_events trigger), then sets deleted_at. Use this instead of direct UPDATE."
+  }
+}
