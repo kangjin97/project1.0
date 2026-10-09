@@ -10,6 +10,7 @@ import '../../data/groups_repository.dart';
 import '../../data/models.dart';
 import '../../widgets/async_body.dart';
 import '../../widgets/dialogs.dart';
+import '../../widgets/user_avatar.dart';
 import 'group_activities_tab.dart';
 import 'group_schedule_tab.dart';
 import 'group_types_tab.dart';
@@ -136,7 +137,8 @@ class _MembersTab extends ConsumerWidget {
             ),
             for (final m in list)
               ListTile(
-                leading: CircleAvatar(child: Text(m.profile.label.characters.first.toUpperCase())),
+                onTap: () => context.push(m.profile.id == me ? '/profile' : '/people/${m.profile.id}'),
+                leading: UserAvatar(label: m.profile.label, avatarPath: m.profile.avatarPath),
                 title: Text(m.profile.id == me ? '${m.profile.label} (you)' : m.profile.label),
                 subtitle: Text('@${m.profile.username}'),
                 trailing: m.isOwner
@@ -298,6 +300,7 @@ class _InviteSheetState extends ConsumerState<_InviteSheet> {
                       children: [
                         for (final p in _results)
                           ListTile(
+                            leading: UserAvatar(label: p.label, avatarPath: p.avatarPath),
                             title: Text(p.label),
                             subtitle: Text('@${p.username}'),
                             trailing: memberIds.contains(p.id)

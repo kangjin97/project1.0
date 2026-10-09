@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../data/activities_repository.dart';
 import '../../data/models.dart';
@@ -75,7 +74,6 @@ class _ActivitiesPageState extends ConsumerState<ActivitiesPage> {
 
   @override
   Widget build(BuildContext context) {
-    final narrow = MediaQuery.sizeOf(context).width < 720;
     final labels = ref.watch(labelsProvider).value ?? const <PersonalType>[];
     return Scaffold(
       appBar: AppBar(
@@ -92,12 +90,6 @@ class _ActivitiesPageState extends ConsumerState<ActivitiesPage> {
             icon: const Icon(Icons.label_outline),
             label: const Text('Labels'),
           ),
-          if (narrow)
-            IconButton(
-              tooltip: 'Sign out',
-              icon: const Icon(Icons.logout),
-              onPressed: () => Supabase.instance.client.auth.signOut(),
-            ),
         ],
       ),
       floatingActionButton: FloatingActionButton.extended(

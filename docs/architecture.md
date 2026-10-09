@@ -41,11 +41,17 @@ There is no custom server. The Flutter app talks to Supabase directly, and **eve
 | `/groups` | `GroupsPage` | Groups list and pending invitations. |
 | `/groups/:id` | `GroupPage` | Tabs: Activities, Schedule, Members, Types. |
 | `/activities` | `ActivitiesPage` | My activities. |
+| `/profile` | `ProfilePage` | Own profile, stats, account settings, sign out. |
+| `/people/:id` | `PersonPage` | Someone else's profile; opened with `context.push` from members / "Going" lists. |
 | `/activities/:id` | `ActivityDetailPage` | Any activity the user can see. Opened with `context.push` so Back returns to where you came from. |
 
 `HomeShell` shows a bottom `NavigationBar` below 720 px wide and a `NavigationRail` above. It reads the current location from `GoRouter.routerDelegate`, so the highlighted tab is always correct.
 
 Full-screen forms (`showActivityForm`) and bottom sheets are pushed on the **root** navigator, so they cover the navigation bar.
+
+### Time zones
+
+All times are stored in UTC (`timestamptz`) or as calendar dates. The app shows them in the user's **profile** time zone, not the device's: `AppClock` (in `data/app_clock.dart`) holds the display zone, converts server instants with `inZone`, builds user-picked times with `at`, and gives `today()`. `TimezoneController` loads the zone from the profile after sign-in and switches it when the user changes it; `scheduleProvider` watches `timezoneProvider`, so schedules refetch in the new zone. Sign-up sends the device zone in metadata; it is never overwritten automatically afterwards.
 
 ### State and refresh
 

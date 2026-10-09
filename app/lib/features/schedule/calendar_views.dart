@@ -3,6 +3,7 @@ import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 
+import '../../data/app_clock.dart';
 import '../../data/schedule_models.dart';
 import 'schedule_widgets.dart';
 
@@ -38,7 +39,7 @@ class _WeekViewState extends State<WeekView> {
     final narrow = MediaQuery.sizeOf(context).width < 600;
     final gutter = narrow ? 36.0 : 56.0;
     final days = [for (var i = 0; i < 7; i++) addDays(widget.weekStart, i)];
-    final today = dateOnly(DateTime.now());
+    final today = AppClock.today();
 
     // All-day row: all-day entries, plus full middle days of multi-day timed entries.
     List<ScheduleEntry> allDayOn(DateTime d) => widget.entries
@@ -150,7 +151,8 @@ class _DayColumn extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final dayStart = day, dayEnd = addDays(day, 1);
+    final next = addDays(day, 1);
+    final dayStart = AppClock.at(day.year, day.month, day.day), dayEnd = AppClock.at(next.year, next.month, next.day);
     // Timed segments that fall within this day (multi-day middles go in the all-day row).
     final segments = <({ScheduleEntry e, DateTime start, DateTime end})>[
       for (final e in entries)
@@ -264,7 +266,7 @@ class MonthView extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final start = gridStart(month);
-    final today = dateOnly(DateTime.now());
+    final today = AppClock.today();
     final lineColor = theme.colorScheme.outlineVariant.withValues(alpha: 0.6);
     return Column(
       children: [

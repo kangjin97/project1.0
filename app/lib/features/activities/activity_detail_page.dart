@@ -6,6 +6,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../../data/activities_repository.dart';
+import '../../data/app_clock.dart';
 import '../../data/groups_repository.dart';
 import '../../data/models.dart';
 import '../../widgets/async_body.dart';
@@ -271,6 +272,7 @@ class _HistorySection extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    ref.watch(timezoneProvider);
     final groups = {for (final g in ref.watch(myGroupsProvider).value ?? const <Group>[]) g.id: g.name};
     final muted = Theme.of(context).textTheme.bodySmall?.copyWith(color: Theme.of(context).colorScheme.onSurfaceVariant);
     return Column(
@@ -289,7 +291,7 @@ class _HistorySection extends ConsumerWidget {
                   dense: true,
                   leading: const Icon(Icons.history, size: 20),
                   title: Text('@${e.actorUsername ?? 'someone'} ${describeChange(e, groups)}'),
-                  subtitle: Text(DateFormat('d MMM y, h:mm a').format(e.createdAt.toLocal()), style: muted),
+                  subtitle: Text(DateFormat('d MMM y, h:mm a').format(AppClock.inZone(e.createdAt)), style: muted),
                 ),
             ],
           ),

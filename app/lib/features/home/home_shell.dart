@@ -1,11 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
 
 const _tabs = [
   (path: '/schedule', label: 'Schedule', icon: Icons.calendar_month_outlined, selected: Icons.calendar_month),
   (path: '/groups', label: 'Groups', icon: Icons.groups_outlined, selected: Icons.groups),
   (path: '/activities', label: 'Activities', icon: Icons.local_activity_outlined, selected: Icons.local_activity),
+  (path: '/profile', label: 'Profile', icon: Icons.account_circle_outlined, selected: Icons.account_circle),
 ];
 
 /// Bottom navigation on phones, a side rail on wider screens.
@@ -77,19 +77,6 @@ class _HomeShellState extends State<HomeShell> {
             leading: const Padding(
               padding: EdgeInsets.symmetric(vertical: 16),
               child: Icon(Icons.groups_2_outlined, size: 32),
-            ),
-            trailing: Expanded(
-              child: Align(
-                alignment: Alignment.bottomCenter,
-                child: Padding(
-                  padding: const EdgeInsets.only(bottom: 16),
-                  child: IconButton(
-                    tooltip: 'Sign out',
-                    icon: const Icon(Icons.logout),
-                    onPressed: () => Supabase.instance.client.auth.signOut(),
-                  ),
-                ),
-              ),
             ),
             destinations: [
               for (final t in _tabs)

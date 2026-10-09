@@ -18,6 +18,11 @@ Product and technical decisions, with the reason. Newest last. When a decision c
 | 2026-10-09 | Groups can **merge** types (e.g. "yummy" + "goodfood" → "Food"); activities with those labels, existing and future, go to the merged type. |
 | 2026-10-09 | If the owner changes the label later, the activity is re-filed in every group automatically (into a merged type where one applies). |
 
+| 2026-10-09 | Schedule: My schedule offers List / Week / Month on every screen size (phones default to List). The group Schedule tab shows everyone's plans with the user's highlighted, and "no date yet" events as ideas at the top. |
+| 2026-10-09 | Notifications UI is its own branch, not part of the schedule feature. |
+| 2026-10-09 | Profiles: picture, username (if not taken), bio; plus viewing others' profiles, editable display name, account settings (email, password, sign out) and profile stats. |
+| 2026-10-09 | Time zone is set at sign-up from the device and changeable on the profile from a list labelled with UTC offsets and regions (UTC rather than GMT). The whole app shows times in the profile's zone, not the device's. |
+
 ## Choices made on the owner's behalf (confirm or revise)
 
 | Date | Choice | Reason |
@@ -33,6 +38,10 @@ Product and technical decisions, with the reason. Newest last. When a decision c
 | 2026-10-09 | A label change overrides a member's manual type change. | The owner said the group type follows the label "automatically". |
 | 2026-10-09 | Deleting a label leaves activities' group types unchanged. | Avoids surprising moves. |
 | 2026-10-09 | Labels are private to their owner; members see only the group type. | They're personal. |
+| 2026-10-09 | Profile stats are visible only to the profile's owner; other people's profiles show picture, names, bio and the groups you share, and are reachable only from shared groups. | Privacy. |
+| 2026-10-09 | Bio limit 160 characters; display name 50. | Fits a profile header. |
+| 2026-10-09 | Avatars are in a private bucket readable by any signed-in user, writable only in your own folder. | Same visibility as profiles. |
+| 2026-10-09 | The time zone picker lists all IANA zones (including aliases like Asia/Calcutta) with current offsets, searchable by name or offset. | A plain dropdown of ~490 zones is unusable. |
 
 ## Technical
 
@@ -47,3 +56,6 @@ Product and technical decisions, with the reason. Newest last. When a decision c
 | 2026-10-09 | Riverpod `FutureProvider`s with explicit invalidation, no realtime yet. | Simple; realtime is a later step. |
 | 2026-10-09 | Search and filters run client-side. | Friend-group sizes; revisit if lists grow. |
 | 2026-10-09 | Apply local migrations with `supabase migration up`, never `db reset` without asking. | A reset wiped the owner's manual test data once. |
+| 2026-10-09 | `list_schedule` RPC as the schedule read model. | Mixed date/timestamp windows and joined names don't fit plain table queries. |
+| 2026-10-09 | `AppClock` + `package:timezone` (`latest_all`) for display-zone conversion; `TimezoneController` reloads the zone from the profile after sign-in. | Times must follow the profile zone everywhere; browsers report alias zone names. |
+| 2026-10-09 | Work on `main`; short-lived feature branches (`feature/<name>`) merged back when accepted. | Owner's preference. |

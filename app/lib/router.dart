@@ -12,6 +12,7 @@ import 'features/groups/group_page.dart';
 import 'features/groups/groups_page.dart';
 import 'features/groups/join_page.dart';
 import 'features/home/home_shell.dart';
+import 'features/profile/profile_page.dart';
 import 'features/schedule/my_schedule_page.dart';
 
 final routerProvider = Provider<GoRouter>((ref) {
@@ -54,6 +55,11 @@ final routerProvider = Provider<GoRouter>((ref) {
                 builder: (_, state) => GroupPage(groupId: state.pathParameters['id']!),
               ),
             ],
+          ),
+          GoRoute(path: '/profile', builder: (_, _) => const ProfilePage()),
+          GoRoute(
+            path: '/people/:id',
+            builder: (_, state) => PersonPage(userId: state.pathParameters['id']!),
           ),
           GoRoute(
             path: '/activities',

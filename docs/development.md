@@ -88,7 +88,7 @@ rollback;
 5. **UI:** screens in `app/lib/features/<area>/`. After a mutation, invalidate every provider that shows the changed data (see `invalidateActivity` and `invalidateLabels`).
 6. **Routes:** register in `app/lib/router.dart`.
 7. **Docs:** update `docs/ai/features.md`, `docs/ai/endpoints.md`, `docs/database.md` and `SPEC.md` as needed.
-8. **Checks:** `flutter analyze` (must be clean), then `supabase test db`.
+8. **Checks:** `flutter analyze` (must be clean), `flutter test`, then `supabase test db`.
 
 ## Code conventions
 
@@ -96,6 +96,7 @@ rollback;
 - Data loading uses Riverpod `FutureProvider` / `FutureProvider.family`, shown with `AsyncBody`.
 - Show errors with `showError(context, e)`; it runs them through `friendlyError`.
 - Bottom sheets use `useRootNavigator: true` so they appear above the navigation bar.
+- Never use `DateTime.now()` / `.toLocal()` for anything shown to the user; use `AppClock.today()`, `AppClock.now()`, `AppClock.inZone(...)` and `AppClock.at(...)` so times follow the profile's time zone.
 - `supabase-dart`'s `.order()` sorts **descending by default**. Always pass `ascending:` explicitly.
 - PostgREST `ilike` patterns use `*` as the wildcard, not `%`.
 - Comments explain *why*, not what. Match the density of the surrounding code.

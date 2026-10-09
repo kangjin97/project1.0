@@ -89,6 +89,13 @@ Every change is recorded with who made it and when, so it's always traceable who
 
 Users can view the log per activity, per schedule entry, and per group.
 
+### 2.9 Profiles
+- Everyone has a profile page: picture, display name, @username, and a short bio (≤160 characters).
+- Users can change their picture, display name, bio, and username (if the new one isn't taken; same rules as sign-up). Account settings: change email (confirmed by link) and password (current password required); sign out.
+- Tapping someone in a group's members list or a plan's "who's going" opens their profile: picture, names, bio, and the groups you share.
+- Your own profile also shows your counts: groups, activities, upcoming plans.
+- **Time zone**: set automatically at sign-up from the device; changeable later on the profile from a searchable list, where each zone shows its city, region and current UTC offset (e.g. "Singapore · Asia · UTC+08:00"). All times and calendar days in the app use the chosen zone.
+
 ---
 
 ## 3. Data model (Postgres)

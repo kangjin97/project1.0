@@ -1,15 +1,26 @@
 class Profile {
-  Profile({required this.id, required this.username, this.displayName});
+  Profile({required this.id, required this.username, this.displayName, this.avatarPath, this.bio, this.timezone});
+
+  /// Columns for showing a person in lists.
+  static const columns = 'id, username, display_name, avatar_path';
 
   factory Profile.fromJson(Map<String, dynamic> j) => Profile(
         id: j['id'] as String,
         username: j['username'] as String,
         displayName: j['display_name'] as String?,
+        avatarPath: j['avatar_path'] as String?,
+        bio: j['bio'] as String?,
+        timezone: j['timezone'] as String?,
       );
 
   final String id;
   final String username;
   final String? displayName;
+
+  /// Path in the `avatars` bucket, or null for the initial-letter avatar.
+  final String? avatarPath;
+  final String? bio;
+  final String? timezone;
 
   String get label => (displayName?.isNotEmpty ?? false) ? displayName! : username;
 }

@@ -15,7 +15,7 @@ Every backend call the app makes, plus the RPCs the database exposes but the app
 |---|---|---|
 | `AuthPage._submit` (sign up) | `rpc username_available(p_username text) → bool`, then `auth.signUp(email, password, data: {username, display_name})` | Callable signed-out. Trigger creates `profiles` row; username lower-cased. Duplicate username at insert → sign-up fails. |
 | `AuthPage._submit` (sign in) | `auth.signInWithPassword(email, password)` | |
-| `HomeShell` / pages | `auth.signOut()` | |
+| `ProfilePage` | `auth.signOut()` | |
 
 ## Profiles
 
@@ -116,13 +116,30 @@ Select string `Activity.columns` (in `models.dart`):
 
 Rendered by `describeChange()` in `activity_detail_page.dart`.
 
+## Profiles
+
+Dart: `app/lib/data/profile_repository.dart` (P). `Profile.columns` = `id, username, display_name, avatar_path`.
+
+| Dart | Call | Who | Notes |
+|---|---|---|---|
+| P `profile(id)` | REST `GET profiles?select=<columns>,bio,timezone&id=eq` (single) | signed in | Any profile is readable; the UI only links to people you share a group with. |
+| P `update(username, displayName, bio)` | REST `PATCH profiles?id=eq.<me> {username, display_name, bio}` | self | 23505 taken username; 23514 invalid username or bio > 160. |
+| P `usernameAvailable(name)` | `rpc username_available(p_username)` | anyone | Same RPC as sign-up. |
+| P `setAvatar(bytes, ext, previousPath)` | `storage.from('avatars').uploadBinary('<me>/<ts>.<ext>')`, `PATCH profiles {avatar_path}`, remove previous file | self | Writes only allowed in your own folder. |
+| P `removeAvatar(path)` | `PATCH profiles {avatar_path: null}`, `storage.remove([path])` | self | |
+| P `avatarUrl(path)` | `storage.from('avatars').createSignedUrl(path, 3600)` | signed in | Cached per path by `avatarUrlProvider`. |
+| P `sharedGroups(userId)` | `rpc shared_groups(p_user uuid) → [{group_id, group_name, member_count}]` | signed in | Groups both you and they are in (all yours when `p_user` = you). |
+| P `myStats()` | `rpc my_profile_stats() → [{groups, activities, upcoming_plans}]` | self | Upcoming = participant in an entry ending in the future (all-day: today or later in your time zone). |
+| P `changeEmail(email)` | `auth.updateUser(email)` | self | Sends a confirmation link; `currentUser.newEmail` is set until confirmed. |
+| P `changePassword(current, next)` | `auth.signInWithPassword(email, current)` then `auth.updateUser(password)` | self | Re-checks the current password first. |
+
 ## Schedules
 
 Dart: `app/lib/data/schedule_repository.dart` (S). Times are sent as UTC ISO strings; dates as `YYYY-MM-DD`.
 
 | Dart | Call | Who | Notes |
 |---|---|---|---|
-| S `list(query)` | `rpc list_schedule(p_from date, p_to date, p_tz text, p_group uuid = null, p_include_unscheduled bool = false)` | signed in | No group → caller's own entries; with group → whole group (members only), plus "no date yet" events when asked. Returns rows `{id, group_id, group_name, activity_id, activity_name, title, all_day, date, start_at, end_at, created_by, my_status, participants:[{user_id, username, display_name, status}]}`. `p_tz` is the device zone; dates are inclusive local days. |
+| S `list(query)` | `rpc list_schedule(p_from date, p_to date, p_tz text, p_group uuid = null, p_include_unscheduled bool = false)` | signed in | No group → caller's own entries; with group → whole group (members only), plus "no date yet" events when asked. Returns rows `{id, group_id, group_name, activity_id, activity_name, title, all_day, date, start_at, end_at, created_by, my_status, participants:[{user_id, username, display_name, avatar_path, status}]}`. `p_tz` is the app's display zone (the profile zone); dates are inclusive days in that zone. |
 | S `create(...)` | `rpc create_schedule_entry` (below) | members | First call without force; on `{status:'clash'}` the UI asks, then retries with `p_force: true`. |
 | S `reschedule(id, timing)` | `rpc reschedule_entry` | members | Same clash flow. |
 | S `addParticipants(id, userIds)` | `rpc add_entry_participants` | members | Same clash flow. |
@@ -132,7 +149,9 @@ Dart: `app/lib/data/schedule_repository.dart` (S). Times are sent as UTC ISO str
 | S `leave(id)` | REST `DELETE schedule_participants?entry_id&user_id=<me>` | self | |
 | S `acknowledgeClash(id)` | REST `PATCH schedule_participants?entry_id&user_id=<me> {status:'added'}` | self | |
 | S `history(id)` | REST `GET change_log?entity_id=eq&entity_type=in.(schedule_entry,schedule_participant)` + profiles | group members | Rendered by `describeEntryChange()`. |
-| `syncProfileTimezone()` | REST `PATCH profiles?id=eq.<me>&timezone=neq.<tz> {timezone}` | self | Called on sign-in / session restore from `main.dart`. |
+| `TimezoneController.change(name)` (`data/app_clock.dart`) | REST `PATCH profiles?id=eq.<me> {timezone}` | self | 22023 for unknown zones. Switches the app's display zone and refetches schedules. |
+| `timezoneOptionsProvider` | `rpc list_timezones() → [{name, region, city, offset_minutes}]` | signed in | Picker list. |
+| Sign-up (`AuthPage`) | `auth.signUp(data: {..., timezone: <device zone>})` | anyone | The trigger stores it on the profile (UTC if unknown). |
 
 ---
 

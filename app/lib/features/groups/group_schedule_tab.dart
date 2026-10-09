@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../data/app_clock.dart';
 import '../../data/schedule_models.dart';
 import '../../data/schedule_repository.dart';
 import '../../widgets/async_body.dart';
@@ -25,7 +26,7 @@ class _GroupScheduleTabState extends ConsumerState<GroupScheduleTab> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final today = dateOnly(DateTime.now());
+    final today = AppClock.today();
     final ScheduleQuery query =
         (from: today, to: addDays(today, _weeks * 7 - 1), groupId: widget.groupId, includeUnscheduled: true);
 

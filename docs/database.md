@@ -7,6 +7,8 @@ Source of truth: `supabase/migrations/`. Test coverage: `supabase/tests/database
 | `20261002000000_init.sql` | Profiles, groups, invites, activities, photos, types, schedules, change log, notifications, RLS, RPCs, storage bucket, realtime publication |
 | `20261009000000_labels_and_type_merges.sql` | Personal labels, `group_activities.source_type_name`, `type_merges`, label filing and re-filing, merge RPCs |
 | `20261010000000_list_schedule.sql` | `list_schedule` read model for the schedule screens |
+| `20261011000000_profiles.sql` | `profiles.bio`, `avatars` bucket, `shared_groups`, `my_profile_stats`; avatars in `list_schedule` |
+| `20261012000000_timezones.sql` | Zone set at sign-up from metadata, `profiles_guard_timezone` validation, `is_valid_timezone`, `list_timezones` |
 
 ## Tables
 
@@ -17,10 +19,12 @@ One per auth user, created by the `on_auth_user_created` trigger from sign-up me
 |---|---|
 | `id` | = `auth.users.id` |
 | `username` | Unique; `^[a-z0-9_]{3,30}$`, lower-cased on creation |
-| `display_name`, `avatar_path` | Optional |
-| `timezone` | IANA name, default `UTC`. Used to work out all-day clashes. The app doesn't set it yet. |
+| `display_name` | Optional |
+| `avatar_path` | Optional; `<user_id>/<file>` in the `avatars` bucket |
+| `bio` | Optional, ≤ 160 characters |
+| `timezone` | IANA name. Set at sign-up from the device (`timezone` in sign-up metadata, falls back to `UTC`); afterwards changed only by the user. Validated by the `profiles_guard_timezone` trigger (22023 for unknown names). Used for all-day clashes and as the app's display zone. |
 
-Access: any signed-in user can read; users update their own row (`username`, `display_name`, `avatar_path`, `timezone`).
+Access: any signed-in user can read; users update their own row (`username`, `display_name`, `avatar_path`, `bio`, `timezone`).
 
 ### `groups`, `group_members`
 - `groups`: `name` (1–80 characters), `created_by`. The `on_group_created` trigger adds the creator as `owner` and seeds the types Food, Outdoors, Entertainment and Other.
@@ -133,6 +137,9 @@ See [`ai/endpoints.md`](ai/endpoints.md) for parameters, return shapes and error
 | `create_schedule_entry(...)`, `reschedule_entry(...)`, `add_entry_participants(...)` | Scheduling with clash checks |
 | `find_clashes(...)` | Overlapping entries per user |
 | `list_schedule(from, to, tz, group?, include_unscheduled?)` | Entries in a date window with group/activity/participant names; personal or group view |
+| `shared_groups(user)` | Groups the caller shares with a user |
+| `my_profile_stats()` | Caller's counts: groups, activities, upcoming plans |
+| `list_timezones()` | Zones for the picker: name, region, readable city, current offset in minutes (sorted by offset) |
 
 Internal (not executable by clients): `resolve_group_type`, `apply_participants`, and the trigger functions.
 
@@ -154,7 +161,8 @@ Internal (not executable by clients): `resolve_group_type`, `apply_participants`
 
 ## Storage
 
-The bucket `activity-photos` is private. The select, insert and delete policies on `storage.objects` all require `can_access_activity(<first path segment>)`.
+- `activity-photos` (private): select, insert and delete on `storage.objects` all require `can_access_activity(<first path segment>)`.
+- `avatars` (private): any signed-in user can read; insert, update and delete only when the first path segment is your own user id.
 
 ## Realtime
 
@@ -162,6 +170,6 @@ The `supabase_realtime` publication includes `schedule_entries`, `schedule_parti
 
 ## Known gaps
 
-- `profiles.timezone` is set by the app on sign-in; users who haven't signed in since keep `UTC`.
+- Accounts created before the time zone migration keep whatever zone they had (the seed accounts start as `UTC`).
 - The trigger functions `handle_new_user`, `handle_new_group`, `log_change`, `notify_invitee`, `revert_entries_to_events` and `touch_updated` still have `execute` granted to `authenticated`. This is harmless, because Postgres refuses to call a trigger function outside a trigger, but it could be revoked for tidiness.
 - Group deletion is allowed by policy, but there's no UI for it.

@@ -2,14 +2,17 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../data/activities_repository.dart';
+import '../../data/app_clock.dart';
 import '../../data/groups_repository.dart';
 import '../../data/models.dart';
 import '../../data/schedule_models.dart';
 import '../../data/schedule_repository.dart';
 import '../../widgets/async_body.dart';
 import '../../widgets/dialogs.dart';
+import '../../widgets/user_avatar.dart';
 import 'entry_editor.dart';
 import 'schedule_widgets.dart';
 
@@ -221,7 +224,14 @@ class _EntryDetail extends ConsumerWidget {
         for (final p in e.participants)
           ListTile(
             contentPadding: EdgeInsets.zero,
-            leading: CircleAvatar(child: Text(p.label.characters.first.toUpperCase())),
+            onTap: () {
+              // The sheet's context is gone once it closes; grab the router first.
+              final router = GoRouter.of(context);
+              final me = Supabase.instance.client.auth.currentUser?.id;
+              Navigator.pop(context);
+              router.push(p.userId == me ? '/profile' : '/people/${p.userId}');
+            },
+            leading: UserAvatar(label: p.label, avatarPath: p.avatarPath),
             title: Text(p.label),
             subtitle: Text('@${p.username}'),
             trailing: p.hasClash
@@ -279,6 +289,7 @@ class _History extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    ref.watch(timezoneProvider);
     final members = ref.watch(membersProvider(entry.groupId)).value ?? const <Member>[];
     final names = {
       for (final m in members) m.profile.id: m.profile.username,
@@ -295,7 +306,7 @@ class _History extends ConsumerWidget {
               contentPadding: EdgeInsets.zero,
               leading: const Icon(Icons.history, size: 20),
               title: Text('@${h.actorUsername ?? 'someone'} ${describeEntryChange(h, names)}'),
-              subtitle: Text(DateFormat('d MMM y, h:mm a').format(h.createdAt.toLocal()), style: muted),
+              subtitle: Text(DateFormat('d MMM y, h:mm a').format(AppClock.inZone(h.createdAt)), style: muted),
             ),
         ],
       ),

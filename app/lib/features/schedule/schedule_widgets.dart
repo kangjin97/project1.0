@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 
+import '../../data/app_clock.dart';
 import '../../data/schedule_models.dart';
 
 final _time = DateFormat('h:mm a');
@@ -12,7 +13,7 @@ String formatShortDay(DateTime d) => _shortDay.format(d);
 
 /// "Today", "Tomorrow", or e.g. "Saturday, 12 October".
 String dayHeading(DateTime day) {
-  final today = dateOnly(DateTime.now());
+  final today = AppClock.today();
   if (isSameDay(day, today)) return 'Today · ${_dayHeader.format(day)}';
   if (isSameDay(day, addDays(today, 1))) return 'Tomorrow · ${_dayHeader.format(day)}';
   return _dayHeader.format(day);

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
+import '../../data/app_clock.dart';
 import '../../data/groups_repository.dart';
 
 final _usernamePattern = RegExp(r'^[a-z0-9_]{3,30}$');
@@ -49,7 +50,7 @@ class _AuthPageState extends State<AuthPage> {
         await _db.auth.signUp(
           email: _email.text.trim(),
           password: _password.text,
-          data: {'username': username, 'display_name': _displayName.text.trim()},
+          data: {'username': username, 'display_name': _displayName.text.trim(), 'timezone': AppClock.deviceZone},
         );
       } else {
         await _db.auth.signInWithPassword(email: _email.text.trim(), password: _password.text);

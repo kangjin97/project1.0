@@ -21,6 +21,7 @@ supabase start                      # local stack (Docker); API :54321, Studio :
 supabase migration up               # apply new migrations, KEEPS data
 supabase test db                    # pgTAP tests (rolled back; safe)
 cd app && flutter analyze           # must report "No issues found!"
+cd app && flutter test              # Dart unit tests (e.g. AppClock)
 cd app && flutter run -d web-server --web-hostname 127.0.0.1 --web-port 3000
 ```
 
@@ -45,6 +46,9 @@ The Supabase CLI may be at `~/.local/bin/supabase` rather than on `PATH`.
 - Don't dispose a `TextEditingController` in `showDialog(...).whenComplete`; the closing animation still uses it (`_dependents.isEmpty` assertion). Let a `StatefulWidget` own it (see `_PromptDialog` in `widgets/dialogs.dart`).
 - In policies, qualify outer columns in subqueries (`groups.id`, not `id`); unqualified names bind to the inner table.
 - Inside `STABLE` SQL functions, rows inserted earlier in the same statement aren't visible. Write `insert ... returning` select policies inline (e.g. `owner_id = auth.uid()`), not through a helper.
+- User-facing times must go through `AppClock` (profile time zone), never `DateTime.now()` / `.toLocal()`.
+- `package:timezone` must load `latest_all`; the smaller data sets drop aliases like `Asia/Kuala_Lumpur`, which browsers report.
+- DB tests must not assume tables or buckets are empty; the local DB holds the owner's real test data.
 - On Flutter web, `1 << 32` is 0. Keep `Random().nextInt` bounds ≤ `1 << 30`.
 - Flutter web in the Claude preview pane:
   - Screenshots can show a stale frame. Hover, wait, and re-screenshot before concluding.

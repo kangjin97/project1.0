@@ -1,17 +1,21 @@
+import 'app_clock.dart';
+
 /// Someone taking part in a schedule entry.
 class ScheduleParticipant {
-  ScheduleParticipant({required this.userId, required this.username, this.displayName, required this.status});
+  ScheduleParticipant({required this.userId, required this.username, this.displayName, this.avatarPath, required this.status});
 
   factory ScheduleParticipant.fromJson(Map<String, dynamic> j) => ScheduleParticipant(
         userId: j['user_id'] as String,
         username: j['username'] as String,
         displayName: j['display_name'] as String?,
+        avatarPath: j['avatar_path'] as String?,
         status: j['status'] as String,
       );
 
   final String userId;
   final String username;
   final String? displayName;
+  final String? avatarPath;
 
   /// 'added', or 'clash' until they acknowledge an overlap.
   final String status;
@@ -48,8 +52,8 @@ class ScheduleEntry {
         title: j['title'] as String?,
         allDay: j['all_day'] as bool,
         date: j['date'] == null ? null : DateTime.parse(j['date'] as String),
-        startAt: j['start_at'] == null ? null : DateTime.parse(j['start_at'] as String).toLocal(),
-        endAt: j['end_at'] == null ? null : DateTime.parse(j['end_at'] as String).toLocal(),
+        startAt: j['start_at'] == null ? null : AppClock.inZone(DateTime.parse(j['start_at'] as String)),
+        endAt: j['end_at'] == null ? null : AppClock.inZone(DateTime.parse(j['end_at'] as String)),
         createdBy: j['created_by'] as String,
         myStatus: j['my_status'] as String?,
         participants: [
@@ -71,7 +75,7 @@ class ScheduleEntry {
   /// Set for all-day entries (a local calendar date).
   final DateTime? date;
 
-  /// Set for timed entries, in local time.
+  /// Set for timed entries, as wall-clock time in the app's display zone.
   final DateTime? startAt;
   final DateTime? endAt;
   final String createdBy;
@@ -117,8 +121,8 @@ class ScheduleClash {
         title: j['title'] as String? ?? 'Busy',
         allDay: j['all_day'] as bool,
         date: j['entry_date'] == null ? null : DateTime.parse(j['entry_date'] as String),
-        startAt: j['start_at'] == null ? null : DateTime.parse(j['start_at'] as String).toLocal(),
-        endAt: j['end_at'] == null ? null : DateTime.parse(j['end_at'] as String).toLocal(),
+        startAt: j['start_at'] == null ? null : AppClock.inZone(DateTime.parse(j['start_at'] as String)),
+        endAt: j['end_at'] == null ? null : AppClock.inZone(DateTime.parse(j['end_at'] as String)),
       );
 
   final String userId;

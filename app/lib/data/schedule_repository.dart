@@ -1,32 +1,12 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:flutter_timezone/flutter_timezone.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
+import 'app_clock.dart';
 import 'models.dart';
 import 'schedule_models.dart';
 
 SupabaseClient get _db => Supabase.instance.client;
 String get _me => _db.auth.currentUser!.id;
-
-String? _timezone;
-
-/// The device's IANA time zone (e.g. "Asia/Singapore"); UTC if unknown.
-Future<String> localTimezone() async {
-  if (_timezone != null) return _timezone!;
-  try {
-    _timezone = (await FlutterTimezone.getLocalTimezone()).identifier;
-  } catch (_) {
-    _timezone = 'UTC';
-  }
-  return _timezone!;
-}
-
-/// Saves the device's time zone on the profile; all-day clash checks use it.
-Future<void> syncProfileTimezone() async {
-  if (_db.auth.currentUser == null) return;
-  final tz = await localTimezone();
-  await _db.from('profiles').update({'timezone': tz}).eq('id', _me).neq('timezone', tz);
-}
 
 /// Which slice of the schedule to load.
 typedef ScheduleQuery = ({DateTime from, DateTime to, String? groupId, bool includeUnscheduled});
@@ -38,7 +18,7 @@ class ScheduleRepository {
     final rows = await _db.rpc('list_schedule', params: {
       'p_from': isoDate(q.from),
       'p_to': isoDate(q.to),
-      'p_tz': await localTimezone(),
+      'p_tz': AppClock.zoneName,
       'p_group': q.groupId,
       'p_include_unscheduled': q.includeUnscheduled,
     }) as List;
@@ -156,8 +136,11 @@ class ScheduleRepository {
 
 final scheduleRepositoryProvider = Provider((_) => ScheduleRepository());
 
-final scheduleProvider = FutureProvider.autoDispose.family<List<ScheduleEntry>, ScheduleQuery>(
-    (ref, q) => ref.watch(scheduleRepositoryProvider).list(q));
+final scheduleProvider = FutureProvider.autoDispose.family<List<ScheduleEntry>, ScheduleQuery>((ref, q) {
+  // Refetch in the new zone when the user changes it.
+  ref.watch(timezoneProvider);
+  return ref.watch(scheduleRepositoryProvider).list(q);
+});
 
 final entryHistoryProvider = FutureProvider.autoDispose.family<List<ChangeEntry>, String>(
     (ref, id) => ref.watch(scheduleRepositoryProvider).history(id));

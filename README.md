@@ -18,6 +18,7 @@ A web and mobile app for friends to plan things to do together. People collect a
 | Personal labels and group type merging | Done |
 | Search and filters (My activities, group activities) | Done |
 | Schedules: my schedule (agenda / week / month), group schedule, clash warnings, events | Done |
+| Profiles: picture, username, display name, bio, others' profiles, stats, email/password, changeable time zone | Done |
 | Notifications | **Database done, no UI yet** |
 | Realtime updates | Publication configured, not used by the app yet |
 

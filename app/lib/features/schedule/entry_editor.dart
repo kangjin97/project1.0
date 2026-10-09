@@ -4,6 +4,7 @@ import 'package:intl/intl.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../data/activities_repository.dart';
+import '../../data/app_clock.dart';
 import '../../data/groups_repository.dart';
 import '../../data/models.dart';
 import '../../data/schedule_models.dart';
@@ -71,7 +72,7 @@ class _EntryEditorPageState extends ConsumerState<EntryEditorPage> {
   void initState() {
     super.initState();
     final e = widget.existing;
-    final now = DateTime.now();
+    final now = AppClock.now();
     _date = dateOnly(widget.day ?? now);
     _start = TimeOfDay(hour: (now.hour + 1).clamp(0, 22), minute: 0);
     _end = TimeOfDay(hour: (_start.hour + 2).clamp(0, 23), minute: 0);
@@ -96,7 +97,7 @@ class _EntryEditorPageState extends ConsumerState<EntryEditorPage> {
     super.dispose();
   }
 
-  DateTime _at(DateTime day, TimeOfDay t) => DateTime(day.year, day.month, day.day, t.hour, t.minute);
+  DateTime _at(DateTime day, TimeOfDay t) => AppClock.at(day.year, day.month, day.day, t.hour, t.minute);
 
   /// An end at or before the start means it runs past midnight.
   bool get _overnight => _end.hour * 60 + _end.minute <= _start.hour * 60 + _start.minute;

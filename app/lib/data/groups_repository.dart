@@ -38,7 +38,7 @@ class GroupsRepository {
   Future<List<Member>> members(String groupId) async {
     final rows = await _db
         .from('group_members')
-        .select('role, profiles(id, username, display_name)')
+        .select('role, profiles(${Profile.columns})')
         .eq('group_id', groupId)
         .order('joined_at', ascending: true);
     return rows.map(Member.fromJson).toList();
@@ -59,7 +59,7 @@ class GroupsRepository {
     }
     final rows = await _db
         .from('profiles')
-        .select('id, username, display_name')
+        .select(Profile.columns)
         // Usernames are [a-z0-9_]; escape _ so it matches literally. PostgREST uses * as the wildcard.
         .ilike('username', '${q.toLowerCase().replaceAll(RegExp(r'[^a-z0-9_]'), '').replaceAll('_', r'\_')}*')
         .neq('id', _me)
