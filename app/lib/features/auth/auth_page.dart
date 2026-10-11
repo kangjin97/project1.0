@@ -1,8 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:url_launcher/url_launcher.dart';
 
+import '../../config.dart';
 import '../../data/app_clock.dart';
 import '../../data/groups_repository.dart';
+import '../../widgets/dialogs.dart';
 
 final _usernamePattern = RegExp(r'^[a-z0-9_]{3,30}$');
 
@@ -63,6 +66,23 @@ class _AuthPageState extends State<AuthPage> {
     }
   }
 
+  Future<void> _forgotPassword() async {
+    final email = await promptText(
+      context,
+      title: 'Reset password',
+      label: 'Your email',
+      action: 'Send link',
+      initial: _email.text.trim(),
+    );
+    if (email == null || !email.contains('@') || !mounted) return;
+    try {
+      await _db.auth.resetPasswordForEmail(email.trim(), redirectTo: '${AppConfig.appUrl}/reset-password');
+    } catch (_) {
+      // Same message either way, so the form doesn't reveal which emails have accounts.
+    }
+    if (mounted) showMessage(context, 'If an account uses ${email.trim()}, we’ve emailed it a reset link.');
+  }
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
@@ -79,7 +99,7 @@ class _AuthPageState extends State<AuthPage> {
                 children: [
                   Icon(Icons.groups_2_outlined, size: 56, color: theme.colorScheme.primary),
                   const SizedBox(height: 12),
-                  Text('Group Planner', textAlign: TextAlign.center, style: theme.textTheme.headlineMedium),
+                  Text('EasyPlan', textAlign: TextAlign.center, style: theme.textTheme.headlineMedium),
                   const SizedBox(height: 4),
                   Text('Plan things to do with your friends.',
                       textAlign: TextAlign.center, style: theme.textTheme.bodyMedium),
@@ -133,6 +153,19 @@ class _AuthPageState extends State<AuthPage> {
                           : Text(_signUp ? 'Create account' : 'Sign in'),
                     ),
                   ),
+                  if (_signUp)
+                    Padding(
+                      padding: const EdgeInsets.only(top: 8),
+                      child: TextButton(
+                        onPressed: () => launchUrl(Uri.parse(AppConfig.privacyPolicyUrl)),
+                        child: const Text('By creating an account you agree to the Privacy Policy'),
+                      ),
+                    ),
+                  if (!_signUp)
+                    TextButton(
+                      onPressed: _busy ? null : _forgotPassword,
+                      child: const Text('Forgot password?'),
+                    ),
                   TextButton(
                     onPressed: _busy
                         ? null

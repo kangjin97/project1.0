@@ -32,9 +32,10 @@ Every backend call the app makes, plus the RPCs the database exposes but the app
 | G `group(id)` | REST `GET groups?select=id,name,group_members(count)&id=eq.<id>` (single) | members or pending invitee | |
 | G `createGroup(name)` | REST `POST groups {name}` → `id` | signed in | Trigger: creator → owner; seeds types Food/Outdoors/Entertainment/Other. |
 | G `renameGroup(id, name)` | REST `PATCH groups?id=eq {name}` | owner | 42501 otherwise. |
-| G `leaveGroup(id)` | REST `DELETE group_members?group_id&user_id=<me>` | self | |
+| G `leaveGroup(id)` | REST `DELETE group_members?group_id&user_id=<me>` | self | If you were the owner, the longest-standing member becomes owner; an empty group is deleted. |
 | G `members(groupId)` | REST `GET group_members?select=role,profiles(id,username,display_name)&order=joined_at.asc` | members | |
 | G `removeMember(groupId, userId)` | REST `DELETE group_members?...` | owner | |
+| G `createInviteLink` → `AppConfig.inviteLink(token)` | — | — | Shared link is `<APP_URL>/join/<token>`. |
 
 ## Invites
 
@@ -131,6 +132,9 @@ Dart: `app/lib/data/profile_repository.dart` (P). `Profile.columns` = `id, usern
 | P `sharedGroups(userId)` | `rpc shared_groups(p_user uuid) → [{group_id, group_name, member_count}]` | signed in | Groups both you and they are in (all yours when `p_user` = you). |
 | P `myStats()` | `rpc my_profile_stats() → [{groups, activities, upcoming_plans}]` | self | Upcoming = participant in an entry ending in the future (all-day: today or later in your time zone). |
 | P `changeEmail(email)` | `auth.updateUser(email)` | self | Sends a confirmation link; `currentUser.newEmail` is set until confirmed. |
+| P `deleteAccount()` | `rpc my_storage_files() → [{bucket, path}]`, `storage.remove` per bucket, `rpc delete_my_account()`, `auth.signOut(local)` | self | See F12 for what is deleted or handed over. |
+| `AuthPage._forgotPassword` | `auth.resetPasswordForEmail(email, redirectTo: <APP_URL>/reset-password)` | anyone | Same message whether or not the email exists. |
+| `ResetPasswordPage` | `auth.updateUser(password)` | recovery session | Opened from the email link (PKCE `?code=`). |
 | P `changePassword(current, next)` | `auth.signInWithPassword(email, current)` then `auth.updateUser(password)` | self | Re-checks the current password first. |
 
 ## Schedules

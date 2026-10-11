@@ -37,7 +37,7 @@ class ScheduleEntry {
     this.date,
     this.startAt,
     this.endAt,
-    required this.createdBy,
+    this.createdBy,
     this.myStatus,
     this.participants = const [],
   });
@@ -54,7 +54,7 @@ class ScheduleEntry {
         date: j['date'] == null ? null : DateTime.parse(j['date'] as String),
         startAt: j['start_at'] == null ? null : AppClock.inZone(DateTime.parse(j['start_at'] as String)),
         endAt: j['end_at'] == null ? null : AppClock.inZone(DateTime.parse(j['end_at'] as String)),
-        createdBy: j['created_by'] as String,
+        createdBy: j['created_by'] as String?,
         myStatus: j['my_status'] as String?,
         participants: [
           for (final p in (j['participants'] as List? ?? const []))
@@ -78,7 +78,8 @@ class ScheduleEntry {
   /// Set for timed entries, as wall-clock time in the app's display zone.
   final DateTime? startAt;
   final DateTime? endAt;
-  final String createdBy;
+  /// Null when the creator deleted their account.
+  final String? createdBy;
 
   /// The current user's participation, or null if they're not in it.
   final String? myStatus;

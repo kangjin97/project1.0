@@ -15,15 +15,16 @@ Status legend: **Done** = DB + UI + tests. **DB only** = schema/RPCs/tests exist
 
 ## F2. Groups and membership — Done
 - Create (creator = owner, starter types seeded), rename (owner), leave (anyone), remove member (owner).
+- When the owner leaves (or deletes their account), ownership passes to the longest-standing member; a group left with no members is deleted (`hand_over_ownership` trigger).
 - UI: `features/groups/groups_page.dart` (list, create, pending invitations), `group_page.dart` (tabs, rename/leave menu, Members tab).
 - Data: G `myGroups`, `group`, `createGroup`, `renameGroup`, `leaveGroup`, `members`, `removeMember`; providers `myGroupsProvider`, `groupProvider(id)`, `membersProvider(id)`.
-- DB: `groups`, `group_members`, `handle_new_group`.
-- Tests: `core_rules.test.sql`.
-- Gaps: no delete-group UI; no owner transfer (owner leaving leaves the group ownerless).
+- DB: `groups`, `group_members`, `handle_new_group`, `hand_over_ownership`.
+- Tests: `core_rules.test.sql`, `delete_account.test.sql` (hand-over).
+- Gaps: no delete-group UI; no manual "make someone else owner" action.
 
 ## F3. Invites — Done
 - Direct: search by username prefix or exact email → invitation → invitee accepts/declines on Groups page.
-- Link: 7-day invite code/link (`/#/join/<token>`); preview shows group name and member count; joining is idempotent.
+- Link: 7-day invite code/link (`<APP_URL>/join/<token>`, built by `AppConfig.inviteLink`); "Join with code" accepts the bare code or a pasted link; preview shows group name and member count; joining is idempotent. On Android the link opens the installed app once App Links are verified (see `docs/deployment.md`).
 - UI: `group_page.dart` (`_InviteSheet`, invite link dialog), `groups_page.dart` (invitations, "Join with code"), `join_page.dart`.
 - Data: G `searchUsers`, `invite`, `pendingInvitations`, `respond`, `createInviteLink`, `previewLink`, `joinViaLink`.
 - DB: `group_invitations`, `group_invite_links`, `find_user_by_email`, `respond_to_invitation`, `preview_invite_link`, `join_group_via_link`, trigger `notify_invitee`.
@@ -97,7 +98,18 @@ Status legend: **Done** = DB + UI + tests. **DB only** = schema/RPCs/tests exist
 - DB: `profiles.bio`, bucket `avatars`, `shared_groups`, `my_profile_stats`; `list_schedule` participants include `avatar_path`.
 - Tests: `timezones.test.sql` (sign-up zone, validation, picker list); `profiles.test.sql` (own edits, taken/invalid username, bio limit, can't edit others, shared groups, stats, avatar folder rules).
 - **Time zone**: set at sign-up from the device; changeable on the profile via a searchable picker (city · region · current UTC offset, search by name or offset like "+8"; "Use this device's time zone" shortcut). The whole app shows times in this zone (`AppClock`, `timezoneProvider`); My schedule shows a note when it differs from the device.
-- Gaps: no delete-account; avatar picking untested in automation (file picker); email change confirmation goes to Mailpit locally (http://127.0.0.1:54324).
+- Gaps: avatar picking untested in automation (file picker); email change confirmation goes to Mailpit locally (http://127.0.0.1:54324).
+
+## F12. Account lifecycle and release readiness — Done
+- **Forgot password**: sign-in screen → email → `resetPasswordForEmail(redirectTo: <APP_URL>/reset-password)` → link opens `ResetPasswordPage` (waits for the PKCE code exchange, then "Choose a new password"; "link expired" after 10 s). The router sends any `passwordRecovery` session to `/reset-password`.
+- **Delete account**: Profile → Delete account (type username) → removes storage files (`my_storage_files`) → `delete_my_account` → local sign-out. DB: activities deleted (unshared first so plans become events), auth user deleted (cascades), groups handed over by `hand_over_ownership` trigger (also on normal "leave"), "who did it" columns `on delete set null`.
+- **Privacy policy**: `app/web/privacy.html` (draft with placeholders), linked from sign-up and the profile (`AppConfig.privacyPolicyUrl`).
+- **Identity**: EasyPlan, `com.kangjin.easyplan` (Android namespace/applicationId, iOS bundle ID), web manifest/title, placeholder icon (`app/assets/icon/generate_icon.py` → `flutter_launcher_icons`).
+- **Config**: `AppConfig` reads `SUPABASE_URL`, `SUPABASE_PUBLISHABLE_KEY`, `APP_URL` (`--dart-define-from-file=env/prod.json`); release builds against the local backend show a "no server configured" screen. Path URL strategy; invite links `AppConfig.inviteLink(token)` = `<APP_URL>/join/<token>`.
+- **Build/deploy**: `scripts/build.sh web|android|ios`, `netlify.toml`, `app/web/_redirects`, Android release signing from `key.properties`, Android App Links intent filter (`appLinkHost` placeholder from `APP_URL`), `.well-known` templates in `app/deploy/well-known/`. Guide: `docs/deployment.md`.
+- UI: `features/auth/auth_page.dart` (`_forgotPassword`, privacy link), `features/auth/reset_password_page.dart`, `features/profile/profile_page.dart` (`_DeleteAccountDialog`, privacy link). Data: `ProfileRepository.deleteAccount`.
+- Tests: `delete_account.test.sql` (hand-over on leave, deletion cascade, events kept, others untouched, history kept). Forgot-password and deletion were exercised end to end in the browser with a throwaway local account.
+- Gaps: iOS Associated Domains must be added in Xcode; `.well-known` files need the Play signing SHA-256 and Apple Team ID; the privacy policy needs real details; store listings are manual.
 
 ## F9. Notifications — DB only (planned as its own branch)
 - Kinds: `group_invitation`, `added_to_entry`, `schedule_clash` (the schedule feature already writes the last two).
@@ -112,8 +124,7 @@ Status legend: **Done** = DB + UI + tests. **DB only** = schema/RPCs/tests exist
 ## Backlog (priority order suggested)
 1. F9 notifications UI (own branch).
 2. Realtime subscriptions for group activities, schedules and notifications.
-3. Group log view (F10), invite link management (F3), delete group / transfer ownership (F2).
-4. Delete account (F11).
-5. Server-side search if lists get large (F7).
-6. Browsing past schedule entries on phones; drag-to-reschedule.
-7. Recurring entries, push notifications (out of scope for v1 per `SPEC.md`).
+3. Group log view (F10), invite link management (F3), delete group / manual ownership transfer (F2).
+4. Server-side search if lists get large (F7).
+5. Browsing past schedule entries on phones; drag-to-reschedule.
+6. Recurring entries, push notifications (out of scope for v1 per `SPEC.md`).

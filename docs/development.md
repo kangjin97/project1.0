@@ -41,8 +41,11 @@ flutter run -d <ios-simulator-or-android-device>
 - **Android emulator:** `config.dart` rewrites `127.0.0.1` to `10.0.2.2` automatically.
 - **Physical devices:** point at your machine's LAN IP:
   `flutter run --dart-define=SUPABASE_URL=http://192.168.x.x:54321`
+- **Production builds:** use `./scripts/build.sh` with `app/env/prod.json`; see [`deployment.md`](deployment.md).
 - **Hosted Supabase project:**
   `flutter run --dart-define=SUPABASE_URL=https://<ref>.supabase.co --dart-define=SUPABASE_PUBLISHABLE_KEY=<key>`
+
+URLs are clean paths (`http://127.0.0.1:3000/groups/...`), not `#/...`. Password-reset emails land in Mailpit; their links redirect to `/reset-password` (allowed in `supabase/config.toml` → `additional_redirect_urls`).
 
 Test accounts (from [`supabase/seed.sql`](../supabase/seed.sql)): `alice@dev.test` (`dev_alice`) and `bob@dev.test` (`dev_bob`).
 
@@ -89,6 +92,12 @@ rollback;
 6. **Routes:** register in `app/lib/router.dart`.
 7. **Docs:** update `docs/ai/features.md`, `docs/ai/endpoints.md`, `docs/database.md` and `SPEC.md` as needed.
 8. **Checks:** `flutter analyze` (must be clean), `flutter test`, then `supabase test db`.
+
+## Git workflow
+
+- `main` is the shared branch on GitHub (`kangjin97/project1.0`).
+- Build each feature on a short-lived `feature/<name>` branch, push it, then merge into `main`, either directly or through a pull request (`gh pr create --base main`). Delete the branch afterwards.
+- Never commit `app/env/prod.json`, `app/android/key.properties` or keystores (`*.jks`); they're git-ignored.
 
 ## Code conventions
 

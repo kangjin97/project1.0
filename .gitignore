@@ -1,1 +1,4 @@
 .DS_Store
+
+# Production build settings (Supabase URL/key, app URL); see app/env/prod.example.json
+app/env/prod.json

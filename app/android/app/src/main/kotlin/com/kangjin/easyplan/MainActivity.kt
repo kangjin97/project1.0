@@ -1,4 +1,4 @@
-package com.groupplanner.group_planner
+package com.kangjin.easyplan
 
 import io.flutter.embedding.android.FlutterActivity
 

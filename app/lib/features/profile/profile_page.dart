@@ -3,7 +3,9 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:url_launcher/url_launcher.dart';
 
+import '../../config.dart';
 import '../../data/app_clock.dart';
 import '../../data/groups_repository.dart';
 import '../../data/models.dart';
@@ -160,6 +162,23 @@ class ProfilePage extends ConsumerWidget {
                 label: const Text('Sign out'),
               ),
             ),
+            Center(
+              child: TextButton(
+                onPressed: () => launchUrl(Uri.parse(AppConfig.privacyPolicyUrl)),
+                child: const Text('Privacy policy'),
+              ),
+            ),
+            const SizedBox(height: 16),
+            Center(
+              child: TextButton(
+                style: TextButton.styleFrom(foregroundColor: theme.colorScheme.error),
+                onPressed: () => showDialog<void>(
+                  context: context,
+                  builder: (_) => _DeleteAccountDialog(username: p.username),
+                ),
+                child: const Text('Delete account'),
+              ),
+            ),
           ],
         ),
       ),
@@ -295,6 +314,83 @@ class PersonPage extends ConsumerWidget {
           ],
         ),
       ),
+    );
+  }
+}
+
+/// Explains what deletion does and asks for the username to confirm.
+class _DeleteAccountDialog extends ConsumerStatefulWidget {
+  const _DeleteAccountDialog({required this.username});
+
+  final String username;
+
+  @override
+  ConsumerState<_DeleteAccountDialog> createState() => _DeleteAccountDialogState();
+}
+
+class _DeleteAccountDialogState extends ConsumerState<_DeleteAccountDialog> {
+  final _confirm = TextEditingController();
+  bool _busy = false;
+
+  @override
+  void dispose() {
+    _confirm.dispose();
+    super.dispose();
+  }
+
+  Future<void> _delete() async {
+    setState(() => _busy = true);
+    try {
+      await ref.read(profileRepositoryProvider).deleteAccount();
+      // Signing out sends the router back to the sign-in screen; the dialog
+      // sits on the root navigator, so close it too.
+      if (mounted) Navigator.pop(context);
+    } catch (e) {
+      if (mounted) {
+        setState(() => _busy = false);
+        showError(context, e);
+      }
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final matches = _confirm.text.trim().toLowerCase() == widget.username;
+    return AlertDialog(
+      icon: const Icon(Icons.warning_amber_rounded),
+      title: const Text('Delete your account?'),
+      content: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text('This can’t be undone.'),
+          const SizedBox(height: 8),
+          const Text('• Your profile, photos, labels and activities are deleted.\n'
+              '• Plans that used your activities stay on schedules as events.\n'
+              '• Groups you own pass to their longest-standing member; groups with nobody else are deleted.\n'
+              '• Past changes stay in group history as “a deleted user”.'),
+          const SizedBox(height: 16),
+          TextField(
+            controller: _confirm,
+            autocorrect: false,
+            onChanged: (_) => setState(() {}),
+            decoration: InputDecoration(
+              labelText: 'Type ${widget.username} to confirm',
+              border: const OutlineInputBorder(),
+            ),
+          ),
+        ],
+      ),
+      actions: [
+        TextButton(onPressed: _busy ? null : () => Navigator.pop(context), child: const Text('Cancel')),
+        FilledButton(
+          style: FilledButton.styleFrom(backgroundColor: Theme.of(context).colorScheme.error),
+          onPressed: _busy || !matches ? null : _delete,
+          child: _busy
+              ? const SizedBox.square(dimension: 18, child: CircularProgressIndicator(strokeWidth: 2))
+              : const Text('Delete account'),
+        ),
+      ],
     );
   }
 }

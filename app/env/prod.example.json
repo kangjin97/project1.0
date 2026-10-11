@@ -1,0 +1,5 @@
+{
+  "SUPABASE_URL": "https://<project-ref>.supabase.co",
+  "SUPABASE_PUBLISHABLE_KEY": "sb_publishable_<from Supabase dashboard → Project Settings → API keys>",
+  "APP_URL": "https://easyplan.netlify.app"
+}

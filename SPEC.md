@@ -1,4 +1,4 @@
-# Group Planning App — Specification
+# EasyPlan — Specification
 
 A web and mobile app for friends to plan things to do together: collect activity ideas, share them into groups, and put them on each other's schedules.
 
@@ -94,6 +94,9 @@ Users can view the log per activity, per schedule entry, and per group.
 - Users can change their picture, display name, bio, and username (if the new one isn't taken; same rules as sign-up). Account settings: change email (confirmed by link) and password (current password required); sign out.
 - Tapping someone in a group's members list or a plan's "who's going" opens their profile: picture, names, bio, and the groups you share.
 - Your own profile also shows your counts: groups, activities, upcoming plans.
+- **Forgot password:** request a reset link by email from the sign-in screen; the link opens a page to set a new password.
+- **Delete account** (Profile → Delete account, confirm by typing your username): deletes your profile, pictures, labels and activities; plans that used your activities stay as events; groups you own pass to their longest-standing member (empty groups are deleted); history shows "a deleted user". When any group owner leaves, ownership passes the same way.
+- A privacy policy page is published with the web app and linked from sign-up and the profile.
 - **Time zone**: set automatically at sign-up from the device; changeable later on the profile from a searchable list, where each zone shows its city, region and current UTC offset (e.g. "Singapore · Asia · UTC+08:00"). All times and calendar days in the app use the chosen zone.
 
 ---

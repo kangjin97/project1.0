@@ -1,0 +1,12 @@
+# Netlify hosts the prebuilt Flutter web app. Build locally, then deploy:
+#   ./scripts/build.sh web
+#   netlify deploy --prod
+# (or drag app/build/web onto the Netlify dashboard). See docs/deployment.md.
+[build]
+  publish = "app/build/web"
+
+# iOS needs this file served as JSON for Universal Links.
+[[headers]]
+  for = "/.well-known/apple-app-site-association"
+  [headers.values]
+    Content-Type = "application/json"

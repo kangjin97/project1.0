@@ -71,7 +71,7 @@ class Invitation {
   factory Invitation.fromJson(Map<String, dynamic> j) => Invitation(
         id: j['id'] as String,
         groupName: (j['groups'] as Map?)?['name'] as String? ?? 'A group',
-        invitedBy: (j['inviter'] as Map?)?['username'] as String? ?? 'someone',
+        invitedBy: (j['inviter'] as Map?)?['username'] as String? ?? 'a deleted user',
       );
 
   final String id;
@@ -184,7 +184,7 @@ class GroupActivity {
   GroupActivity({
     required this.groupId,
     required this.typeId,
-    required this.sharedById,
+    this.sharedById,
     required this.sharedAt,
     required this.activity,
     this.typeName,
@@ -199,7 +199,7 @@ class GroupActivity {
   factory GroupActivity.fromJson(Map<String, dynamic> j) => GroupActivity(
         groupId: j['group_id'] as String,
         typeId: j['type_id'] as String,
-        sharedById: j['added_by'] as String,
+        sharedById: j['added_by'] as String?,
         sharedAt: DateTime.parse(j['added_at'] as String),
         activity: Activity.fromJson(j['activities'] as Map<String, dynamic>),
         typeName: (j['activity_types'] as Map?)?['name'] as String?,
@@ -209,7 +209,8 @@ class GroupActivity {
 
   final String groupId;
   final String typeId;
-  final String sharedById;
+  /// Null when the sharer deleted their account.
+  final String? sharedById;
   final DateTime sharedAt;
   final Activity activity;
   final String? typeName;
