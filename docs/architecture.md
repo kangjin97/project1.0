@@ -23,8 +23,8 @@ There is no custom server. The Flutter app talks to Supabase directly, and **eve
 
 | Layer | Location | Responsibility |
 |---|---|---|
-| Entry | `main.dart` | `Supabase.initialize`, `ProviderScope`, Material 3 theme (light and dark) |
-| Config | `config.dart` | Supabase URL and publishable key; defaults to local; overridable with `--dart-define` |
+| Entry | `main.dart` | Path URL strategy, release-config guard, `Supabase.initialize`, `AppClock.init`, `ProviderScope`, Material 3 theme |
+| Config | `config.dart` | `SUPABASE_URL`, `SUPABASE_PUBLISHABLE_KEY`, `APP_URL` (defaults to local; `--dart-define-from-file=env/prod.json` for releases); invite and privacy links |
 | Routing | `router.dart` | `go_router` routes, auth redirect, `ShellRoute` with the navigation shell |
 | Data | `data/models.dart` | Plain immutable models with `fromJson`, plus select-column strings |
 | Data | `data/*_repository.dart` | All Supabase calls, plus `FutureProvider`s exposing them |
@@ -35,6 +35,7 @@ There is no custom server. The Flutter app talks to Supabase directly, and **eve
 
 | Path | Screen | Notes |
 |---|---|---|
+| `/reset-password` | `ResetPasswordPage` | Opened from a password-reset email; any `passwordRecovery` session is redirected here. |
 | `/auth?next=` | `AuthPage` | Sign in or sign up. Signed-out users are redirected here with `next`, so invite links survive sign-in. |
 | `/join/:token` | `JoinPage` | Previews and joins a group from an invite link. Outside the shell. |
 | `/schedule` | `MySchedulePage` | List / Week / Month switch on all sizes; phones default to List, wide screens to Week. |

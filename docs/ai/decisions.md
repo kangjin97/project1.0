@@ -23,6 +23,9 @@ Product and technical decisions, with the reason. Newest last. When a decision c
 | 2026-10-09 | Profiles: picture, username (if not taken), bio; plus viewing others' profiles, editable display name, account settings (email, password, sign out) and profile stats. |
 | 2026-10-09 | Time zone is set at sign-up from the device and changeable on the profile from a list labelled with UTC offsets and regions (UTC rather than GMT). The whole app shows times in the profile's zone, not the device's. |
 
+| 2026-10-12 | The app is named **EasyPlan**, app ID `com.kangjin.easyplan`; web hosting on **Netlify**. |
+| 2026-10-12 | Deleting an account: groups pass to the longest-standing member (empty groups deleted); their activities and photos are deleted; plans that used them stay as events; history shows "deleted user". |
+
 ## Choices made on the owner's behalf (confirm or revise)
 
 | Date | Choice | Reason |
@@ -41,6 +44,10 @@ Product and technical decisions, with the reason. Newest last. When a decision c
 | 2026-10-09 | Profile stats are visible only to the profile's owner; other people's profiles show picture, names, bio and the groups you share, and are reachable only from shared groups. | Privacy. |
 | 2026-10-09 | Bio limit 160 characters; display name 50. | Fits a profile header. |
 | 2026-10-09 | Avatars are in a private bucket readable by any signed-in user, writable only in your own folder. | Same visibility as profiles. |
+| 2026-10-12 | Delete account is confirmed by typing your username. | Irreversible action. |
+| 2026-10-12 | The same ownership hand-over applies when an owner simply leaves a group. | Groups were left ownerless before. |
+| 2026-10-12 | Password-reset links open the web app (`APP_URL`), even for phone-app users. | Works without deep-link setup; users then sign in on the app. |
+| 2026-10-12 | Placeholder icon (white calendar + check on blue) until a designed one exists. | Stores need an icon; easy to replace. |
 | 2026-10-09 | The time zone picker lists all IANA zones (including aliases like Asia/Calcutta) with current offsets, searchable by name or offset. | A plain dropdown of ~490 zones is unusable. |
 
 ## Technical
@@ -58,4 +65,6 @@ Product and technical decisions, with the reason. Newest last. When a decision c
 | 2026-10-09 | Apply local migrations with `supabase migration up`, never `db reset` without asking. | A reset wiped the owner's manual test data once. |
 | 2026-10-09 | `list_schedule` RPC as the schedule read model. | Mixed date/timestamp windows and joined names don't fit plain table queries. |
 | 2026-10-09 | `AppClock` + `package:timezone` (`latest_all`) for display-zone conversion; `TimezoneController` reloads the zone from the profile after sign-in. | Times must follow the profile zone everywhere; browsers report alias zone names. |
+| 2026-10-12 | Path URL strategy instead of `#/` URLs; Netlify `_redirects` serves the app for every path. | Needed for App Links / Universal Links and nicer invite links. |
+| 2026-10-12 | Production settings via `--dart-define-from-file=app/env/prod.json` (git-ignored) and `scripts/build.sh`; release builds refuse the local backend. | Keeps secrets and dev URLs out of releases. |
 | 2026-10-09 | Work on `main`; short-lived feature branches (`feature/<name>`) merged back when accepted. | Owner's preference. |

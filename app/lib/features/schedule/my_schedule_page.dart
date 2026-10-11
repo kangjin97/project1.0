@@ -113,7 +113,10 @@ class _MySchedulePageState extends ConsumerState<MySchedulePage> {
 
   @override
   Widget build(BuildContext context) {
-    final wide = MediaQuery.sizeOf(context).width >= 720;
+    final width = MediaQuery.sizeOf(context).width;
+    final wide = width >= 720;
+    // The date navigation and view switch only fit beside the title on large screens.
+    final roomy = width >= 1100;
     final mode = _mode(wide);
     final query = _query(mode);
     final value = ref.watch(scheduleProvider(query));
@@ -146,10 +149,10 @@ class _MySchedulePageState extends ConsumerState<MySchedulePage> {
       appBar: AppBar(
         title: const Text('My schedule'),
         actions: [
-          if (wide) ...[?navigator, const SizedBox(width: 8), modePicker, const SizedBox(width: 12)],
+          if (roomy) ...[?navigator, const SizedBox(width: 8), modePicker, const SizedBox(width: 12)],
         ],
-        // Phones: the switch and date navigation sit in a bar under the title.
-        bottom: wide
+        // Phones and medium screens: the switch and date navigation sit in a bar under the title.
+        bottom: roomy
             ? null
             : PreferredSize(
                 preferredSize: Size.fromHeight(mode == _Mode.list ? 56 : 100),

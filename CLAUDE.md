@@ -1,6 +1,6 @@
 # CLAUDE.md — steering for AI agents
 
-Group Planner: Flutter app (`app/`) + Supabase backend (`supabase/`) for friends planning activities together. Read this file first, then the doc that matches your task.
+EasyPlan (repo `group-planner`; Dart package `group_planner`): Flutter app (`app/`) + Supabase backend (`supabase/`) for friends planning activities together. Read this file first, then the doc that matches your task.
 
 ## Where to look
 
@@ -13,6 +13,7 @@ Group Planner: Flutter app (`app/`) + Supabase backend (`supabase/`) for friends
 | Schema, triggers, policies | `docs/database.md`, `supabase/migrations/` |
 | App structure, data flows | `docs/architecture.md` |
 | Setup, commands, troubleshooting | `docs/development.md` |
+| Releasing (Supabase cloud, Netlify, stores) | `docs/deployment.md` |
 
 ## Commands
 
@@ -37,6 +38,8 @@ The Supabase CLI may be at `~/.local/bin/supabase` rather than on `PATH`.
 6. **After every mutation, invalidate the affected providers** (`invalidateActivity`, `invalidateLabels`, or specific `ref.invalidate(...)`). Otherwise screens show stale data.
 7. Before finishing: `flutter analyze` must be clean and `supabase test db` must pass. If you changed behaviour, update `docs/ai/features.md`, `docs/ai/endpoints.md` and, where relevant, `docs/database.md`, `SPEC.md` and `docs/ai/decisions.md`.
 8. Don't commit or push unless asked.
+9. **Never commit secrets or signing material:** `app/env/prod.json`, `app/android/key.properties`, `*.jks` are git-ignored; keep it that way. Never change the app ID `com.kangjin.easyplan`.
+10. New migrations reach production only via `supabase db push` (owner runs it); apply them before shipping app builds that depend on them.
 
 ## Gotchas (each has bitten this project)
 
@@ -54,6 +57,9 @@ The Supabase CLI may be at `~/.local/bin/supabase` rather than on `PATH`.
   - Screenshots can show a stale frame. Hover, wait, and re-screenshot before concluding.
   - Typing straight after a click can land in the previously focused field. Wait ~0.5–1 s after clicking.
   - Engine assertions about "targeted input element" come from synthetic clicks; ignore them.
+- The app uses **path URLs** (`usePathUrlStrategy`), not `#/`. Hosting must serve `index.html` for unknown paths (`app/web/_redirects`). Links: `AppConfig.inviteLink`, `AppConfig.appUrl`; never build URLs from `Uri.base` directly.
+- Deleting a user sets "who did it" columns to null; models must treat `createdBy`, `sharedById`, actor names as nullable ("a deleted user").
+- `touch_updated` only stamps `updated_by` for users that still exist (needed during account deletion).
 - Current Dart needs macOS ≥ 14.
 - The preview launcher can't read `~/Documents` (macOS TCC). Start the dev server via Bash; `.claude/launch.json` attaches to `http://127.0.0.1:3000`.
 

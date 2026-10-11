@@ -6,6 +6,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
+import '../../config.dart';
 import '../../data/groups_repository.dart';
 import '../../data/models.dart';
 import '../../widgets/async_body.dart';
@@ -173,7 +174,7 @@ class _MembersTab extends ConsumerWidget {
     try {
       final token = await ref.read(groupsRepositoryProvider).createInviteLink(groupId);
       if (!context.mounted) return;
-      final link = '${Uri.base.origin}/#/join/$token';
+      final link = AppConfig.inviteLink(token);
       await showDialog<void>(
         context: context,
         builder: (context) => AlertDialog(

@@ -1,6 +1,6 @@
-# Group Planner
+# EasyPlan
 
-A web and mobile app for friends to plan things to do together. People collect activity ideas, share them into groups, label and organise them, and (soon) put them on each other's schedules.
+EasyPlan (repo: group-planner) is a web and mobile app for friends to plan things to do together. People collect activity ideas, share them into groups, label and organise them, and (soon) put them on each other's schedules.
 
 - **App:** Flutter (web, iOS, Android) in [`app/`](app/)
 - **Backend:** Supabase (Postgres, Auth, Storage, Row Level Security) in [`supabase/`](supabase/)
@@ -19,6 +19,8 @@ A web and mobile app for friends to plan things to do together. People collect a
 | Search and filters (My activities, group activities) | Done |
 | Schedules: my schedule (agenda / week / month), group schedule, clash warnings, events | Done |
 | Profiles: picture, username, display name, bio, others' profiles, stats, email/password, changeable time zone | Done |
+| Account deletion, forgot password, privacy policy page | Done |
+| Release setup: app ID `com.kangjin.easyplan`, icon, Android signing, Netlify, build script | Done; see [`docs/deployment.md`](docs/deployment.md) |
 | Notifications | **Database done, no UI yet** |
 | Realtime updates | Publication configured, not used by the app yet |
 
@@ -47,8 +49,11 @@ supabase test db
 ```text
 SPEC.md                         Product rules and decisions
 CLAUDE.md, AGENTS.md            Steering notes for AI coding agents
+netlify.toml                    Web hosting config (publishes app/build/web)
+scripts/build.sh                Release builds (web / android / ios) from app/env/prod.json
 docs/
   development.md                Setup, workflows, troubleshooting
+  deployment.md                 Supabase cloud, Netlify, Google Play, App Store
   architecture.md               How the app and backend fit together
   database.md                   Tables, triggers, functions, policies
   ai/                           Machine-friendly references (endpoints, feature map, decisions)
@@ -71,6 +76,7 @@ supabase/
 | For | Read |
 |---|---|
 | Getting the project running | [`docs/development.md`](docs/development.md) |
+| Deploying to the web and app stores | [`docs/deployment.md`](docs/deployment.md) |
 | Understanding the design | [`docs/architecture.md`](docs/architecture.md) |
 | Working on the database | [`docs/database.md`](docs/database.md) |
 | What each feature does and where it lives | [`docs/ai/features.md`](docs/ai/features.md) |

@@ -9,6 +9,9 @@ Source of truth: `supabase/migrations/`. Test coverage: `supabase/tests/database
 | `20261010000000_list_schedule.sql` | `list_schedule` read model for the schedule screens |
 | `20261011000000_profiles.sql` | `profiles.bio`, `avatars` bucket, `shared_groups`, `my_profile_stats`; avatars in `list_schedule` |
 | `20261012000000_timezones.sql` | Zone set at sign-up from metadata, `profiles_guard_timezone` validation, `is_valid_timezone`, `list_timezones` |
+| `20261012010000_delete_account.sql` | "Who did it" FKs → `on delete set null`; `hand_over_ownership` trigger; `my_storage_files`, `delete_my_account` |
+| `20261012020000_delete_account_order.sql` | `delete_my_account` unshares activities before deleting them |
+| `20261012030000_touch_updated_existing_users.sql` | `touch_updated` stamps `updated_by` only for existing users |
 
 ## Tables
 
@@ -32,7 +35,7 @@ Access: any signed-in user can read; users update their own row (`username`, `di
 
 Access:
 - **Groups:** members can read. Invitees with a pending invitation can read the group too, to see its name. Only owners can rename or delete.
-- **Members:** members can read the member list. You can remove yourself (leave), and the owner can remove anyone. Joining only happens through `respond_to_invitation` or `join_group_via_link`.
+- **Members:** members can read the member list. You can remove yourself (leave), and the owner can remove anyone. Joining only happens through `respond_to_invitation` or `join_group_via_link`. If the owner leaves, ownership passes to the longest-standing member.
 
 ### `group_invite_links`, `group_invitations`
 - **Links:** a random 64-hex `token`, optional `expires_at` and `max_uses`, plus `use_count` and `revoked_at`. Members create and read them; only `revoked_at` can be updated.
@@ -139,6 +142,8 @@ See [`ai/endpoints.md`](ai/endpoints.md) for parameters, return shapes and error
 | `list_schedule(from, to, tz, group?, include_unscheduled?)` | Entries in a date window with group/activity/participant names; personal or group view |
 | `shared_groups(user)` | Groups the caller shares with a user |
 | `my_profile_stats()` | Caller's counts: groups, activities, upcoming plans |
+| `delete_my_account()` | Deletes the caller's activities (plans become events) and auth user (cascades; groups handed over) |
+| `my_storage_files()` | Caller's avatar and activity photo paths, to remove before deletion |
 | `list_timezones()` | Zones for the picker: name, region, readable city, current offset in minutes (sorted by offset) |
 
 Internal (not executable by clients): `resolve_group_type`, `apply_participants`, and the trigger functions.
@@ -149,6 +154,7 @@ Internal (not executable by clients): `resolve_group_type`, `apply_participants`
 |---|---|---|
 | `auth.users` | `on_auth_user_created` | Creates the profile |
 | `groups` | `on_group_created` | Owner membership and starter types |
+| `group_members` | `group_members_hand_over` | When the last owner leaves (or is deleted), the longest-standing member becomes owner; an empty group is deleted |
 | `group_invitations` | `on_invitation_created` | Notifies the invitee |
 | `activities` | `activities_touch` | Sets `updated_at` / `updated_by` |
 | `activities` | `activities_guard_personal_type` | Only the owner may change the label (42501) |
@@ -173,3 +179,4 @@ The `supabase_realtime` publication includes `schedule_entries`, `schedule_parti
 - Accounts created before the time zone migration keep whatever zone they had (the seed accounts start as `UTC`).
 - The trigger functions `handle_new_user`, `handle_new_group`, `log_change`, `notify_invitee`, `revert_entries_to_events` and `touch_updated` still have `execute` granted to `authenticated`. This is harmless, because Postgres refuses to call a trigger function outside a trigger, but it could be revoked for tidiness.
 - Group deletion is allowed by policy, but there's no UI for it.
+- `change_log` keeps entries by deleted users (no FK); their `before`/`after` may still contain names of things they created.

@@ -290,7 +290,7 @@ class _HistorySection extends ConsumerWidget {
                 ListTile(
                   dense: true,
                   leading: const Icon(Icons.history, size: 20),
-                  title: Text('@${e.actorUsername ?? 'someone'} ${describeChange(e, groups)}'),
+                  title: Text('${e.actorUsername == null ? 'A deleted user' : '@${e.actorUsername}'} ${describeChange(e, groups)}'),
                   subtitle: Text(DateFormat('d MMM y, h:mm a').format(AppClock.inZone(e.createdAt)), style: muted),
                 ),
             ],

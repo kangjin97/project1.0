@@ -41,8 +41,11 @@ flutter run -d <ios-simulator-or-android-device>
 - **Android emulator:** `config.dart` rewrites `127.0.0.1` to `10.0.2.2` automatically.
 - **Physical devices:** point at your machine's LAN IP:
   `flutter run --dart-define=SUPABASE_URL=http://192.168.x.x:54321`
+- **Production builds:** use `./scripts/build.sh` with `app/env/prod.json`; see [`deployment.md`](deployment.md).
 - **Hosted Supabase project:**
   `flutter run --dart-define=SUPABASE_URL=https://<ref>.supabase.co --dart-define=SUPABASE_PUBLISHABLE_KEY=<key>`
+
+URLs are clean paths (`http://127.0.0.1:3000/groups/...`), not `#/...`. Password-reset emails land in Mailpit; their links redirect to `/reset-password` (allowed in `supabase/config.toml` → `additional_redirect_urls`).
 
 Test accounts (from [`supabase/seed.sql`](../supabase/seed.sql)): `alice@dev.test` (`dev_alice`) and `bob@dev.test` (`dev_bob`).
 

@@ -305,7 +305,7 @@ class _History extends ConsumerWidget {
               dense: true,
               contentPadding: EdgeInsets.zero,
               leading: const Icon(Icons.history, size: 20),
-              title: Text('@${h.actorUsername ?? 'someone'} ${describeEntryChange(h, names)}'),
+              title: Text('${h.actorUsername == null ? 'A deleted user' : '@${h.actorUsername}'} ${describeEntryChange(h, names)}'),
               subtitle: Text(DateFormat('d MMM y, h:mm a').format(AppClock.inZone(h.createdAt)), style: muted),
             ),
         ],
@@ -318,7 +318,8 @@ class _History extends ConsumerWidget {
 String describeEntryChange(ChangeEntry e, Map<String, String> usernames) {
   String who(Map<String, dynamic>? row) {
     final id = row?['user_id'] as String?;
-    return '@${usernames[id] ?? 'someone'}';
+    final name = usernames[id];
+    return name == null ? 'a deleted user' : '@$name';
   }
 
   switch ((e.entityType, e.action)) {

@@ -79,6 +79,23 @@ class ProfileRepository {
   /// Sends a confirmation link; the email changes once it's confirmed.
   Future<void> changeEmail(String email) => _db.auth.updateUser(UserAttributes(email: email.trim()));
 
+  /// Deletes the account and everything that belongs only to it (see the
+  /// delete_account migration for what happens to groups and plans).
+  Future<void> deleteAccount() async {
+    // Storage files can't be removed from SQL, so clear them first.
+    final files = await _db.rpc('my_storage_files') as List;
+    final byBucket = <String, List<String>>{};
+    for (final f in files.cast<Map<String, dynamic>>()) {
+      byBucket.putIfAbsent(f['bucket'] as String, () => []).add(f['path'] as String);
+    }
+    for (final MapEntry(key: bucket, value: paths) in byBucket.entries) {
+      await _db.storage.from(bucket).remove(paths);
+    }
+    await _db.rpc('delete_my_account');
+    // The session's user no longer exists; clear it locally.
+    await _db.auth.signOut(scope: SignOutScope.local);
+  }
+
   /// Checks the current password first, since Supabase doesn't ask for it.
   Future<void> changePassword({required String current, required String next}) async {
     final email = _db.auth.currentUser!.email!;

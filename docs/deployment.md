@@ -1,0 +1,123 @@
+# Deploying EasyPlan
+
+How to take EasyPlan from your Mac to people's phones. Steps marked **(you)** need your accounts, payments or passwords. Everything else is already set up in the repo.
+
+| Item | Value |
+|---|---|
+| App name | EasyPlan |
+| App ID (Android `applicationId`, iOS bundle ID) | `com.kangjin.easyplan`. **Never change it after the first store upload.** |
+| Web host | Netlify |
+| Production config | `app/env/prod.json` (git-ignored; copy from `prod.example.json`) |
+| Build script | `./scripts/build.sh web|android|ios` |
+
+Order: **1 → 2 → 3** gets friends using it on their phones via the browser. **4 / 5** are the store apps.
+
+---
+
+## 1. Backend: Supabase cloud project
+
+1. **(you)** Create a project at supabase.com. Region: Southeast Asia (Singapore). Keep the database password somewhere safe.
+2. Push the schema. This creates every table, rule, function and storage bucket from `supabase/migrations/`. It does **not** send `seed.sql`, so the test accounts stay local.
+   ```bash
+   supabase login
+   supabase link --project-ref <project-ref>
+   supabase db push
+   ```
+   Later migrations: run `supabase db push` again after merging them.
+3. **(you)** In the Supabase dashboard → **Authentication**:
+   - **URL Configuration**:
+     - Site URL: `https://<your-site>.netlify.app`
+     - Redirect URLs: add `https://<your-site>.netlify.app/**`. Password-reset links return here.
+   - **Sign In / Providers → Email**: keep **Confirm email** on.
+   - **Emails → SMTP Settings**: connect a real email provider, e.g. Resend, Postmark or SendGrid. The built-in sender is limited to a few emails an hour and is only for testing.
+   - Optionally customise the email templates (confirm signup, reset password, change email) with the EasyPlan name.
+4. **(you)** Copy **Project URL** and the **Publishable key** (Project Settings → API keys) into `app/env/prod.json`.
+5. Plan: the free plan pauses a project after a week without activity and has small storage limits. Fine for a trial with friends; move to Pro before a public launch. Turn on backups (Pro includes daily backups).
+
+## 2. Production config
+
+```bash
+cd app && cp env/prod.example.json env/prod.json   # then edit the three values
+```
+
+`APP_URL` is the public web address. Invite links (`<APP_URL>/join/<code>`), password-reset links and the privacy policy link all use it.
+
+Release builds refuse to start if they would point at the local database. Instead they show "This build has no server configured", so a misconfigured build is obvious.
+
+## 3. Web app on Netlify (Stage A: phones via the browser)
+
+1. **(you)** Create a Netlify account. Add a new site and pick a name; `easyplan` gives `https://easyplan.netlify.app` if it's free. Put that address in `APP_URL`.
+2. Build and deploy:
+   ```bash
+   ./scripts/build.sh web
+   npx netlify-cli deploy --prod     # first time: netlify login + link the site; or drag app/build/web onto the dashboard
+   ```
+   `netlify.toml` publishes `app/build/web`. `web/_redirects` makes every path load the app; that's needed because the app uses clean URLs like `/join/abc`.
+3. **(you)** Fill in the placeholders in `app/web/privacy.html` (date, Supabase region, contact email), rebuild and redeploy. The stores need its URL: `<APP_URL>/privacy.html`.
+4. Smoke test on a phone:
+   - sign up and confirm the email;
+   - create a group and copy its invite link;
+   - open the link on a second phone and join;
+   - reset a password;
+   - add the site to the home screen.
+
+Friends can now use EasyPlan from the browser or the home-screen icon.
+
+## 4. Android: Google Play (Stage B and C)
+
+Toolchain first. `flutter doctor` currently reports Android SDK 30; Flutter needs SDK 36:
+- Install Android Studio, then open SDK Manager → install Android SDK Platform 36 and the latest Build-Tools and Command-line Tools.
+- Run `flutter doctor --android-licenses`.
+
+1. **(you)** Create an upload key. Keep the `.jks` file and its passwords backed up somewhere safe; without them you can't publish updates.
+   ```bash
+   keytool -genkey -v -keystore ~/keys/easyplan-upload.jks -keyalg RSA -keysize 2048 -validity 10000 -alias upload
+   ```
+2. Copy `app/android/key.properties.example` → `app/android/key.properties` and fill it in. That file and `*.jks` are git-ignored.
+3. Build: `./scripts/build.sh android` → `app/build/app/outputs/bundle/release/app-release.aab`.
+4. **(you)** Google Play Console (one-time US$25):
+   - Create the app EasyPlan and turn on Play App Signing.
+   - Upload the `.aab` to **Testing → Internal testing**.
+   - Add testers' emails and share the opt-in link.
+5. Before going to production, fill in **App content**:
+   - Privacy policy URL.
+   - **Data safety**: account info (email, name), photos, user content, app activity. Collected; not shared with third parties; encrypted in transit; users can request deletion (in-app: Profile → Delete account).
+   - Content rating, target audience, and store listing (icon 512×512, feature graphic, screenshots).
+   - New personal developer accounts must run a closed test with testers for 14 days before production access.
+6. **Invite links that open the app (App Links):**
+   - Copy the **SHA-256 certificate fingerprint** from Play Console → Setup → App signing into `app/deploy/well-known/assetlinks.json`.
+   - Copy that file to `app/web/.well-known/assetlinks.json`, rebuild and redeploy the web app.
+   - The manifest already declares `https://<APP_URL host>/join/*`; the host comes from `APP_URL` at build time.
+
+## 5. iPhone: App Store (Stage B and C)
+
+Toolchain first:
+- Xcode is 26.5, but `flutter doctor` reports missing simulator runtimes and an old CocoaPods. Open Xcode → Settings → Components to install an iOS runtime, then run `sudo gem install cocoapods` (or `brew install cocoapods`).
+- Flutter warns that Intel Macs are being phased out for app builds; plan for an Apple Silicon Mac, or a cloud build service such as Codemagic.
+
+1. **(you)** Apple Developer Program (US$99/year).
+2. **(you)** In Xcode, open `app/ios/Runner.xcworkspace` → Runner → **Signing & Capabilities**:
+   - Choose your team; the bundle ID is already `com.kangjin.easyplan`.
+   - Add **Associated Domains** with `applinks:<APP_URL host>`, so invite links open the app.
+3. **(you)** In App Store Connect, create the app EasyPlan with that bundle ID.
+4. Build: `./scripts/build.sh ios` → `app/build/ios/ipa/`. Upload with Xcode Organizer or the Transporter app.
+5. **(you)** **TestFlight**: add testers by email. External testers need a short beta review.
+6. Before release, fill in:
+   - **App Privacy** answers (same data as the Play data safety form) and the privacy policy URL.
+   - Screenshots and a demo account for App Review. Give reviewers a test login; they will try **Delete account**, which Apple requires.
+7. **Universal Links:** put your Team ID into `app/deploy/well-known/apple-app-site-association`, copy it to `app/web/.well-known/` and redeploy. `netlify.toml` serves it as JSON.
+
+## 6. Each release
+
+1. Bump `version:` in `app/pubspec.yaml` (e.g. `1.0.1+2`; the number after `+` must increase for every store upload).
+2. `supabase db push` if there are new migrations. Apply them **before** shipping app builds that need them.
+3. `./scripts/build.sh web` + deploy; `./scripts/build.sh android` / `ios` + upload.
+
+## Checklist before inviting real users
+
+- [ ] Supabase cloud project, `db push` done, auth URLs set, SMTP connected
+- [ ] `app/env/prod.json` filled in; web deployed; smoke test passed on a phone
+- [ ] Privacy policy placeholders filled in and published
+- [ ] Email templates mention EasyPlan
+- [ ] (Stores) upload key backed up; data safety / App Privacy answered; reviewer demo account ready
+- [ ] (Optional) replace the placeholder icon (`app/assets/icon/`, then `dart run flutter_launcher_icons`)

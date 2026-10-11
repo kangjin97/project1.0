@@ -8,6 +8,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import 'features/activities/activities_page.dart';
 import 'features/activities/activity_detail_page.dart';
 import 'features/auth/auth_page.dart';
+import 'features/auth/reset_password_page.dart';
 import 'features/groups/group_page.dart';
 import 'features/groups/groups_page.dart';
 import 'features/groups/join_page.dart';
@@ -26,6 +27,11 @@ final routerProvider = Provider<GoRouter>((ref) {
     redirect: (context, state) {
       final signedIn = auth.currentSession != null;
       final atAuth = state.matchedLocation == '/auth';
+      final atReset = state.matchedLocation == '/reset-password';
+      // A password-reset link signs the user in temporarily; send them to set a new password.
+      if (refresh.recovering && !atReset) return '/reset-password';
+      // The reset page handles its own "link expired" state.
+      if (atReset) return null;
       if (!signedIn) {
         // Keep invite links working through sign-in.
         return atAuth ? null : '/auth?next=${Uri.encodeComponent(state.uri.toString())}';
@@ -35,6 +41,7 @@ final routerProvider = Provider<GoRouter>((ref) {
     },
     routes: [
       GoRoute(path: '/auth', builder: (_, _) => const AuthPage()),
+      GoRoute(path: '/reset-password', builder: (_, _) => ResetPasswordPage(onDone: refresh.endRecovery)),
       GoRoute(
         path: '/join/:token',
         builder: (_, state) => JoinPage(token: state.pathParameters['token']!),
@@ -79,10 +86,22 @@ final routerProvider = Provider<GoRouter>((ref) {
 
 class _AuthRefresh extends ChangeNotifier {
   _AuthRefresh(Stream<AuthState> stream) {
-    _sub = stream.listen((_) => notifyListeners());
+    _sub = stream.listen((s) {
+      if (s.event == AuthChangeEvent.passwordRecovery) recovering = true;
+      if (s.event == AuthChangeEvent.signedOut) recovering = false;
+      notifyListeners();
+    });
   }
 
   late final StreamSubscription<AuthState> _sub;
+
+  /// True between opening a password-reset link and setting the new password.
+  bool recovering = false;
+
+  void endRecovery() {
+    recovering = false;
+    notifyListeners();
+  }
 
   @override
   void dispose() {
