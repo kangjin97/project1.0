@@ -93,6 +93,12 @@ rollback;
 7. **Docs:** update `docs/ai/features.md`, `docs/ai/endpoints.md`, `docs/database.md` and `SPEC.md` as needed.
 8. **Checks:** `flutter analyze` (must be clean), `flutter test`, then `supabase test db`.
 
+## Git workflow
+
+- `main` is the shared branch on GitHub (`kangjin97/project1.0`).
+- Build each feature on a short-lived `feature/<name>` branch, push it, then merge into `main`, either directly or through a pull request (`gh pr create --base main`). Delete the branch afterwards.
+- Never commit `app/env/prod.json`, `app/android/key.properties` or keystores (`*.jks`); they're git-ignored.
+
 ## Code conventions
 
 - All Supabase access lives in repositories under `app/lib/data/`; widgets never call `Supabase.instance.client` directly. The exceptions are `auth.signOut()` and reading `currentUser` for the current user's id.

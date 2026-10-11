@@ -146,13 +146,31 @@ See [`ai/endpoints.md`](ai/endpoints.md) for parameters, return shapes and error
 | `my_storage_files()` | Caller's avatar and activity photo paths, to remove before deletion |
 | `list_timezones()` | Zones for the picker: name, region, readable city, current offset in minutes (sorted by offset) |
 
-Internal (not executable by clients): `resolve_group_type`, `apply_participants`, and the trigger functions.
+### Internal helpers
+
+Used by RLS policies and RPCs. Clients can call the read-only access helpers, but they only answer about the caller.
+
+| Function | Returns |
+|---|---|
+| `is_group_member(group)` / `is_group_owner(group)` | Whether the caller is a member / the owner |
+| `shares_group_with(user)` | Whether the caller and that user share any group |
+| `is_activity_shared_with_me(activity)` | Whether the activity is in one of the caller's groups |
+| `can_access_activity(activity)` | Owner, or member of a group it's shared into (and not deleted) |
+| `entry_group(entry)` / `is_entry_participant(entry)` | An entry's group / whether the caller is on it |
+| `entry_range(all_day, date, start, end, tz)` | The time range an entry occupies (all-day = the whole local day in `tz`) |
+| `is_valid_timezone(name)` | Whether Postgres knows the zone name |
+| `try_uuid(text)` | The text as a uuid, or null (used on storage paths) |
+
+Not executable by clients:
+- `resolve_group_type`, `apply_participants`.
+- Trigger functions: `handle_new_user`, `handle_new_group`, `log_change`, `notify_invitee`, `revert_entries_to_events`, `touch_updated`, `group_activity_defaults`, `guard_personal_type`, `refile_activity`, `refile_renamed_label`, `guard_timezone`, `hand_over_ownership`.
 
 ## Triggers
 
 | Table | Trigger | Does |
 |---|---|---|
-| `auth.users` | `on_auth_user_created` | Creates the profile |
+| `auth.users` | `on_auth_user_created` | Creates the profile, with the time zone from sign-up metadata |
+| `profiles` | `profiles_guard_timezone` | Rejects unknown time zone names (22023) |
 | `groups` | `on_group_created` | Owner membership and starter types |
 | `group_members` | `group_members_hand_over` | When the last owner leaves (or is deleted), the longest-standing member becomes owner; an empty group is deleted |
 | `group_invitations` | `on_invitation_created` | Notifies the invitee |

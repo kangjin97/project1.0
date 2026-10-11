@@ -15,15 +15,16 @@ Status legend: **Done** = DB + UI + tests. **DB only** = schema/RPCs/tests exist
 
 ## F2. Groups and membership — Done
 - Create (creator = owner, starter types seeded), rename (owner), leave (anyone), remove member (owner).
+- When the owner leaves (or deletes their account), ownership passes to the longest-standing member; a group left with no members is deleted (`hand_over_ownership` trigger).
 - UI: `features/groups/groups_page.dart` (list, create, pending invitations), `group_page.dart` (tabs, rename/leave menu, Members tab).
 - Data: G `myGroups`, `group`, `createGroup`, `renameGroup`, `leaveGroup`, `members`, `removeMember`; providers `myGroupsProvider`, `groupProvider(id)`, `membersProvider(id)`.
-- DB: `groups`, `group_members`, `handle_new_group`.
-- Tests: `core_rules.test.sql`.
-- Gaps: no delete-group UI; no owner transfer (owner leaving leaves the group ownerless).
+- DB: `groups`, `group_members`, `handle_new_group`, `hand_over_ownership`.
+- Tests: `core_rules.test.sql`, `delete_account.test.sql` (hand-over).
+- Gaps: no delete-group UI; no manual "make someone else owner" action.
 
 ## F3. Invites — Done
 - Direct: search by username prefix or exact email → invitation → invitee accepts/declines on Groups page.
-- Link: 7-day invite code/link (`/#/join/<token>`); preview shows group name and member count; joining is idempotent.
+- Link: 7-day invite code/link (`<APP_URL>/join/<token>`, built by `AppConfig.inviteLink`); "Join with code" accepts the bare code or a pasted link; preview shows group name and member count; joining is idempotent. On Android the link opens the installed app once App Links are verified (see `docs/deployment.md`).
 - UI: `group_page.dart` (`_InviteSheet`, invite link dialog), `groups_page.dart` (invitations, "Join with code"), `join_page.dart`.
 - Data: G `searchUsers`, `invite`, `pendingInvitations`, `respond`, `createInviteLink`, `previewLink`, `joinViaLink`.
 - DB: `group_invitations`, `group_invite_links`, `find_user_by_email`, `respond_to_invitation`, `preview_invite_link`, `join_group_via_link`, trigger `notify_invitee`.
@@ -123,7 +124,7 @@ Status legend: **Done** = DB + UI + tests. **DB only** = schema/RPCs/tests exist
 ## Backlog (priority order suggested)
 1. F9 notifications UI (own branch).
 2. Realtime subscriptions for group activities, schedules and notifications.
-3. Group log view (F10), invite link management (F3), delete group / transfer ownership (F2).
+3. Group log view (F10), invite link management (F3), delete group / manual ownership transfer (F2).
 4. Server-side search if lists get large (F7).
 5. Browsing past schedule entries on phones; drag-to-reschedule.
 6. Recurring entries, push notifications (out of scope for v1 per `SPEC.md`).

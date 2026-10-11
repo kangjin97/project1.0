@@ -32,9 +32,10 @@ Every backend call the app makes, plus the RPCs the database exposes but the app
 | G `group(id)` | REST `GET groups?select=id,name,group_members(count)&id=eq.<id>` (single) | members or pending invitee | |
 | G `createGroup(name)` | REST `POST groups {name}` → `id` | signed in | Trigger: creator → owner; seeds types Food/Outdoors/Entertainment/Other. |
 | G `renameGroup(id, name)` | REST `PATCH groups?id=eq {name}` | owner | 42501 otherwise. |
-| G `leaveGroup(id)` | REST `DELETE group_members?group_id&user_id=<me>` | self | |
+| G `leaveGroup(id)` | REST `DELETE group_members?group_id&user_id=<me>` | self | If you were the owner, the longest-standing member becomes owner; an empty group is deleted. |
 | G `members(groupId)` | REST `GET group_members?select=role,profiles(id,username,display_name)&order=joined_at.asc` | members | |
 | G `removeMember(groupId, userId)` | REST `DELETE group_members?...` | owner | |
+| G `createInviteLink` → `AppConfig.inviteLink(token)` | — | — | Shared link is `<APP_URL>/join/<token>`. |
 
 ## Invites
 

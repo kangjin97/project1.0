@@ -1,4 +1,4 @@
-# Group Planning App — Specification
+# EasyPlan — Specification
 
 A web and mobile app for friends to plan things to do together: collect activity ideas, share them into groups, and put them on each other's schedules.
 
