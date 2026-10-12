@@ -27,7 +27,7 @@ EasyPlan (repo: group-planner) is a web and mobile app for friends to plan thing
 | Notifications | **Database done, no UI yet** |
 | Realtime updates | Publication configured, not used by the app yet |
 
-See [`docs/ai/features.md`](docs/ai/features.md) for the detailed feature map and backlog.
+See [`docs/ai/features.md`](docs/ai/features.md) for the detailed feature map. The backlog and bugs live in [GitHub Issues](https://github.com/kangjin97/project1.0/issues); see [`docs/development.md`](docs/development.md#git-workflow) for the issue → branch → pull request workflow.
 
 ## Quick start
 
@@ -52,6 +52,7 @@ supabase test db
 ```text
 SPEC.md                         Product rules and decisions
 CLAUDE.md, AGENTS.md            Steering notes for AI coding agents
+.github/                        Issue forms, PR template, CI workflow (analyze, tests, pgTAP)
 netlify.toml                    Web hosting config (publishes app/build/web)
 scripts/build.sh                Release builds (web / android / ios) from app/env/prod.json
 docs/

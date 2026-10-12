@@ -21,7 +21,7 @@ Order: **1 → 2 → 3** gets friends using it on their phones via the browser. 
 | Supabase Auth URLs | Site URL `https://easyplan-hehe.netlify.app`; redirect `https://easyplan-hehe.netlify.app/**` |
 | `app/env/prod.json` | Filled in on the owner's Mac (git-ignored) |
 | Deploys | Manual: `./scripts/build.sh web`, then drag `app/build/web` onto the project's **Deploys** page |
-| Still to do | Privacy policy placeholders; custom SMTP; phone smoke test; Android and iOS store builds |
+| Still to do | Privacy policy placeholders (#3); custom SMTP (#4); phone smoke test (#5); Android (#13) and iOS (#14) store builds |
 
 The cloud database is separate from the local one: local accounts and test data don't exist there, and the local seed accounts are never pushed.
 

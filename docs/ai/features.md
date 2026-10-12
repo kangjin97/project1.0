@@ -122,10 +122,28 @@ Status legend: **Done** = DB + UI + tests. **DB only** = schema/RPCs/tests exist
 
 ---
 
-## Backlog (priority order suggested)
-1. F9 notifications UI (own branch).
-2. Realtime subscriptions for group activities, schedules and notifications.
-3. Group log view (F10), invite link management (F3), delete group / manual ownership transfer (F2).
-4. Server-side search if lists get large (F7).
-5. Browsing past schedule entries on phones; drag-to-reschedule.
-6. Recurring entries, push notifications (out of scope for v1 per `SPEC.md`).
+## Backlog
+
+The backlog lives in **GitHub Issues**: https://github.com/kangjin97/project1.0/issues (labels `bug`, `feature`, `chore`, `priority:high`). This file describes what's built; issues track what's next. When a feature ships, update its section here and close the issue from the PR ("Closes #n").
+
+Open at the time of writing:
+
+| Issue | Feature | Label |
+|---|---|---|
+| #3 Fill in the privacy policy placeholders | F12 | chore, priority:high |
+| #4 Connect a custom SMTP provider for auth emails | F12 | chore, priority:high |
+| #5 Smoke-test the live web app on a phone | F12 | chore, priority:high |
+| #6 Notifications screen and unread badge | F9 | feature |
+| #7 Realtime updates | F5, F8, F9 | feature |
+| #8 Group history (change log) view | F10 | feature |
+| #9 Manage invite links and sent invitations | F3 | feature |
+| #10 Delete a group and transfer ownership manually | F2 | feature |
+| #11 Browse past plans on the phone schedule list | F8 | feature |
+| #12 Drag to reschedule in the week view | F8 | feature |
+| #13 Android: toolchain + Play internal test build | F12 | chore |
+| #14 iOS: toolchain + TestFlight build | F12 | chore |
+| #15 Replace the placeholder app icon | F12 | chore |
+| #16 Server-side search and filters for large groups | F7 | feature |
+| #17 Recurring plans | F8 | feature (v2) |
+| #18 Push notifications on phones | F9 | feature (v2) |
+| #19 Revoke execute on trigger functions from authenticated | DB | chore |

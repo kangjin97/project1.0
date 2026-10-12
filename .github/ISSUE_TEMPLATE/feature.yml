@@ -1,0 +1,30 @@
+name: Feature or change
+description: New behaviour, a new screen, or a change to how something works
+labels: [feature]
+body:
+  - type: textarea
+    id: what
+    attributes:
+      label: What should it do?
+      description: Describe it from the user's point of view.
+    validations:
+      required: true
+  - type: textarea
+    id: why
+    attributes:
+      label: Why?
+      description: The problem it solves or who it's for.
+    validations:
+      required: true
+  - type: textarea
+    id: done
+    attributes:
+      label: Done when…
+      description: How we'll know it works. A checklist is great.
+      placeholder: |
+        - [ ] …
+  - type: textarea
+    id: notes
+    attributes:
+      label: Anything else?
+      description: Sketches, examples from other apps, open questions.

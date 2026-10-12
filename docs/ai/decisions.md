@@ -69,3 +69,4 @@ Product and technical decisions, with the reason. Newest last. When a decision c
 | 2026-10-12 | Path URL strategy instead of `#/` URLs; Netlify `_redirects` serves the app for every path. | Needed for App Links / Universal Links and nicer invite links. |
 | 2026-10-12 | Production settings via `--dart-define-from-file=app/env/prod.json` (git-ignored) and `scripts/build.sh`; release builds refuse the local backend. | Keeps secrets and dev URLs out of releases. |
 | 2026-10-09 | Work on `main`; short-lived feature branches (`feature/<name>`) merged back when accepted. | Owner's preference. |
+| 2026-10-12 | Backlog and bugs in GitHub Issues (labels `bug`, `feature`, `chore`, `priority:high`; issue forms); branches `fix\|feature\|chore/<n>-name`; PRs say `Closes #n`; CI runs analyze, Dart tests and pgTAP on every PR. | One place for work, linked to code; checks before merge. |
