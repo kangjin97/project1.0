@@ -46,7 +46,7 @@ Release builds refuse to start if they would point at the local database. Instea
 
 ## 3. Web app on Netlify (Stage A: phones via the browser)
 
-1. **(you)** Create a Netlify account. Add a new site and pick a name; `easyplan` gives `https://easyplan.netlify.app` if it's free. Put that address in `APP_URL`.
+1. **(you)** Create a Netlify account. Create the project by dropping the built `app/build/web` folder (Projects → Add new project → Deploy manually), then rename it. Ours is `easyplan-hehe` → `https://easyplan-hehe.netlify.app`; that address goes in `APP_URL`.
 2. Build and deploy:
    ```bash
    ./scripts/build.sh web

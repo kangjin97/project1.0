@@ -18,7 +18,7 @@ class AppConfig {
     defaultValue: 'sb_publishable_ACJWlzQHlZjBrEguHvfOxg_3BJgxAaH',
   );
 
-  /// Public address of the hosted web app, e.g. https://easyplan.netlify.app.
+  /// Public address of the hosted web app, e.g. https://easyplan-hehe.netlify.app.
   /// Invite links and email links (password reset) point here, so they open
   /// for anyone, on any device.
   static const _appUrl = String.fromEnvironment('APP_URL');

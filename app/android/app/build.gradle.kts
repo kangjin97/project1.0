@@ -39,7 +39,7 @@ android {
         versionCode = flutter.versionCode
         versionName = flutter.versionName
         // Host of the hosted web app, for invite App Links. Override with -PappLinkHost=...
-        manifestPlaceholders["appLinkHost"] = (project.findProperty("appLinkHost") as String?) ?: "easyplan.netlify.app"
+        manifestPlaceholders["appLinkHost"] = (project.findProperty("appLinkHost") as String?) ?: "easyplan-hehe.netlify.app"
     }
 
     signingConfigs {
