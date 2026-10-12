@@ -22,7 +22,7 @@ EasyPlan (repo: group-planner) is a web and mobile app for friends to plan thing
 | Profiles: picture, username, display name, bio, others' profiles, stats, email/password, changeable time zone | Done |
 | Account deletion, forgot password, privacy policy page | Done |
 | Release setup: app ID `com.kangjin.easyplan`, icon, Android signing, Netlify, build script | Done; see [`docs/deployment.md`](docs/deployment.md) |
-| Web app deployed (Netlify + Supabase cloud) | Live at https://easyplan-hehe.netlify.app |
+| Web app deployed (Netlify + Supabase cloud) | Live at https://easyplan-hehe.netlify.app; redeploys automatically when `main` changes |
 | Android / iOS store apps | Not yet built; see [`docs/deployment.md`](docs/deployment.md) |
 | Notifications | **Database done, no UI yet** |
 | Realtime updates | Publication configured, not used by the app yet |

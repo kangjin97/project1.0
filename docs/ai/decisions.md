@@ -24,7 +24,7 @@ Product and technical decisions, with the reason. Newest last. When a decision c
 | 2026-10-09 | Time zone is set at sign-up from the device and changeable on the profile from a list labelled with UTC offsets and regions (UTC rather than GMT). The whole app shows times in the profile's zone, not the device's. |
 
 | 2026-10-12 | The app is named **EasyPlan**, app ID `com.kangjin.easyplan`; web hosting on **Netlify**. |
-| 2026-10-12 | Web app published at **https://easyplan-hehe.netlify.app** (Netlify project `easyplan-hehe`; `easyplan` was taken). Deploys are manual drag-and-drop for now. |
+| 2026-10-12 | Web app published at **https://easyplan-hehe.netlify.app** (Netlify project `easyplan-hehe`; `easyplan` was taken). Deploys were manual drag-and-drop at first (superseded by continuous deployment, below). |
 | 2026-10-12 | Deleting an account: groups pass to the longest-standing member (empty groups deleted); their activities and photos are deleted; plans that used them stay as events; history shows "deleted user". |
 
 ## Choices made on the owner's behalf (confirm or revise)
@@ -69,4 +69,5 @@ Product and technical decisions, with the reason. Newest last. When a decision c
 | 2026-10-12 | Path URL strategy instead of `#/` URLs; Netlify `_redirects` serves the app for every path. | Needed for App Links / Universal Links and nicer invite links. |
 | 2026-10-12 | Production settings via `--dart-define-from-file=app/env/prod.json` (git-ignored) and `scripts/build.sh`; release builds refuse the local backend. | Keeps secrets and dev URLs out of releases. |
 | 2026-10-09 | Work on `main`; short-lived feature branches (`feature/<name>`) merged back when accepted. | Owner's preference. |
+| 2026-10-12 | Continuous deployment: every push to `main` deploys the web app to Netlify after CI passes; no PR preview deploys (they would share the live database); database migrations stay a manual `supabase db push` before merging. | Fast, safe releases without risking production data. |
 | 2026-10-12 | Backlog and bugs in GitHub Issues (labels `bug`, `feature`, `chore`, `priority:high`; issue forms); branches `fix\|feature\|chore/<n>-name`; PRs say `Closes #n`; CI runs analyze, Dart tests and pgTAP on every PR. | One place for work, linked to code; checks before merge. |

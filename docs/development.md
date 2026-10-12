@@ -103,7 +103,7 @@ Work is tracked in **GitHub Issues** (https://github.com/kangjin97/project1.0/is
 4. **CI must be green.** `.github/workflows/ci.yml` runs on every PR and push to `main`:
    - **App:** `flutter analyze` and `flutter test` (Flutter 3.47.6).
    - **Database:** `supabase start` without the UI services, then `supabase test db`.
-5. **Review, merge,** then delete the branch locally and on GitHub.
+5. **Review, merge,** then delete the branch locally and on GitHub. Merging to `main` **deploys the web app automatically** (`deploy-web` job) once the checks pass. If the PR adds migrations, run `supabase db push` on the cloud project **before** merging.
 
 Never commit `app/env/prod.json`, `app/android/key.properties` or keystores (`*.jks`); they're git-ignored.
 
