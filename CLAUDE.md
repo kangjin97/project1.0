@@ -63,6 +63,13 @@ The Supabase CLI may be at `~/.local/bin/supabase` rather than on `PATH`.
 - Current Dart needs macOS ≥ 14.
 - The preview launcher can't read `~/Documents` (macOS TCC). Start the dev server via Bash; `.claude/launch.json` attaches to `http://127.0.0.1:3000`.
 
+## Production
+
+- Live web app: **https://easyplan-hehe.netlify.app** (Netlify project `easyplan-hehe`), backed by a Supabase cloud project linked from this repo. Current state and steps: `docs/deployment.md`.
+- The cloud database is separate from the local one; nothing local (accounts, seed data) is in it.
+- Agents don't deploy, run `supabase db push`, or sign up/sign in on the live site. Test locally; the owner deploys by dragging `app/build/web` onto the Netlify project's Deploys page.
+- `netlify-cli` needs Node ≥ 18; this Mac has Node 15, so deploys are drag-and-drop.
+
 ## Local test data
 
 - Seed accounts: `alice@dev.test` / `dev_alice`, `bob@dev.test` / `dev_bob`; the password is in `supabase/seed.sql`. Don't print it in chat.

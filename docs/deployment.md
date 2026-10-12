@@ -12,6 +12,19 @@ How to take EasyPlan from your Mac to people's phones. Steps marked **(you)** ne
 
 Order: **1 → 2 → 3** gets friends using it on their phones via the browser. **4 / 5** are the store apps.
 
+## Current state (2026-10-12)
+
+| Piece | Status |
+|---|---|
+| Web app | **Live at https://easyplan-hehe.netlify.app** (Netlify project `easyplan-hehe`; `easyplan` was taken) |
+| Supabase cloud project | Created, linked from this repo, schema pushed with `supabase db push` |
+| Supabase Auth URLs | Site URL `https://easyplan-hehe.netlify.app`; redirect `https://easyplan-hehe.netlify.app/**` |
+| `app/env/prod.json` | Filled in on the owner's Mac (git-ignored) |
+| Deploys | Manual: `./scripts/build.sh web`, then drag `app/build/web` onto the project's **Deploys** page |
+| Still to do | Privacy policy placeholders; custom SMTP; phone smoke test; Android and iOS store builds |
+
+The cloud database is separate from the local one: local accounts and test data don't exist there, and the local seed accounts are never pushed.
+
 ---
 
 ## 1. Backend: Supabase cloud project
@@ -19,15 +32,15 @@ Order: **1 → 2 → 3** gets friends using it on their phones via the browser. 
 1. **(you)** Create a project at supabase.com. Region: Southeast Asia (Singapore). Keep the database password somewhere safe.
 2. Push the schema. This creates every table, rule, function and storage bucket from `supabase/migrations/`. It does **not** send `seed.sql`, so the test accounts stay local.
    ```bash
-   supabase login
+   supabase login        # the CLI may be at ~/.local/bin/supabase
    supabase link --project-ref <project-ref>
    supabase db push
    ```
    Later migrations: run `supabase db push` again after merging them.
 3. **(you)** In the Supabase dashboard → **Authentication**:
    - **URL Configuration**:
-     - Site URL: `https://<your-site>.netlify.app`
-     - Redirect URLs: add `https://<your-site>.netlify.app/**`. Password-reset links return here.
+     - Site URL: `https://easyplan-hehe.netlify.app`
+     - Redirect URLs: add `https://easyplan-hehe.netlify.app/**`. Password-reset links return here.
    - **Sign In / Providers → Email**: keep **Confirm email** on.
    - **Emails → SMTP Settings**: connect a real email provider, e.g. Resend, Postmark or SendGrid. The built-in sender is limited to a few emails an hour and is only for testing.
    - Optionally customise the email templates (confirm signup, reset password, change email) with the EasyPlan name.
@@ -50,9 +63,11 @@ Release builds refuse to start if they would point at the local database. Instea
 2. Build and deploy:
    ```bash
    ./scripts/build.sh web
-   npx netlify-cli deploy --prod     # first time: netlify login + link the site; or drag app/build/web onto the dashboard
    ```
-   `netlify.toml` publishes `app/build/web`. `web/_redirects` makes every path load the app; that's needed because the app uses clean URLs like `/join/abc`.
+   Then in Netlify open the project → **Deploys** and drag the `app/build/web` folder onto the drop area. Drop it on the project's **Deploys** page; dropping on the Projects list creates a new project instead.
+   - A CLI alternative is `npx netlify-cli deploy --prod --dir app/build/web`, after `netlify login` and linking the project. `netlify-cli` needs Node 18 or newer; this Mac has Node 15, so drag-and-drop is the current method.
+   - `netlify.toml` publishes `app/build/web`. `web/_redirects` makes every path load the app; that's needed because the app uses clean URLs like `/join/abc`.
+   - Quick check after deploying: `curl -s https://easyplan-hehe.netlify.app/main.dart.js | grep -c easyplan-hehe` should print `1`, and `/join/x` should return 200.
 3. **(you)** Fill in the placeholders in `app/web/privacy.html` (date, Supabase region, contact email), rebuild and redeploy. The stores need its URL: `<APP_URL>/privacy.html`.
 4. Smoke test on a phone:
    - sign up and confirm the email;
@@ -111,12 +126,14 @@ Toolchain first:
 
 1. Bump `version:` in `app/pubspec.yaml` (e.g. `1.0.1+2`; the number after `+` must increase for every store upload).
 2. `supabase db push` if there are new migrations. Apply them **before** shipping app builds that need them.
-3. `./scripts/build.sh web` + deploy; `./scripts/build.sh android` / `ios` + upload.
+3. `./scripts/build.sh web` + drag `app/build/web` onto the Netlify project's **Deploys** page; `./scripts/build.sh android` / `ios` + upload.
 
 ## Checklist before inviting real users
 
-- [ ] Supabase cloud project, `db push` done, auth URLs set, SMTP connected
-- [ ] `app/env/prod.json` filled in; web deployed; smoke test passed on a phone
+- [x] Supabase cloud project, `db push` done, auth URLs set
+- [ ] SMTP connected (built-in email only sends a few messages an hour)
+- [x] `app/env/prod.json` filled in; web deployed to https://easyplan-hehe.netlify.app
+- [ ] Smoke test passed on a phone
 - [ ] Privacy policy placeholders filled in and published
 - [ ] Email templates mention EasyPlan
 - [ ] (Stores) upload key backed up; data safety / App Privacy answered; reviewer demo account ready

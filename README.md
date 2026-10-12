@@ -1,10 +1,11 @@
 # EasyPlan
 
-EasyPlan (repo: group-planner) is a web and mobile app for friends to plan things to do together. People collect activity ideas, share them into groups, label and organise them, and (soon) put them on each other's schedules.
+EasyPlan (repo: group-planner) is a web and mobile app for friends to plan things to do together. People collect activity ideas, share them into groups, label and organise them, and put them on each other's schedules.
 
 - **App:** Flutter (web, iOS, Android) in [`app/`](app/)
 - **Backend:** Supabase (Postgres, Auth, Storage, Row Level Security) in [`supabase/`](supabase/)
 - **Product spec:** [`SPEC.md`](SPEC.md)
+- **Live web app:** https://easyplan-hehe.netlify.app
 
 ## Status
 
@@ -21,6 +22,8 @@ EasyPlan (repo: group-planner) is a web and mobile app for friends to plan thing
 | Profiles: picture, username, display name, bio, others' profiles, stats, email/password, changeable time zone | Done |
 | Account deletion, forgot password, privacy policy page | Done |
 | Release setup: app ID `com.kangjin.easyplan`, icon, Android signing, Netlify, build script | Done; see [`docs/deployment.md`](docs/deployment.md) |
+| Web app deployed (Netlify + Supabase cloud) | Live at https://easyplan-hehe.netlify.app |
+| Android / iOS store apps | Not yet built; see [`docs/deployment.md`](docs/deployment.md) |
 | Notifications | **Database done, no UI yet** |
 | Realtime updates | Publication configured, not used by the app yet |
 
