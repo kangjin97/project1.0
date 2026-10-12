@@ -6,6 +6,7 @@ EasyPlan (repo: group-planner) is a web and mobile app for friends to plan thing
 - **Backend:** Supabase (Postgres, Auth, Storage, Row Level Security) in [`supabase/`](supabase/)
 - **Product spec:** [`SPEC.md`](SPEC.md)
 - **Live web app:** https://easyplan-hehe.netlify.app
+- **Work tracking:** [Issues](https://github.com/kangjin97/project1.0/issues) and the [EasyPlan project board](https://github.com/users/kangjin97/projects/3)
 
 ## Status
 
@@ -55,6 +56,7 @@ CLAUDE.md, AGENTS.md            Steering notes for AI coding agents
 .github/                        Issue forms, PR template, CI workflow (analyze, tests, pgTAP)
 netlify.toml                    Web hosting config (publishes app/build/web)
 scripts/build.sh                Release builds (web / android / ios) from app/env/prod.json
+scripts/board.sh                Move an issue's card on the project board (todo / progress / done)
 docs/
   development.md                Setup, workflows, troubleshooting
   deployment.md                 Supabase cloud, Netlify, Google Play, App Store

@@ -14,7 +14,7 @@ EasyPlan (repo `group-planner`; Dart package `group_planner`): Flutter app (`app
 | App structure, data flows | `docs/architecture.md` |
 | Setup, commands, troubleshooting | `docs/development.md` |
 | Releasing (Supabase cloud, Netlify, stores) | `docs/deployment.md` |
-| What to work on next | GitHub Issues (`gh issue list`) |
+| What to work on next | GitHub Issues (`gh issue list`) and the **EasyPlan** board: https://github.com/users/kangjin97/projects/3 |
 
 ## Commands
 
@@ -24,6 +24,7 @@ supabase migration up               # apply new migrations, KEEPS data
 supabase test db                    # pgTAP tests (rolled back; safe)
 cd app && flutter analyze           # must report "No issues found!"
 cd app && flutter test              # Dart unit tests (e.g. AppClock)
+./scripts/board.sh <issue> progress # move an issue's card on the project board (todo|progress|done)
 cd app && flutter run -d web-server --web-hostname 127.0.0.1 --web-port 3000
 ```
 
@@ -82,4 +83,4 @@ The Supabase CLI may be at `~/.local/bin/supabase` rather than on `PATH`.
 - Dart: Riverpod `FutureProvider` / `.family`; `AsyncBody` for loading and error states; `showError` and `friendlyError` for errors; `promptText` and `confirm` dialogs; Material 3. Models in `data/models.dart` with `fromJson` and a `columns` select string when they embed relations.
 - SQL: snake_case; `timestamptz`; soft delete only for activities; composite FKs to keep rows inside one group (`(type_id, group_id)`, `(group_id, activity_id)`) or owned by one user (`(personal_type_id, owner_id)`).
 - Comments explain *why*. Match the surrounding density.
-- Git: `main` tracks `origin` (github.com/kangjin97/project1.0). Work is tracked in **GitHub Issues**: read one with `gh issue view <n>`, branch from `main` as `fix|feature|chore/<n>-short-name`, open a PR into `main` whose body starts `Closes #<n>` (template: `.github/pull_request_template.md`), and wait for **CI** (`.github/workflows/ci.yml`: analyze, Dart tests, pgTAP) to pass. Merge only when the owner says so; then delete the branch locally and on GitHub. `gh` is installed and signed in as kangjin97. New work you notice but don't do: raise an issue (with labels) rather than adding it to docs. Commit as `Ng Kang Jin <kangjin_97@hotmail.com>` (set in the repo config). Commit messages end with a `Co-Authored-By` line when an agent writes them; PR descriptions end with the Claude Code footer.
+- Git: `main` tracks `origin` (github.com/kangjin97/project1.0). Work is tracked in **GitHub Issues** and on the **EasyPlan project board** (https://github.com/users/kangjin97/projects/3; Todo → In Progress → Done): read one with `gh issue view <n>`, move its card with `./scripts/board.sh <n> progress` when you start, branch from `main` as `fix|feature|chore/<n>-short-name`, open a PR into `main` whose body starts `Closes #<n>` (template: `.github/pull_request_template.md`), and wait for **CI** (`.github/workflows/ci.yml`: analyze, Dart tests, pgTAP) to pass. Merge only when the owner says so; merging closes the issue and the board moves it to Done. Then delete the branch locally and on GitHub. `gh` is installed and signed in as kangjin97. New work you notice but don't do: raise an issue (with labels) rather than adding it to docs; it lands in Todo. Commit as `Ng Kang Jin <kangjin_97@hotmail.com>` (set in the repo config). Commit messages end with a `Co-Authored-By` line when an agent writes them; PR descriptions end with the Claude Code footer.
