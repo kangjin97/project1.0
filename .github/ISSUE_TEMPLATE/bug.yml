@@ -1,0 +1,42 @@
+name: Bug
+description: Something isn't working as it should
+labels: [bug]
+body:
+  - type: textarea
+    id: what
+    attributes:
+      label: What happened?
+      description: What you did, step by step, and what went wrong.
+      placeholder: |
+        1. Opened a group → Schedule
+        2. Tapped Add to schedule, picked a time
+        3. Saved → nothing happened
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: What did you expect?
+    validations:
+      required: true
+  - type: dropdown
+    id: where
+    attributes:
+      label: Where?
+      options:
+        - Live web app (easyplan-hehe.netlify.app)
+        - Local development
+        - Android app
+        - iPhone app
+    validations:
+      required: true
+  - type: input
+    id: device
+    attributes:
+      label: Device and browser
+      placeholder: e.g. iPhone 15, Safari / Windows laptop, Chrome
+  - type: textarea
+    id: screenshots
+    attributes:
+      label: Screenshots or screen recording
+      description: Drag images or videos here.

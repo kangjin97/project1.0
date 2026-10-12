@@ -1,0 +1,2 @@
+# Allow a blank issue for chores and anything that doesn't fit the forms.
+blank_issues_enabled: true

@@ -95,9 +95,17 @@ rollback;
 
 ## Git workflow
 
-- `main` is the shared branch on GitHub (`kangjin97/project1.0`).
-- Build each feature on a short-lived `feature/<name>` branch, push it, then merge into `main`, either directly or through a pull request (`gh pr create --base main`). Delete the branch afterwards.
-- Never commit `app/env/prod.json`, `app/android/key.properties` or keystores (`*.jks`); they're git-ignored.
+Work is tracked in **GitHub Issues** (https://github.com/kangjin97/project1.0/issues).
+
+1. **Raise an issue.** Use the **Bug** or **Feature or change** form (`.github/ISSUE_TEMPLATE/`), or a blank issue for chores. Labels: `bug`, `feature`, `chore`, optionally `priority:high`.
+2. **Branch from `main`**, named after the issue: `fix/<n>-short-name`, `feature/<n>-short-name`, `chore/<n>-short-name`.
+3. **Open a pull request** into `main` (`gh pr create --base main`). The template starts with `Closes #<n>`, so merging closes the issue.
+4. **CI must be green.** `.github/workflows/ci.yml` runs on every PR and push to `main`:
+   - **App:** `flutter analyze` and `flutter test` (Flutter 3.47.6).
+   - **Database:** `supabase start` without the UI services, then `supabase test db`.
+5. **Review, merge,** then delete the branch locally and on GitHub.
+
+Never commit `app/env/prod.json`, `app/android/key.properties` or keystores (`*.jks`); they're git-ignored.
 
 ## Code conventions
 
