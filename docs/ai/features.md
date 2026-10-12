@@ -124,7 +124,7 @@ Status legend: **Done** = DB + UI + tests. **DB only** = schema/RPCs/tests exist
 
 ## Backlog
 
-The backlog lives in **GitHub Issues**: https://github.com/kangjin97/project1.0/issues (labels `bug`, `feature`, `chore`, `priority:high`). This file describes what's built; issues track what's next. When a feature ships, update its section here and close the issue from the PR ("Closes #n").
+The backlog lives in **GitHub Issues**: https://github.com/kangjin97/project1.0/issues, shown on the **EasyPlan project board** (https://github.com/users/kangjin97/projects/3; Todo → In Progress → Done) (labels `bug`, `feature`, `chore`, `priority:high`). This file describes what's built; issues track what's next. When a feature ships, update its section here and close the issue from the PR ("Closes #n").
 
 Open at the time of writing:
 

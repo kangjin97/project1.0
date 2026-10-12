@@ -95,17 +95,25 @@ rollback;
 
 ## Git workflow
 
-Work is tracked in **GitHub Issues** (https://github.com/kangjin97/project1.0/issues).
+Work is tracked in **GitHub Issues** (https://github.com/kangjin97/project1.0/issues) and on the **EasyPlan project board** (https://github.com/users/kangjin97/projects/3), with columns **Todo → In Progress → Done**.
 
-1. **Raise an issue.** Use the **Bug** or **Feature or change** form (`.github/ISSUE_TEMPLATE/`), or a blank issue for chores. Labels: `bug`, `feature`, `chore`, optionally `priority:high`.
-2. **Branch from `main`**, named after the issue: `fix/<n>-short-name`, `feature/<n>-short-name`, `chore/<n>-short-name`.
+1. **Raise an issue.** Use the **Bug** or **Feature or change** form (`.github/ISSUE_TEMPLATE/`), or a blank issue for chores. Labels: `bug`, `feature`, `chore`, optionally `priority:high`. GitHub numbers it automatically, and the card appears in **Todo**.
+2. **Start work:** move the card to **In Progress** with `./scripts/board.sh <n> progress`, or drag it on the board. Then **branch from `main`**, named after the issue: `fix/<n>-short-name`, `feature/<n>-short-name`, `chore/<n>-short-name`.
 3. **Open a pull request** into `main` (`gh pr create --base main`). The template starts with `Closes #<n>`, so merging closes the issue.
 4. **CI must be green.** `.github/workflows/ci.yml` runs on every PR and push to `main`:
    - **App:** `flutter analyze` and `flutter test` (Flutter 3.47.6).
    - **Database:** `supabase start` without the UI services, then `supabase test db`.
-5. **Review, merge,** then delete the branch locally and on GitHub. Merging to `main` **deploys the web app automatically** (`deploy-web` job) once the checks pass. If the PR adds migrations, run `supabase db push` on the cloud project **before** merging.
+5. **Review, merge,** then delete the branch locally and on GitHub. Merging closes the issue and the board moves its card to **Done**. Merging to `main` also **deploys the web app automatically** (`deploy-web` job) once the checks pass. If the PR adds migrations, run `supabase db push` on the cloud project **before** merging.
 
 Never commit `app/env/prod.json`, `app/android/key.properties` or keystores (`*.jks`); they're git-ignored.
+
+### Project board
+
+- **Board:** https://github.com/users/kangjin97/projects/3. It's linked to the repo, so it also shows under the repo's **Projects** tab.
+- **Moving cards:** `./scripts/board.sh <issue> todo|progress|done`. It adds the issue to the board if it's missing. Needs `gh` with the `project` scope; if that's missing, run `gh auth refresh -h github.com -s project`.
+- **Board automations** (board → **⋯** → **Workflows**). These can only be set on the website:
+  - **Auto-add to project:** repository `project1.0`, filter `is:issue is:open`. New issues land in Todo.
+  - **Item closed** and **Pull request merged** → **Done**.
 
 ## Code conventions
 
