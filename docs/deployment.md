@@ -68,7 +68,7 @@ Release builds refuse to start if they would point at the local database. Instea
    - This was the first deploy. Later deploys happen automatically when `main` changes (see [Automatic deploys](#automatic-deploys)); drag-and-drop remains the manual fallback. (`netlify-cli` locally needs Node 18 or newer; this Mac has Node 15.)
    - `netlify.toml` publishes `app/build/web`. `web/_redirects` makes every path load the app; that's needed because the app uses clean URLs like `/join/abc`.
    - Quick check after deploying: `curl -s https://easyplan-hehe.netlify.app/main.dart.js | grep -c easyplan-hehe` should print `1`, and `/join/x` should return 200.
-3. **(you)** Fill in the placeholders in `app/web/privacy.html` (date, Supabase region, contact email), rebuild and redeploy. The stores need its URL: `<APP_URL>/privacy.html`.
+3. **(you)** Fill in the placeholders in `app/web/privacy.html` (date, Supabase region, contact email), then merge to `main`; it deploys automatically. The stores need its URL: `<APP_URL>/privacy.html`.
 4. Smoke test on a phone:
    - sign up and confirm the email;
    - create a group and copy its invite link;
@@ -101,7 +101,7 @@ Toolchain first. `flutter doctor` currently reports Android SDK 30; Flutter need
    - New personal developer accounts must run a closed test with testers for 14 days before production access.
 6. **Invite links that open the app (App Links):**
    - Copy the **SHA-256 certificate fingerprint** from Play Console → Setup → App signing into `app/deploy/well-known/assetlinks.json`.
-   - Copy that file to `app/web/.well-known/assetlinks.json`, rebuild and redeploy the web app.
+   - Copy that file to `app/web/.well-known/assetlinks.json` and merge to `main`; the web app redeploys automatically.
    - The manifest already declares `https://<APP_URL host>/join/*`; the host comes from `APP_URL` at build time.
 
 ## 5. iPhone: App Store (Stage B and C)
@@ -120,7 +120,7 @@ Toolchain first:
 6. Before release, fill in:
    - **App Privacy** answers (same data as the Play data safety form) and the privacy policy URL.
    - Screenshots and a demo account for App Review. Give reviewers a test login; they will try **Delete account**, which Apple requires.
-7. **Universal Links:** put your Team ID into `app/deploy/well-known/apple-app-site-association`, copy it to `app/web/.well-known/` and redeploy. `netlify.toml` serves it as JSON.
+7. **Universal Links:** put your Team ID into `app/deploy/well-known/apple-app-site-association`, copy it to `app/web/.well-known/` and merge to `main` (redeploys automatically). `netlify.toml` serves it as JSON.
 
 ## Automatic deploys
 
