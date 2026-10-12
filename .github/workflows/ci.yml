@@ -1,14 +1,18 @@
-# Checks every pull request and every push to main.
+# Checks every pull request and every push to main. Pushes to main (and manual
+# runs on main) then deploy the web app to Netlify, but only if the checks pass.
 name: CI
 
 on:
   pull_request:
   push:
     branches: [main]
+  # "Run workflow" button: redeploy main, e.g. after changing a secret.
+  workflow_dispatch:
 
 concurrency:
   group: ci-${{ github.ref }}
-  cancel-in-progress: true
+  # Superseded PR runs are cancelled; runs on main finish so a deploy is never cut short.
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
   app:
@@ -41,3 +45,57 @@ jobs:
       - run: supabase test db
       - if: always()
         run: supabase stop --no-backup
+
+  deploy-web:
+    name: Deploy web (Netlify)
+    needs: [app, database]
+    if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          flutter-version: 3.47.6
+          cache: true
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      # Production settings live in GitHub, never in the repo (see docs/deployment.md).
+      - name: Write production config
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_PUBLISHABLE_KEY: ${{ secrets.SUPABASE_PUBLISHABLE_KEY }}
+          APP_URL: ${{ vars.APP_URL }}
+          NETLIFY_AUTH_TOKEN: ${{ secrets.NETLIFY_AUTH_TOKEN }}
+          NETLIFY_SITE_ID: ${{ secrets.NETLIFY_SITE_ID }}
+        run: |
+          missing=""
+          for name in SUPABASE_URL SUPABASE_PUBLISHABLE_KEY APP_URL NETLIFY_AUTH_TOKEN NETLIFY_SITE_ID; do
+            [ -n "${!name}" ] || missing="$missing $name"
+          done
+          if [ -n "$missing" ]; then
+            echo "::error::Missing deploy settings:$missing (secrets, or the APP_URL variable). See docs/deployment.md → Automatic deploys."
+            exit 1
+          fi
+          case "$SUPABASE_PUBLISHABLE_KEY" in
+            sb_secret_*) echo "::error::SUPABASE_PUBLISHABLE_KEY is a secret key; use the publishable one."; exit 1 ;;
+          esac
+          python3 -c 'import json,os; json.dump({k: os.environ[k] for k in ("SUPABASE_URL","SUPABASE_PUBLISHABLE_KEY","APP_URL")}, open("app/env/prod.json","w"))'
+      - run: ./scripts/build.sh web
+      - name: Deploy to Netlify
+        env:
+          NETLIFY_AUTH_TOKEN: ${{ secrets.NETLIFY_AUTH_TOKEN }}
+          NETLIFY_SITE_ID: ${{ secrets.NETLIFY_SITE_ID }}
+        run: >-
+          npx --yes netlify-cli deploy --prod --no-build
+          --dir app/build/web
+          --message "main@${GITHUB_SHA::7} (${{ github.event_name }})"
+      - name: Check the live site
+        env:
+          APP_URL: ${{ vars.APP_URL }}
+        run: |
+          # The deployed bundle must contain this build's APP_URL, and clean URLs must resolve.
+          curl -fsS "$APP_URL/main.dart.js" | grep -q "${APP_URL#https://}"
+          curl -fsS -o /dev/null "$APP_URL/join/ci-check"
+          echo "Live: $APP_URL"

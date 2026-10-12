@@ -12,4 +12,6 @@ Closes #
 
 ## Notes for reviewers
 
-<!-- New migrations? Run `supabase db push` on the cloud project before deploying builds that need them. Docs updated (features.md, endpoints.md, database.md, SPEC.md, decisions.md)? -->
+- [ ] New migrations? Run `supabase db push` on the cloud project **before merging** (merging deploys the web app automatically)
+
+<!-- Docs updated (features.md, endpoints.md, database.md, SPEC.md, decisions.md)? -->

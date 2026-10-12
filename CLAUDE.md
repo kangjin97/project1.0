@@ -40,7 +40,7 @@ The Supabase CLI may be at `~/.local/bin/supabase` rather than on `PATH`.
 7. Before finishing: `flutter analyze` must be clean and `supabase test db` must pass. If you changed behaviour, update `docs/ai/features.md`, `docs/ai/endpoints.md` and, where relevant, `docs/database.md`, `SPEC.md` and `docs/ai/decisions.md`.
 8. Don't commit or push unless asked.
 9. **Never commit secrets or signing material:** `app/env/prod.json`, `app/android/key.properties`, `*.jks` are git-ignored; keep it that way. Never change the app ID `com.kangjin.easyplan`.
-10. New migrations reach production only via `supabase db push` (owner runs it); apply them before shipping app builds that depend on them.
+10. New migrations reach production only via `supabase db push` (owner runs it). **Merging to `main` deploys the web app automatically**, so migrations must be pushed to the cloud *before* merging a PR that needs them; say so in the PR.
 
 ## Gotchas (each has bitten this project)
 
@@ -68,8 +68,8 @@ The Supabase CLI may be at `~/.local/bin/supabase` rather than on `PATH`.
 
 - Live web app: **https://easyplan-hehe.netlify.app** (Netlify project `easyplan-hehe`), backed by a Supabase cloud project linked from this repo. Current state and steps: `docs/deployment.md`.
 - The cloud database is separate from the local one; nothing local (accounts, seed data) is in it.
-- Agents don't deploy, run `supabase db push`, or sign up/sign in on the live site. Test locally; the owner deploys by dragging `app/build/web` onto the Netlify project's Deploys page.
-- `netlify-cli` needs Node ≥ 18; this Mac has Node 15, so deploys are drag-and-drop.
+- **Deploys are automatic:** the `deploy-web` job in `.github/workflows/ci.yml` builds and publishes to Netlify on every push to `main`, after the app and database checks pass. Settings come from GitHub secrets/variables (`docs/deployment.md` → Automatic deploys). Rollback: Netlify → Deploys → Publish an earlier deploy.
+- Agents don't deploy by hand, don't merge without the owner's go-ahead, don't run `supabase db push`, and don't sign up/sign in on the live site. Test locally.
 
 ## Local test data
 
