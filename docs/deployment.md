@@ -1,6 +1,6 @@
 # Deploying EasyPlan
 
-How to take EasyPlan from your Mac to people's phones. Steps marked **(you)** need your accounts, payments or passwords. Everything else is already set up in the repo.
+How to take EasyPlan from your computer to people's phones. Everything here also works from the Windows PC except iOS builds; see [`setup-windows.md`](setup-windows.md#deploying-from-windows). Steps marked **(you)** need your accounts, payments or passwords. Everything else is already set up in the repo.
 
 | Item | Value |
 |---|---|

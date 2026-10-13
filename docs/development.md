@@ -1,21 +1,35 @@
 # Development guide
 
-## Prerequisites
+## Setting up a computer
 
-| Tool | Version used | Notes |
+EasyPlan is developed on both a **Mac** and a **Windows PC**. Set up each computer once:
+
+- **Mac:** [`setup-mac.md`](setup-mac.md)
+- **Windows:** [`setup-windows.md`](setup-windows.md) (includes WSL 2 and Docker)
+
+Both install the same versions CI uses, so results match everywhere:
+
+| Tool | Version | Pinned in |
 |---|---|---|
-| Flutter | 3.47.x stable (Dart 3.13) | `pubspec.yaml` requires Dart `^3.10.9`. Current Dart needs **macOS 14+**; on macOS 13 the newest usable Flutter is 3.38.x. |
-| Docker | any recent | Runs the local Supabase stack. |
-| Supabase CLI | 2.119+ | `brew install supabase/tap/supabase`, or the release binary from github.com/supabase/cli. |
-| Xcode | 26.x | Only for iOS/macOS builds. Accept the license once: `sudo xcodebuild -license accept`. |
-| Android Studio | any recent | Only for Android builds. |
+| Flutter | 3.47.6 (Dart 3.13) | `.github/workflows/ci.yml` → `flutter-version` |
+| Supabase CLI | 2.119.0 | `.github/workflows/ci.yml` → `supabase/setup-cli` `version` |
+| Docker | any recent | Runs the local Supabase stack |
+| Xcode | 26.x | Mac only; iOS builds |
+| Android Studio | any recent | Either computer; Android builds |
 
-## First-time setup
+When CI's versions change, update both computers.
+
+## First run
+
+The same on both computers (on Windows, use Command Prompt, or run each line separately in PowerShell):
 
 ```bash
-git clone <repo> group-planner && cd group-planner
-supabase start                 # pulls images on first run, applies migrations and seed.sql
+git clone https://github.com/kangjin97/project1.0.git && cd project1.0
+supabase start                 # first run downloads the images, then applies migrations and seed.sql
+supabase test db               # should end with "Result: PASS"
 cd app && flutter pub get
+flutter analyze                # "No issues found!"
+flutter test
 ```
 
 `supabase start` prints local URLs and keys. The app already defaults to the local stack (see [`app/lib/config.dart`](../app/lib/config.dart)), so nothing needs copying.
@@ -48,6 +62,23 @@ flutter run -d <ios-simulator-or-android-device>
 URLs are clean paths (`http://127.0.0.1:3000/groups/...`), not `#/...`. Password-reset emails land in Mailpit; their links redirect to `/reset-password` (allowed in `supabase/config.toml` → `additional_redirect_urls`).
 
 Test accounts (from [`supabase/seed.sql`](../supabase/seed.sql)): `alice@dev.test` (`dev_alice`) and `bob@dev.test` (`dev_bob`).
+
+## Working on both computers
+
+GitHub is the single source of truth. Neither computer is special; either one can do everything except iOS builds (Mac only).
+
+- **Pull before you start; push your branch before switching computers.** Code, issues, the board, CI, deploy settings and deploys all live on GitHub. Nothing else syncs.
+- **Each computer has its own local database.** Accounts and test data made on one aren't on the other. Shared test data belongs in `supabase/seed.sql`. The rules are the same on both: `supabase migration up`, and `supabase db reset` only when you mean to wipe that computer's data.
+- **A few git-ignored files exist only where they're needed.** You normally don't need them at all:
+
+  | File | Needed for | Notes |
+  |---|---|---|
+  | `app/env/prod.json` | Manual release builds (`scripts/build.sh`) | CI builds web releases from GitHub secrets, so web deploys don't need it |
+  | `app/android/key.properties` + upload keystore (`*.jks`) | Android release builds | Copy by hand (USB drive, password manager), never through git or chat |
+  | `supabase/.temp` (from `supabase link`) | `supabase db push` to the cloud | Run `supabase login` and `supabase link --project-ref <ref>` once on whichever computer pushes migrations |
+
+- **Scripts:** `./scripts/*.sh` are bash. On Windows, run them in Git Bash ([`setup-windows.md`](setup-windows.md#which-terminal)).
+- Git converts line endings on Windows automatically (`core.autocrlf`), so commits from either computer look the same.
 
 ## Database workflow
 
@@ -128,11 +159,10 @@ Never commit `app/env/prod.json`, `app/android/key.properties` or keystores (`*.
 
 ## Troubleshooting
 
+Computer-specific problems are in [`setup-mac.md`](setup-mac.md#mac-only-notes-and-troubleshooting) and [`setup-windows.md`](setup-windows.md#troubleshooting).
+
 | Symptom | Cause and fix |
 |---|---|
-| `VM initialization failed: Current Mac OS X version 13.0 is lower than minimum supported version 14.0` | Current Dart needs macOS 14+. Upgrade macOS, or pin Flutter: `cd <flutter> && git checkout 3.38.10`. |
-| Homebrew: `You have not agreed to the Xcode license` / `Your Xcode is too outdated` | Run `sudo xcodebuild -license accept`; update Xcode or run `xcode-select --install`. |
-| Claude desktop preview: `flutter: Operation not permitted` | macOS privacy (TCC) blocks the preview launcher from reading `~/Documents`. Start the server from a terminal; `.claude/launch.json` then attaches to `http://127.0.0.1:3000`. Or grant the app access in System Settings → Privacy & Security → Files and Folders. |
 | `Assertion failed: The targeted input element must be the active input element` in the web console | Debug-only Flutter web engine assertion, seen with automated or synthetic clicks. Harmless. |
 | App shows "You don't have permission to do that." | An RLS policy or column grant rejected the request (Postgres code 42501). See [`database.md`](database.md) for who can do what. |
 | Empty lists right after `supabase db reset` | Expected: the reset deleted all data. Sign up again or use the seed accounts. |

@@ -13,6 +13,7 @@ EasyPlan (repo `group-planner`; Dart package `group_planner`): Flutter app (`app
 | Schema, triggers, policies | `docs/database.md`, `supabase/migrations/` |
 | App structure, data flows | `docs/architecture.md` |
 | Setup, commands, troubleshooting | `docs/development.md` |
+| Setting up the Mac or the Windows PC | `docs/setup-mac.md`, `docs/setup-windows.md` |
 | Releasing (Supabase cloud, Netlify, stores) | `docs/deployment.md` |
 | What to work on next | GitHub Issues (`gh issue list`) and the **EasyPlan** board: https://github.com/users/kangjin97/projects/3 |
 
@@ -28,7 +29,7 @@ cd app && flutter test              # Dart unit tests (e.g. AppClock)
 cd app && flutter run -d web-server --web-hostname 127.0.0.1 --web-port 3000
 ```
 
-The Supabase CLI may be at `~/.local/bin/supabase` rather than on `PATH`.
+The Supabase CLI may be at `~/.local/bin/supabase` rather than on `PATH`. The owner works on both a Mac and a Windows PC (`docs/development.md` → Working on both computers). On Windows, run `scripts/*.sh` in Git Bash, and remember Windows PowerShell has no `&&`.
 
 ## Hard rules
 
@@ -62,8 +63,10 @@ The Supabase CLI may be at `~/.local/bin/supabase` rather than on `PATH`.
 - The app uses **path URLs** (`usePathUrlStrategy`), not `#/`. Hosting must serve `index.html` for unknown paths (`app/web/_redirects`). Links: `AppConfig.inviteLink`, `AppConfig.appUrl`; never build URLs from `Uri.base` directly.
 - Deleting a user sets "who did it" columns to null; models must treat `createdBy`, `sharedById`, actor names as nullable ("a deleted user").
 - `touch_updated` only stamps `updated_by` for users that still exist (needed during account deletion).
-- Current Dart needs macOS ≥ 14.
-- The preview launcher can't read `~/Documents` (macOS TCC). Start the dev server via Bash; `.claude/launch.json` attaches to `http://127.0.0.1:3000`.
+- Mac: current Dart needs macOS ≥ 14.
+- Each computer (Mac, Windows) has its own local database; data made on one isn't on the other.
+- Windows: Docker Desktop needs WSL 2; the `supabase_vector` container restart-loops there, which is harmless.
+- Mac: the preview launcher can't read `~/Documents` (macOS TCC). Start the dev server via Bash; `.claude/launch.json` attaches to `http://127.0.0.1:3000`.
 
 ## Production
 
