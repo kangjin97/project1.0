@@ -21,7 +21,7 @@ Order: **1 → 2 → 3** gets friends using it on their phones via the browser. 
 | Supabase Auth URLs | Site URL `https://easyplan-hehe.netlify.app`; redirect `https://easyplan-hehe.netlify.app/**` |
 | `app/env/prod.json` | Filled in on the owner's Mac (git-ignored) |
 | Deploys | **Automatic** on every push to `main`, after the checks pass (GitHub Actions → Netlify). See [Automatic deploys](#automatic-deploys). |
-| Still to do | Privacy policy placeholders (#3); custom SMTP (#4); phone smoke test (#5); Android (#13) and iOS (#14) store builds |
+| Still to do | Custom SMTP (#4); phone smoke test (#5); Android (#13) and iOS (#14) store builds |
 
 The cloud database is separate from the local one: local accounts and test data don't exist there, and the local seed accounts are never pushed.
 
@@ -68,7 +68,7 @@ Release builds refuse to start if they would point at the local database. Instea
    - This was the first deploy. Later deploys happen automatically when `main` changes (see [Automatic deploys](#automatic-deploys)); drag-and-drop remains the manual fallback. (`netlify-cli` locally needs Node 18 or newer; this Mac has Node 15.)
    - `netlify.toml` publishes `app/build/web`. `web/_redirects` makes every path load the app; that's needed because the app uses clean URLs like `/join/abc`.
    - Quick check after deploying: `curl -s https://easyplan-hehe.netlify.app/main.dart.js | grep -c easyplan-hehe` should print `1`, and `/join/x` should return 200.
-3. **(you)** Fill in the placeholders in `app/web/privacy.html` (date, Supabase region, contact email), then merge to `main`; it deploys automatically. The stores need its URL: `<APP_URL>/privacy.html`.
+3. Privacy policy: `app/web/privacy.html`, live at `<APP_URL>/privacy.html` (the stores need this URL). Contact address: easyplanhehe@gmail.com. When you change what the app stores or add a provider (e.g. the email sender from #4), update the page and its date, then merge to `main`; it deploys automatically.
 4. Smoke test on a phone:
    - sign up and confirm the email;
    - create a group and copy its invite link;
@@ -172,7 +172,7 @@ If any are missing, the deploy job fails with a message naming them, and nothing
 - [ ] SMTP connected (built-in email only sends a few messages an hour)
 - [x] `app/env/prod.json` filled in; web deployed to https://easyplan-hehe.netlify.app
 - [ ] Smoke test passed on a phone
-- [ ] Privacy policy placeholders filled in and published
+- [x] Privacy policy filled in and published (update it when #4 adds an email provider)
 - [ ] Email templates mention EasyPlan
 - [ ] (Stores) upload key backed up; data safety / App Privacy answered; reviewer demo account ready
 - [ ] (Optional) replace the placeholder icon (`app/assets/icon/`, then `dart run flutter_launcher_icons`)

@@ -26,6 +26,7 @@ Product and technical decisions, with the reason. Newest last. When a decision c
 | 2026-10-12 | The app is named **EasyPlan**, app ID `com.kangjin.easyplan`; web hosting on **Netlify**. |
 | 2026-10-12 | Web app published at **https://easyplan-hehe.netlify.app** (Netlify project `easyplan-hehe`; `easyplan` was taken). Deploys were manual drag-and-drop at first (superseded by continuous deployment, below). |
 | 2026-10-12 | Deleting an account: groups pass to the longest-standing member (empty groups deleted); their activities and photos are deleted; plans that used them stay as events; history shows "deleted user". |
+| 2026-10-13 | Privacy policy published: effective 13 October 2026, contact easyplanhehe@gmail.com (a dedicated Gmail; no custom domain yet), data in Supabase's Singapore region; it mentions hosting providers' server logs. |
 
 ## Choices made on the owner's behalf (confirm or revise)
 
