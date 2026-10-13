@@ -32,7 +32,7 @@ See [`docs/ai/features.md`](docs/ai/features.md) for the detailed feature map. T
 
 ## Quick start
 
-Requires Flutter (stable, Dart ≥ 3.10), Docker, and the Supabase CLI. Full setup, including macOS-specific gotchas, is in [`docs/development.md`](docs/development.md).
+Requires Flutter 3.47.6, Docker and Supabase CLI 2.119.0 (the versions CI uses). Set up a computer with [`docs/setup-mac.md`](docs/setup-mac.md) or [`docs/setup-windows.md`](docs/setup-windows.md); then see [`docs/development.md`](docs/development.md).
 
 ```bash
 supabase start              # local Postgres, Auth, Storage on :54321 (first run pulls Docker images)
@@ -60,6 +60,8 @@ scripts/board.sh                Move an issue's card on the project board (todo 
 docs/
   development.md                Setup, workflows, troubleshooting
   deployment.md                 Supabase cloud, Netlify, Google Play, App Store
+  setup-mac.md                  Setting up a Mac (pinned Flutter + Supabase CLI, Docker)
+  setup-windows.md              Setting up a Windows PC (also WSL 2), terminals, deploying from Windows
   architecture.md               How the app and backend fit together
   database.md                   Tables, triggers, functions, policies
   ai/                           Machine-friendly references (endpoints, feature map, decisions)
