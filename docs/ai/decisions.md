@@ -52,6 +52,7 @@ Product and technical decisions, with the reason. Newest last. When a decision c
 | 2026-10-12 | Placeholder icon (white calendar + check on blue) until a designed one exists. | Stores need an icon; easy to replace. |
 | 2026-10-09 | The time zone picker lists all IANA zones (including aliases like Asia/Calcutta) with current offsets, searchable by name or offset. | A plain dropdown of ~490 zones is unusable. |
 | 2026-10-14 | Supabase's **secure email change** stays on: links go to both the old and new address, and the change needs both. The app's message, the profile and the email itself say so. | Someone with brief access to an account can't move it to their own email. The owner asked whether two emails were intended. |
+| 2026-10-14 | A pending email change can be cancelled from the profile; cancelling voids the links already sent. The profile re-reads the account from the server (and on app resume) instead of trusting the session from sign-in. | A change someone gave up on otherwise stayed pending forever, and a change confirmed from the mail app only showed after signing in again. |
 
 ## Technical
 
@@ -76,3 +77,4 @@ Product and technical decisions, with the reason. Newest last. When a decision c
 | 2026-10-12 | Backlog and bugs in GitHub Issues (labels `bug`, `feature`, `chore`, `priority:high`; issue forms); branches `fix\|feature\|chore/<n>-name`; PRs say `Closes #n`; CI runs analyze, Dart tests and pgTAP on every PR. | One place for work, linked to code; checks before merge. |
 | 2026-10-13 | Development also happens on a Windows 11 PC. Its Flutter (3.47.6, a git clone of the tag) and Supabase CLI (2.119.0) are pinned to CI's versions; Docker Desktop runs on WSL 2. Same issue → branch → PR workflow; GitHub is the source of truth and each computer keeps its own local database; iOS builds stay on the Mac. Setup: `docs/setup-mac.md`, `docs/setup-windows.md`. | The owner works from both machines; matching CI's versions keeps results the same everywhere. |
 | 2026-10-14 | Auth email templates are kept in `supabase/templates/` (used locally via `config.toml`) and pasted into the cloud dashboard by hand. | `supabase config push` would also push local-only settings; templates change rarely. |
+| 2026-10-14 | `cancel_email_change()` writes `auth.users` directly (security definer, caller's row only). | Supabase Auth has no cancel API; `delete_my_account` already writes `auth.users` the same way. |

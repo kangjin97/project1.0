@@ -91,7 +91,7 @@ Users can view the log per activity, per schedule entry, and per group.
 
 ### 2.9 Profiles
 - Everyone has a profile page: picture, display name, @username, and a short bio (≤160 characters).
-- Users can change their picture, display name, bio, and username (if the new one isn't taken; same rules as sign-up). Account settings: change email (confirmed by links sent to both the current and the new address) and password (current password required); sign out.
+- Users can change their picture, display name, bio, and username (if the new one isn't taken; same rules as sign-up). Account settings: change email (confirmed by links sent to both the current and the new address; a pending change can be cancelled, which voids the links) and password (current password required); sign out.
 - Tapping someone in a group's members list or a plan's "who's going" opens their profile: picture, names, bio, and the groups you share.
 - Your own profile also shows your counts: groups, activities, upcoming plans.
 - **Forgot password:** request a reset link by email from the sign-in screen; the link opens a page to set a new password.
