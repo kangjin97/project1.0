@@ -82,7 +82,7 @@ Status legend: **Done** = DB + UI + tests. **DB only** = schema/RPCs/tests exist
 - **Add to schedule** from: My schedule FAB, group Schedule tab, and the activity detail page (per group).
 - Times, calendar days and "today" use the profile's time zone (see F11); all-day clash checks use each participant's zone.
 - UI: `features/schedule/my_schedule_page.dart`, `calendar_views.dart` (`WeekView`, `MonthView`), `schedule_widgets.dart` (`EntryTile`, `AgendaList`, `confirmClashes`, time labels), `entry_editor.dart` (`showEntryEditor`, `showRescheduleEditor`), `entry_detail_sheet.dart` (`showEntryDetail`, `describeEntryChange`); `features/groups/group_schedule_tab.dart`.
-- Data: `data/schedule_models.dart` (`ScheduleEntry`, `ScheduleParticipant`, `ScheduleClash`, `ScheduleResult`, `EntryTiming`, date helpers), `data/schedule_repository.dart` (`list`, `create`, `reschedule`, `addParticipants`, `setActivity`, `rename`, `delete`, `leave`, `acknowledgeClash`, `history`); providers `scheduleProvider(ScheduleQuery)`, `entryHistoryProvider(id)`; helper `invalidateSchedule`.
+- Data: `data/schedule_models.dart` (`ScheduleEntry`, `ScheduleParticipant`, `ScheduleClash`, `ScheduleResult`, `EntryTiming`, date helpers), `data/schedule_repository.dart` (`list`, `create`, `reschedule`, `addParticipants`, `setActivity`, `rename`, `delete`, `leave`, `acknowledgeClash`, `history`; `queryAroundEntry` builds a schedule window around one plan so its detail sheet can be opened from elsewhere, used by notifications and group history); providers `scheduleProvider(ScheduleQuery)`, `entryHistoryProvider(id)`; helper `invalidateSchedule`.
 - DB: `schedule_entries`, `schedule_participants`, `list_schedule`, `create_schedule_entry`, `reschedule_entry`, `add_entry_participants`, `find_clashes`, `apply_participants`, `entry_range`.
 - Tests: `core_rules.test.sql` (clash, force, acknowledge, reschedule, replace event, delete → event), `list_schedule.test.sql` (personal vs group view, windows, time zones, privacy).
 - Gaps: past entries aren't browsable on phones (agenda starts today); no drag-to-reschedule; no recurring entries.
@@ -125,9 +125,24 @@ Status legend: **Done** = DB + UI + tests. **DB only** = schema/RPCs/tests exist
 - DB: `notifications`, `list_notifications` (resolves names and plan details; hides plan/group details the caller can no longer see).
 - Tests: `notifications.test.sql` (own only, names and order, clash count, current invitation status, limit, mark read own only, details hidden after leaving, anon refused); `app/test/notifications_text_test.dart` (wording, time ago).
 
-## F10. Change log — Done for activities, DB for everything else
+## F10. Change log — Done
 - Every insert/update/delete on core tables is logged by trigger with actor and before/after.
-- Shown on the activity detail page and the schedule entry sheet. **To build:** per-group log view.
+- Shown on the activity detail page, the schedule entry sheet, and the group's **History** page.
+- **Group history** (`/groups/:id/history`, group page ⋮ → History): who did what in the group, newest first, under day headings ("Today", "Yesterday", dates), 50 at a time with **Show older**; pull to refresh. Lists:
+  - shares, removals and type changes;
+  - types added, renamed and deleted; merges and undone merges;
+  - plans planned, retimed, renamed, removed or swapped; events replaced (named as they were); people added to or leaving plans; clash overrides;
+  - members joining (or creating the group), leaving or being removed;
+  - edits and photo changes to an activity **made while it was shared in the group**, worked out from the log's own share and removal lines, so they stay listed after the activity leaves the group. Edits from before it was shared (or while it was out of the group) stay private, and the owner's label never shows.
+- **Tap a line** to open what it's about (chevron shown): activity lines open the activity while you can still see it; plan and participant lines open the plan's detail sheet while the plan exists; member lines open the person's profile. Type and merge lines don't open anything.
+- Members see the group's whole history, including from before they joined. Former members and outsiders see nothing.
+- Names follow visibility: a deleted activity reads "an activity", a plan with no name left reads "a plan", a deleted account reads "a deleted user". Joining or leaving by yourself vs. being added or removed is told apart by id, so it still reads right after an account is deleted.
+- Left out on purpose (bookkeeping, not a person's action): edits that only changed the owner's label, a label being cleared from a share, and participants being marked as clashing (the clash override line covers it).
+- UI: `features/groups/group_history_page.dart` (`GroupHistoryPage`, `describeGroupChange`, `historyDayHeading`); menu item in `group_page.dart`; route in `router.dart`. Plans open through `queryAroundEntry` (`schedule_repository.dart`), shared with the notifications page.
+- Data: G `history(groupId, {beforeId, limit})`, `historyPageSize`; provider `groupHistoryProvider(groupId)` (first page; later pages are kept by the page). `ChangeEntry.fromGroupHistory` in `models.dart`.
+- DB: `list_group_history`.
+- Tests: `group_history.test.sql` (whole history for members incl. before joining, names, edits only while shared, including out-and-back-in and after removal, label never shown, merges, plan id and timing, paging, outsiders and former members see nothing, deleted activity names hidden); `app/test/group_history_text_test.dart` (wording).
+- Note: plan lines use the plan's current name (like the rest of the app), except "planned the event" and "replaced the event", which name the event as it was.
 
 ---
 
@@ -141,7 +156,6 @@ Open at the time of writing:
 |---|---|---|
 | #5 Smoke-test the live web app on a phone | F12 | chore, priority:high |
 | #7 Realtime updates | F5, F8, F9 | feature |
-| #8 Group history (change log) view | F10 | feature |
 | #9 Manage invite links and sent invitations | F3 | feature |
 | #10 Delete a group and transfer ownership manually | F2 | feature |
 | #11 Browse past plans on the phone schedule list | F8 | feature |

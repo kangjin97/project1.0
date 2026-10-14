@@ -59,9 +59,14 @@ class GroupPage extends ConsumerWidget {
           actions: [
             if (group.value case final g?)
               PopupMenuButton<String>(
-                onSelected: (v) => v == 'rename' ? _rename(context, ref, g) : _leave(context, ref, g),
+                onSelected: (v) => switch (v) {
+                  'rename' => _rename(context, ref, g),
+                  'history' => context.push('/groups/$groupId/history'),
+                  _ => _leave(context, ref, g),
+                },
                 itemBuilder: (_) => const [
                   PopupMenuItem(value: 'rename', child: Text('Rename group')),
+                  PopupMenuItem(value: 'history', child: Text('History')),
                   PopupMenuItem(value: 'leave', child: Text('Leave group')),
                 ],
               ),

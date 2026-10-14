@@ -28,6 +28,8 @@ Product and technical decisions, with the reason. Newest last. When a decision c
 | 2026-10-12 | Deleting an account: groups pass to the longest-standing member (empty groups deleted); their activities and photos are deleted; plans that used them stay as events; history shows "deleted user". |
 | 2026-10-13 | Privacy policy published: effective 13 October 2026, contact easyplanhehe@gmail.com (a dedicated Gmail; no custom domain yet), data in Supabase's Singapore region; it mentions hosting providers' server logs. |
 | 2026-10-13 | Auth emails go through **Resend** (custom SMTP in Supabase), sent from `no-reply@easyplanhehe.online`. The owner bought `easyplanhehe.online` (Namecheap) for this; the web app stays on `easyplan-hehe.netlify.app` for now. Resend region: Tokyo, Japan. Named in the privacy policy. |
+| 2026-10-15 | A group's history (#8) includes edits to activities shared in the group, but only those made **while** the activity was shared there; edits from before sharing stay private. |
+| 2026-10-15 | Group history opens from the group page's ⋮ menu as its own page, not as a fifth tab (keeps the tabs uncrowded on phones). |
 
 ## Choices made on the owner's behalf (confirm or revise)
 
@@ -57,6 +59,9 @@ Product and technical decisions, with the reason. Newest last. When a decision c
 | 2026-10-14 | Notifications get their own tab, labelled **Alerts** (fifth, before Profile), with an unread badge. The page is titled "Notifications". | "Notifications" doesn't fit five tabs on a phone; a tab makes the badge visible everywhere. |
 | 2026-10-14 | Opening the notifications page marks everything read (no per-item read state); the list keeps its highlights for that visit. | Simple, and matches the issue ("opening marks them read"). |
 | 2026-10-14 | Notifications about a plan or group the user can no longer see show "a plan" / "a group" instead of the current title. | Leaving a group shouldn't keep leaking its updates. |
+| 2026-10-15 | Group history (#8) shows a member the group's whole history, including from before they joined; former members see none. | Matches what members can already see (the group's activities and plans); the log is about the group, not the member. |
+| 2026-10-15 | Group history leaves out bookkeeping rows: label-only edits, a label being cleared from a share, and participants marked as clashing (the clash override line already says it). An event is named as it was when planned. | Each line should be something a person did, in words that were true at the time. |
+| 2026-10-15 | A deleted activity's name no longer shows in group history ("an activity"). | Same rule as everywhere else: names follow what the caller can still see. |
 
 ## Technical
 
@@ -84,3 +89,4 @@ Product and technical decisions, with the reason. Newest last. When a decision c
 | 2026-10-14 | `cancel_email_change()` writes `auth.users` directly (security definer, caller's row only). | Supabase Auth has no cancel API; `delete_my_account` already writes `auth.users` the same way. |
 | 2026-10-14 | `list_notifications` RPC resolves notification payloads (names, plan timing) in the database; the unread badge re-counts on navigation and app resume until realtime (#7). | Payloads hold only ids, and RLS hides some of them from the client; one call per screen. |
 | 2026-10-15 | **Deploys on request only**, replacing continuous deployment (2026-10-12). Merging to `main` runs the checks but doesn't deploy. The owner develops and tests on the local stack, merges as often as they like, and asks for a deploy at the end of the day or when the live app needs updating; the deploy is a manual CI run on `main` (`gh workflow run ci.yml --ref main`). `supabase db push` now comes before the deploy rather than before merging. | Each Netlify production deploy costs credits, and several merges a day used them up too fast (owner's decision). |
+| 2026-10-15 | `list_group_history` RPC resolves group history (names, types, plan titles) in the database and decides which activity edits a group may see from the log's own share and removal rows, ordered by `change_log.id`; paged by `change_log.id`. | Log rows hold only ids and snapshots, some names are no longer visible through RLS, and the "while shared" rule and label stripping belong in the database. Using the log rather than the current share keeps edits listed after an activity leaves the group, and ids order rows that share a timestamp. |

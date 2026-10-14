@@ -87,7 +87,7 @@ Every change is recorded with who made it and when, so it's always traceable who
 - Participants added / removed
 - Clash warning overridden (who proceeded, which members clashed)
 
-Users can view the log per activity, per schedule entry, and per group.
+Users can view the log per activity, per schedule entry, and per group. A group's log shows everything done in the group, plus edits to an activity made while it was shared there; the owner's private edits from before sharing, and labels, stay private.
 
 ### 2.9 Profiles
 - Everyone has a profile page: picture, display name, @username, and a short bio (≤160 characters).
@@ -155,7 +155,7 @@ Notes:
 3. **My Activities:** private and shared activities; create/edit; share to a group
 4. **Activity detail:** fields, photos, groups it's in, change history
 5. **Groups list:** create group, pending invitations
-6. **Group home:** tabs for Activities (search/filter), Schedule (with unscheduled events as "Ideas"), Members, Types. A group Log view is planned (#8).
+6. **Group home:** tabs for Activities (search/filter), Schedule (with unscheduled events as "Ideas"), Members, Types; **History** (the group's change log) from the group's menu.
 7. **Schedule entry sheet:** pick activity or name an event, all-day or a time range, pick members, then the clash confirmation dialog
 8. **Replace event:** pick an activity from the group to fill the placeholder
 9. **Invite:** copy link, or search by username/email
@@ -178,7 +178,7 @@ Notes:
 | 5 | Search & filter (my activities and group) | Done |
 | 6 | Schedules: entries, participants, clash detection | Done |
 | 7 | Events and replacement | Done |
-| 8 | Change-log views and notifications | Activity and entry history and the notifications screen done; group log (#8) and realtime (#7) to do |
+| 8 | Change-log views and notifications | Activity, entry and group history and the notifications screen done; realtime (#7) to do |
 
 Details and backlog: [`docs/ai/features.md`](docs/ai/features.md).
 

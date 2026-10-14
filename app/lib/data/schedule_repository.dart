@@ -11,6 +11,19 @@ String get _me => _db.auth.currentUser!.id;
 /// Which slice of the schedule to load.
 typedef ScheduleQuery = ({DateTime from, DateTime to, String? groupId, bool includeUnscheduled});
 
+/// A schedule window that contains one plan, so its detail sheet finds it.
+/// Group view when [groupId] is given (also covers "no date yet" ideas).
+/// [date] for all-day plans; [start]/[end] in the display zone for timed ones.
+ScheduleQuery queryAroundEntry({String? groupId, DateTime? date, DateTime? start, DateTime? end}) {
+  final from = date ?? start;
+  if (from == null) {
+    final today = AppClock.today();
+    return (from: today, to: today, groupId: groupId, includeUnscheduled: true);
+  }
+  final to = date ?? end ?? from;
+  return (from: dateOnly(from), to: dateOnly(to), groupId: groupId, includeUnscheduled: false);
+}
+
 class ScheduleRepository {
   /// Entries between two local dates (inclusive). Without [groupId], the
   /// user's own schedule; with it, the whole group's.
