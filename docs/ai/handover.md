@@ -37,8 +37,9 @@ Settings that exist only in dashboards, and how to redo them, are in [`deploymen
 - **Privacy policy:** live at `/privacy.html`.
 - **In flight at the time of writing:** #35 (Resend named in the privacy policy; closes #4) and the PR for #37 (this handover and a full doc audit). Always check `gh pr list` and the board's In Progress column.
 - **Docs were audited against the code on 2026-10-14** (endpoints, database, features, architecture, README, SPEC, setup and deployment guides) and fixed. Code-level gaps it found became issues and are fixed: #19 (function grants and `search_path`; now guarded by `function_privileges.test.sql`) and #38 (all Supabase calls go through repositories).
-- **Not built:** notifications UI (#6), realtime (#7), group history view (#8), store apps (#13, #14). Full list: `gh issue list`.
-- **Next priorities (owner's labels):** `priority:high` issues first: #5 phone smoke test. Then features from the backlog (`gh issue list`), e.g. #6 notifications screen.
+- **Notifications** (#6): Alerts tab with an unread badge; no realtime yet (#7).
+- **Not built:** realtime (#7), group history view (#8), invite management (#9), store apps (#13, #14). Full list: `gh issue list`.
+- **Next priorities (owner's labels):** `priority:high` issues first: #5 phone smoke test. Then features from the backlog (`gh issue list`), e.g. #7 realtime (would make the badge live) or #8 group history.
 
 ## How to resume work
 

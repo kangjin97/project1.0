@@ -1,25 +1,39 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+
+import '../../data/notifications_repository.dart';
 
 const _tabs = [
   (path: '/schedule', label: 'Schedule', icon: Icons.calendar_month_outlined, selected: Icons.calendar_month),
   (path: '/groups', label: 'Groups', icon: Icons.groups_outlined, selected: Icons.groups),
   (path: '/activities', label: 'Activities', icon: Icons.local_activity_outlined, selected: Icons.local_activity),
+  // "Notifications" doesn't fit five tabs on a phone; the page itself is titled that.
+  (path: '/notifications', label: 'Alerts', icon: Icons.notifications_outlined, selected: Icons.notifications),
   (path: '/profile', label: 'Profile', icon: Icons.account_circle_outlined, selected: Icons.account_circle),
 ];
 
 /// Bottom navigation on phones, a side rail on wider screens.
-class HomeShell extends StatefulWidget {
+class HomeShell extends ConsumerStatefulWidget {
   const HomeShell({super.key, required this.child});
 
   final Widget child;
 
   @override
-  State<HomeShell> createState() => _HomeShellState();
+  ConsumerState<HomeShell> createState() => _HomeShellState();
 }
 
-class _HomeShellState extends State<HomeShell> {
+class _HomeShellState extends ConsumerState<HomeShell> {
   GoRouter? _router;
+
+  late final AppLifecycleListener _lifecycle;
+
+  @override
+  void initState() {
+    super.initState();
+    // No realtime yet (#7): re-count unread notifications when the app comes back.
+    _lifecycle = AppLifecycleListener(onResume: () => ref.invalidate(unreadCountProvider));
+  }
 
   // Read the location from the router itself so the selected tab is never stale.
   @override
@@ -35,11 +49,23 @@ class _HomeShellState extends State<HomeShell> {
   @override
   void dispose() {
     _router?.routerDelegate.removeListener(_onRouteChanged);
+    _lifecycle.dispose();
     super.dispose();
   }
 
   void _onRouteChanged() {
-    if (mounted) setState(() {});
+    if (!mounted) return;
+    // Also re-count on every navigation: it is a cheap count and catches most changes.
+    ref.invalidate(unreadCountProvider);
+    setState(() {});
+  }
+
+  Widget _icon(int i, {required bool selected}) {
+    final t = _tabs[i];
+    final icon = Icon(selected ? t.selected : t.icon);
+    if (t.path != '/notifications') return icon;
+    final unread = ref.watch(unreadCountProvider).value ?? 0;
+    return Badge(isLabelVisible: unread > 0, label: Text(unread > 99 ? '99+' : '$unread'), child: icon);
   }
 
   int get _index {
@@ -61,8 +87,12 @@ class _HomeShellState extends State<HomeShell> {
           selectedIndex: _index,
           onDestinationSelected: (i) => _go(context, i),
           destinations: [
-            for (final t in _tabs)
-              NavigationDestination(icon: Icon(t.icon), selectedIcon: Icon(t.selected), label: t.label),
+            for (var i = 0; i < _tabs.length; i++)
+              NavigationDestination(
+                icon: _icon(i, selected: false),
+                selectedIcon: _icon(i, selected: true),
+                label: _tabs[i].label,
+              ),
           ],
         ),
       );
@@ -79,8 +109,12 @@ class _HomeShellState extends State<HomeShell> {
               child: Icon(Icons.groups_2_outlined, size: 32),
             ),
             destinations: [
-              for (final t in _tabs)
-                NavigationRailDestination(icon: Icon(t.icon), selectedIcon: Icon(t.selected), label: Text(t.label)),
+              for (var i = 0; i < _tabs.length; i++)
+                NavigationRailDestination(
+                  icon: _icon(i, selected: false),
+                  selectedIcon: _icon(i, selected: true),
+                  label: Text(_tabs[i].label),
+                ),
             ],
           ),
           const VerticalDivider(width: 1),

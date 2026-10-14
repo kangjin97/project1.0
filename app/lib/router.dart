@@ -13,6 +13,7 @@ import 'features/groups/group_page.dart';
 import 'features/groups/groups_page.dart';
 import 'features/groups/join_page.dart';
 import 'features/home/home_shell.dart';
+import 'features/notifications/notifications_page.dart';
 import 'features/profile/profile_page.dart';
 import 'features/schedule/my_schedule_page.dart';
 
@@ -81,6 +82,7 @@ final routerProvider = Provider<GoRouter>((ref) {
               ),
             ],
           ),
+          GoRoute(path: '/notifications', builder: (_, _) => const NotificationsPage()),
           GoRoute(path: '/profile', builder: (_, _) => const ProfilePage()),
           GoRoute(
             path: '/people/:id',

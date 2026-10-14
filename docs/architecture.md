@@ -44,11 +44,12 @@ There is no custom server. The Flutter app talks to Supabase directly, and **eve
 | `/groups` | `GroupsPage` | Groups list and pending invitations. |
 | `/groups/:id` | `GroupPage` | Tabs: Activities, Schedule, Members, Types. |
 | `/activities` | `ActivitiesPage` | My activities. |
+| `/notifications` | `NotificationsPage` | The "Alerts" tab: notifications, newest first; opening marks them read. |
 | `/profile` | `ProfilePage` | Own profile, stats, account settings, sign out. |
 | `/people/:id` | `PersonPage` | Someone else's profile; opened with `context.push` from members / "Going" lists. |
 | `/activities/:id` | `ActivityDetailPage` | Any activity the user can see. Opened with `context.push` so Back returns to where you came from. |
 
-`HomeShell` shows a bottom `NavigationBar` below 720 px wide and a `NavigationRail` above. It reads the current location from `GoRouter.routerDelegate`, so the highlighted tab follows the URL. Pages outside the four tabs (e.g. `/people/:id`) highlight Schedule.
+`HomeShell` shows a bottom `NavigationBar` below 720 px wide and a `NavigationRail` above. It reads the current location from `GoRouter.routerDelegate`, so the highlighted tab follows the URL. Pages outside the five tabs (Schedule, Groups, Activities, Alerts, Profile; e.g. `/people/:id`) highlight Schedule. The Alerts tab carries an unread badge (`unreadCountProvider`), re-counted on each navigation and when the app resumes.
 
 Full-screen forms (`showActivityForm`) and bottom sheets are pushed on the **root** navigator, so they cover the navigation bar.
 
