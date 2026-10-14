@@ -38,6 +38,7 @@ class GroupPlannerApp extends ConsumerWidget {
       title: 'EasyPlan',
       debugShowCheckedModeBanner: false,
       routerConfig: router,
+      scaffoldMessengerKey: rootMessengerKey,
       theme: ThemeData(colorSchemeSeed: seed, useMaterial3: true),
       darkTheme: ThemeData(colorSchemeSeed: seed, brightness: Brightness.dark, useMaterial3: true),
     );

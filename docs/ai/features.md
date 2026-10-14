@@ -9,6 +9,7 @@ Status legend: **Done** = DB + UI + tests. **DB only** = schema/RPCs/tests exist
 ## F1. Accounts and auth — Done
 - Email + password via Supabase Auth. Sign-up requires a unique username `^[a-z0-9_]{3,30}$` (checked with `username_available`, enforced by unique constraint). Optional display name.
 - Signed-out users are redirected to `/auth?next=<original>`; after sign-in they return there (keeps invite links working).
+- Auth emails whose links return to the site root (`/?code=` sign-up confirmation, `/?message=` first step of a secure email change, `/?error_description=` expired link) go to My schedule (or sign-in), and the note is shown as a snackbar (`authLinkNotice`, `rootMessengerKey` in `router.dart`). Tests: `app/test/router_test.dart`.
 - UI: `app/lib/features/auth/auth_page.dart`; redirect in `app/lib/router.dart`.
 - DB: `profiles`, trigger `handle_new_user`, `username_available`.
 - Tests: `core_rules.test.sql` (profile creation).
