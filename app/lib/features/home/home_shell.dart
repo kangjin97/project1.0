@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../data/notifications_repository.dart';
+import '../../data/realtime_repository.dart';
 
 const _tabs = [
   (path: '/schedule', label: 'Schedule', icon: Icons.calendar_month_outlined, selected: Icons.calendar_month),
@@ -31,7 +32,8 @@ class _HomeShellState extends ConsumerState<HomeShell> {
   @override
   void initState() {
     super.initState();
-    // No realtime yet (#7): re-count unread notifications when the app comes back.
+    // Realtime keeps the badge live (liveUpdatesProvider); re-count on resume
+    // as well, in case the connection was asleep while the app was hidden.
     _lifecycle = AppLifecycleListener(onResume: () => ref.invalidate(unreadCountProvider));
   }
 
@@ -55,7 +57,8 @@ class _HomeShellState extends ConsumerState<HomeShell> {
 
   void _onRouteChanged() {
     if (!mounted) return;
-    // Also re-count on every navigation: it is a cheap count and catches most changes.
+    // Also re-count on every navigation: a cheap count, and a safety net if the
+    // realtime connection is down.
     ref.invalidate(unreadCountProvider);
     setState(() {});
   }
@@ -78,6 +81,8 @@ class _HomeShellState extends ConsumerState<HomeShell> {
 
   @override
   Widget build(BuildContext context) {
+    // Other people's changes re-fetch open screens while signed in (#7).
+    ref.watch(liveUpdatesProvider);
     final child = widget.child;
     final wide = MediaQuery.sizeOf(context).width >= 720;
     if (!wide) {

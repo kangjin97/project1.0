@@ -11,6 +11,8 @@ flowchart LR
   R -- "PostgREST (tables, RPCs)" --> DB[(Postgres + RLS)]
   R -- "Auth (email/password)" --> AUTH[Supabase Auth]
   R -- "Storage (signed URLs)" --> ST[Storage: activity-photos]
+  DB -- "triggers broadcast 'changed'" --> RT[Realtime: private channels]
+  RT -- "group:id / user:id" --> R
   AUTH -- "trigger: create profile" --> DB
   ST -- "policies call can_access_activity()" --> DB
 ```
@@ -64,7 +66,7 @@ All times are stored in UTC (`timestamptz`) or as calendar dates. The app shows 
 - After a mutation, the code that made it **invalidates** the affected providers. Two helpers cover the common cases:
   - `invalidateActivity(ref, activityId, {groupId})`: my activities, that activity, where it's shared, its history, and group activity lists.
   - `invalidateLabels(ref)`: everything a label change can affect, including group types, because labels can create types.
-- No realtime subscriptions yet. Other users' changes appear on refresh: pull-to-refresh, or re-entering a screen.
+- **Other people's changes arrive live** (#7). Database triggers broadcast "table X changed" to private Realtime channels (`group:<id>`, `user:<id>`); RLS on `realtime.messages` decides who may listen. `liveUpdatesProvider` (`data/realtime_repository.dart`, watched by `HomeShell`) joins the user's channel and one per group. It waits 400 ms to batch messages, then invalidates the providers `providersAffectedBy(topic, table)` names; only the ones on screen re-fetch. Pull-to-refresh still works as a manual fallback.
 
 ### Errors
 

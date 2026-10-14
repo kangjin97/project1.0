@@ -59,6 +59,21 @@ class _GroupHistoryPageState extends ConsumerState<GroupHistoryPage> {
   }
 
   @override
+  void initState() {
+    super.initState();
+    // A live update re-fetches the first page, which then overlaps the older
+    // pages loaded so far; drop those so the list has no gap or repeats.
+    ref.listenManual(groupHistoryProvider(widget.groupId), (previous, next) {
+      if (previous?.hasValue == true && next.hasValue && _more.isNotEmpty) {
+        setState(() {
+          _more.clear();
+          _lastPageFull = null;
+        });
+      }
+    });
+  }
+
+  @override
   Widget build(BuildContext context) {
     ref.watch(timezoneProvider);
     final groupName = ref.watch(groupProvider(widget.groupId)).value?.name;

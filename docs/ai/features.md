@@ -114,16 +114,35 @@ Status legend: **Done** = DB + UI + tests. **DB only** = schema/RPCs/tests exist
 - **Deployed:** the web app is live at https://easyplan-hehe.netlify.app against the Supabase cloud project. Merging to `main` doesn't deploy; the owner asks for a deploy, which runs CI manually on `main` (`deploy-web` job; `docs/deployment.md` → Deploying the web app).
 - Gaps: iOS Associated Domains must be added in Xcode; `.well-known` files need the Play signing SHA-256 and Apple Team ID; store listings are manual.
 
-## F9. Notifications — Done (screen and badge; realtime #7, push #18 to come)
+## F9. Notifications — Done (screen, live badge; push #18 to come)
 - Kinds written by the database: `group_invitation` (on invite), `added_to_entry` and `schedule_clash` (when a planner adds you; clash when you were busy).
 - **Alerts tab** (`/notifications`, 4th of five tabs; the page is titled "Notifications"): newest first, unread highlighted with a dot. Text per kind: "alice invited you to Hikers" (+ pending/joined/declined), "alice added you to Dinner" (group · when), "Dinner clashes with 1 of your plans" (who added you anyway · when). Deleted users read as "Someone"; plans or groups you can no longer see read as "a plan" / "a group".
 - Tap: invitation → Groups (respond there); plan → its detail sheet (Keep both / Leave for clashes), opened on a schedule window around the plan; "You're no longer in this plan" if it's hidden.
 - Opening the page marks everything read and clears the badge; the loaded list keeps its highlights for that visit. Pull to refresh.
-- **Badge** on the Alerts tab (bottom bar and rail): unread count, "99+" cap. No realtime yet: re-counted on every navigation, when the app returns to the foreground, and on refresh.
+- **Badge** on the Alerts tab (bottom bar and rail): unread count, "99+" cap. Live: goes up within a second or two of a new notification (F13); nothing pops up (owner's choice). Also re-counted on every navigation, when the app returns to the foreground, and on refresh, as a safety net.
 - UI: `features/notifications/notifications_page.dart` (`NotificationsPage`, `describeNotification`, `planWhen`, `timeAgo`), `features/home/home_shell.dart` (tab + `Badge`).
 - Data: `data/notifications_repository.dart` (`list`, `unreadCount`, `markAllRead`; `notificationsProvider`, `unreadCountProvider`); model `AppNotification` in `data/models.dart`.
 - DB: `notifications`, `list_notifications` (resolves names and plan details; hides plan/group details the caller can no longer see).
 - Tests: `notifications.test.sql` (own only, names and order, clash count, current invitation status, limit, mark read own only, details hidden after leaving, anon refused); `app/test/notifications_text_test.dart` (wording, time ago).
+
+## F13. Live updates (realtime) — Done
+- Other people's changes show up on open screens within a second or two, silently (no banners; owner's choice): group Activities, Schedule, Members and Types tabs, group history, My schedule, My activities, activity pages, plan sheets, the Groups list and invitations, the Alerts list and badge, profile stats.
+- **How:** database triggers send a "changed" message naming only the table to private Realtime channels. The app re-fetches through RLS, so a message reveals nothing.
+  - **Topics:** `group:<id>` for anything inside a group; `user:<id>` for one person's notifications, invitations, plans, group memberships and own activities.
+  - **Who can listen** is a `realtime.messages` policy: members for group topics, the user for their own topic. Nobody can send; only the triggers publish.
+- One listener for the whole signed-in session (`liveUpdatesProvider`, watched by `HomeShell`). It joins `user:<me>` plus one channel per group, and joins or leaves group channels as the group list changes. It closes everything on sign-out.
+- **No fetch storms:**
+  - The database sends one message per topic and table per transaction (e.g. a plan with five people is one message per topic).
+  - The app collects messages for 400 ms and invalidates each affected provider once.
+  - Only providers that are on screen actually re-fetch.
+- **After a dropped connection:** when a channel rejoins, everything for that topic is re-fetched, since messages sent meanwhile are lost.
+- Group history: a live update resets to the first page, so older pages loaded before don't leave a gap.
+- Plan changes also go to each participant's own topic, so someone who left the group but is still on one of its plans keeps getting updates about it.
+- Your own changes come back as messages too, and cause one extra re-fetch. That's on purpose: skipping them would stop your other devices and tabs from updating.
+- Data: `data/realtime_repository.dart` (`RealtimeRepository.listen`, `liveUpdatesProvider`, `providersAffectedBy` maps topic + table to providers, `liveUpdateDelay`).
+- DB: `broadcast_change` trigger on `groups`, `group_members`, `group_invitations`, `group_activities`, `activities`, `activity_photos`, `activity_types`, `type_merges`, `schedule_entries`, `schedule_participants`, `notifications`; policy `easyplan_listen` on `realtime.messages`.
+- Tests: `realtime.test.sql` (who gets which message, payload has no row data, one message per transaction, members/self only can listen, nobody can send, anon and former members can't listen); `app/test/realtime_refresh_test.dart` (which providers refresh).
+- **When adding a table a screen shows:** add a `broadcast_change` trigger for it and a case in `providersAffectedBy`, or that screen won't update live.
 
 ## F10. Change log — Done
 - Every insert/update/delete on core tables is logged by trigger with actor and before/after.
@@ -155,7 +174,6 @@ Open at the time of writing:
 | Issue | Feature | Label |
 |---|---|---|
 | #5 Smoke-test the live web app on a phone | F12 | chore, priority:high |
-| #7 Realtime updates | F5, F8, F9 | feature |
 | #9 Manage invite links and sent invitations | F3 | feature |
 | #10 Delete a group and transfer ownership manually | F2 | feature |
 | #11 Browse past plans on the phone schedule list | F8 | feature |

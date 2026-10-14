@@ -199,5 +199,16 @@ Returns `{status:'clash', clashes:[...]}` (nothing saved) or `{status:'created',
 | N `unreadCount()` | REST `HEAD notifications?select=id&user_id=eq.<me>&read_at=is.null` (`count=exact`) | self | `unreadCountProvider`, the nav badge. |
 | N `markAllRead()` | REST `PATCH notifications?user_id=eq.<me>&read_at=is.null {read_at: now}` | self | Only `read_at` is writable (column grant); RLS limits it to your rows. |
 
+## Realtime
+
+Dart: `app/lib/data/realtime_repository.dart` (R).
+
+| Dart | Call | Who | Notes |
+|---|---|---|---|
+| R `listen(topic, {onChange, onRejoin})` → used by `liveUpdatesProvider` | `channel(topic, private: true).onBroadcast(event: 'changed').subscribe()`; leave with `removeChannel` | `user:<me>`: self; `group:<id>`: members (`easyplan_listen` policy on `realtime.messages`) | Payload `{table, id}`, where `id` is a message id. Clients can't send. On rejoin after a drop, everything for the topic is re-fetched. |
+
+The database sends on writes to `groups`, `group_members`, `group_invitations`, `group_activities`, `activities`, `activity_photos`, `activity_types`, `type_merges`, `schedule_entries`, `schedule_participants` and `notifications` (`broadcast_change` trigger; topics in `docs/database.md` → Realtime). `providersAffectedBy(topic, table)` lists what each message refreshes.
+
 ### Not yet used by the app
 - `find_clashes` directly (the RPCs above call it).
+- The `supabase_realtime` publication ("Postgres Changes"); the app uses the broadcasts above instead.
