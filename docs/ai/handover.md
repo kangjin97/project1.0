@@ -43,7 +43,7 @@ Settings that exist only in dashboards, and how to redo them, are in [`deploymen
 - **Group history** (#8, merged): group page ⋮ → History. Lists who did what in the group, including activity edits made while the activity was shared there (kept after it leaves the group); lines open the activity, plan or person. Details: `features.md` F10.
 - **Live updates** (#7, PR open): other people's changes appear on open screens within a second or two, silently. Database triggers broadcast to private Realtime channels; one app-wide listener re-fetches. Details: `features.md` F13. When adding a table that a screen shows, add a `broadcast_change` trigger and a `providersAffectedBy` case (CLAUDE.md rule 6).
 - **Not built:** invite management (#9), store apps (#13, #14). Full list: `gh issue list`.
-- **Next priorities (owner's labels):** `priority:high` issues first: #5 phone smoke test (worth doing after the next deploy, which brings group history and live updates to the live site). Then features from the backlog (`gh issue list`), e.g. #9 invite management or #11 past plans on phones.
+- **Next priorities (owner's labels):** `priority:high` issues first: #5 phone smoke test, together with #49 (live updates on two phones, step by step), after the next deploy, which brings group history and live updates to the live site. Then features from the backlog (`gh issue list`), e.g. #9 invite management or #11 past plans on phones.
 
 ## How to resume work
 
