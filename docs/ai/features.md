@@ -146,4 +146,3 @@ Open at the time of writing:
 | #16 Server-side search and filters for large groups | F7 | feature |
 | #17 Recurring plans | F8 | feature (v2) |
 | #18 Push notifications on phones | F9 | feature (v2) |
-| #19 Revoke execute on trigger functions from authenticated (and pin `search_path`) | DB | chore |
