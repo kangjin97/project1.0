@@ -133,15 +133,16 @@ Status legend: **Done** = DB + UI + tests. **DB only** = schema/RPCs/tests exist
   - types added, renamed and deleted; merges and undone merges;
   - plans planned, retimed, renamed, removed or swapped; events replaced (named as they were); people added to or leaving plans; clash overrides;
   - members joining (or creating the group), leaving or being removed;
-  - edits and photo changes to an activity **made while it was shared in the group**. Edits from before it was shared stay private, and the owner's label never shows.
+  - edits and photo changes to an activity **made while it was shared in the group**, worked out from the log's own share and removal lines, so they stay listed after the activity leaves the group. Edits from before it was shared (or while it was out of the group) stay private, and the owner's label never shows.
+- **Tap a line** to open what it's about (chevron shown): activity lines open the activity while you can still see it; plan and participant lines open the plan's detail sheet while the plan exists; member lines open the person's profile. Type and merge lines don't open anything.
 - Members see the group's whole history, including from before they joined. Former members and outsiders see nothing.
 - Names follow visibility: a deleted activity reads "an activity", a plan with no name left reads "a plan", a deleted account reads "a deleted user". Joining or leaving by yourself vs. being added or removed is told apart by id, so it still reads right after an account is deleted.
 - Left out on purpose (bookkeeping, not a person's action): edits that only changed the owner's label, a label being cleared from a share, and participants being marked as clashing (the clash override line covers it).
-- UI: `features/groups/group_history_page.dart` (`GroupHistoryPage`, `describeGroupChange`, `historyDayHeading`); menu item in `group_page.dart`; route in `router.dart`.
+- UI: `features/groups/group_history_page.dart` (`GroupHistoryPage`, `describeGroupChange`, `historyDayHeading`); menu item in `group_page.dart`; route in `router.dart`. Plans open through `queryAroundEntry` (`schedule_repository.dart`), shared with the notifications page.
 - Data: G `history(groupId, {beforeId, limit})`, `historyPageSize`; provider `groupHistoryProvider(groupId)` (first page; later pages are kept by the page). `ChangeEntry.fromGroupHistory` in `models.dart`.
 - DB: `list_group_history`.
-- Tests: `group_history.test.sql` (whole history for members incl. before joining, names, edits only while shared, label never shown, merges, paging, outsiders and former members see nothing, deleted activity names hidden); `app/test/group_history_text_test.dart` (wording).
-- Gaps: rows aren't tappable yet (e.g. to open the activity or plan); a plan's participant changes are named after the plan's current activity; edits made while an activity was shared drop out of the history if it's later removed from the group.
+- Tests: `group_history.test.sql` (whole history for members incl. before joining, names, edits only while shared, including out-and-back-in and after removal, label never shown, merges, plan id and timing, paging, outsiders and former members see nothing, deleted activity names hidden); `app/test/group_history_text_test.dart` (wording).
+- Note: plan lines use the plan's current name (like the rest of the app), except "planned the event" and "replaced the event", which name the event as it was.
 
 ---
 

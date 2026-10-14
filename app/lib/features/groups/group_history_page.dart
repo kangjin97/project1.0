@@ -1,14 +1,17 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 
 import '../../data/app_clock.dart';
 import '../../data/groups_repository.dart';
 import '../../data/models.dart';
 import '../../data/schedule_models.dart';
+import '../../data/schedule_repository.dart';
 import '../../widgets/async_body.dart';
 import '../../widgets/dialogs.dart';
 import '../activities/activity_detail_page.dart';
+import '../schedule/entry_detail_sheet.dart';
 import '../schedule/schedule_widgets.dart';
 
 /// Who did what in a group, newest first (#8). Opened from the group's menu.
@@ -112,14 +115,37 @@ class _GroupHistoryPageState extends ConsumerState<GroupHistoryPage> {
               style: theme.textTheme.titleSmall?.copyWith(color: theme.colorScheme.primary)),
         ));
       }
+      final open = _opener(e);
       children.add(ListTile(
         dense: true,
         leading: Icon(_icon(e), size: 20),
         title: Text('${e.actorUsername == null ? 'A deleted user' : '@${e.actorUsername}'} ${describeGroupChange(e)}'),
         subtitle: Text(formatTime(at), style: muted),
+        trailing: open == null ? null : const Icon(Icons.chevron_right, size: 20),
+        onTap: open,
       ));
     }
     return children;
+  }
+
+  /// What tapping a line opens: the activity, the plan or the member, while
+  /// they still exist and are visible. Null when there's nothing to open.
+  VoidCallback? _opener(ChangeEntry e) {
+    final id = e.entityId;
+    switch (e.entityType) {
+      // subject_name is only set while the caller can still see the activity.
+      case 'activity' || 'activity_photo' || 'group_activity' when id != null && e.subjectName != null:
+        return () => context.push('/activities/$id');
+      case 'schedule_entry' || 'schedule_participant' when e.entryId != null:
+        return () => showEntryDetail(
+            context,
+            queryAroundEntry(groupId: widget.groupId, date: e.entryDate, start: e.entryStartAt, end: e.entryEndAt),
+            e.entryId!);
+      case 'group_member' when id != null && e.personUsername != null:
+        return () => context.push('/people/$id');
+      default:
+        return null;
+    }
   }
 
   IconData _icon(ChangeEntry e) => switch (e.entityType) {

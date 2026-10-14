@@ -7,8 +7,12 @@
 --   * everything logged against the group (shares, types, merges, plans,
 --     participants, members joining and leaving), from before they joined too;
 --   * edits and photo changes to an activity made while it was shared in this
---     group. Edits from before it was shared stay private to the owner, and so
---     do label changes (personal_type_id), which are stripped from the snapshots.
+--     group, worked out from the log's own share and removal rows, so they
+--     stay listed after the activity leaves the group. Edits from before it was
+--     shared (or between shares) stay private to the owner, and so do label
+--     changes (personal_type_id), which are stripped from the snapshots.
+-- Plans come with their id and current timing so the app can open them; null
+-- once a plan is removed.
 -- Paged with p_before: pass the smallest id of the previous page.
 create function public.list_group_history(
   p_group uuid, p_before bigint default null, p_limit int default 50
@@ -27,7 +31,12 @@ returns table (
   person_username text,  -- the member or participant it's about
   from_type_name  text,
   to_type_name    text,
-  event_title     text   -- a plan's own name, kept when an activity replaces the event
+  event_title     text,  -- a plan's own name, kept when an activity replaces the event
+  entry_id        uuid,  -- the plan, while it still exists
+  entry_all_day   boolean,
+  entry_date      date,
+  entry_start_at  timestamptz,
+  entry_end_at    timestamptz
 )
 language sql stable security definer set search_path = '' as $$
   select cl.id, cl.created_at, cl.entity_type, cl.entity_id, cl.action,
@@ -45,7 +54,7 @@ language sql stable security definer set search_path = '' as $$
          end,
          person.username,
          from_t.name, to_t.name,
-         se.title
+         se.title, se.id, se.all_day, se.date, se.start_at, se.end_at
   from public.change_log cl
   left join public.profiles actor on actor.id = cl.actor_id
   -- Activity names only while the caller can still see the activity.
@@ -81,10 +90,19 @@ language sql stable security definer set search_path = '' as $$
   where public.is_group_member(p_group)
     and (p_before is null or cl.id < p_before)
     and (cl.group_id = p_group
+         -- Shared at the time: the latest share into this group before the
+         -- edit has no removal between it and the edit. Log ids give the order
+         -- (timestamps tie within a transaction).
          or (cl.entity_type in ('activity', 'activity_photo')
-             and exists (select 1 from public.group_activities ga
-                         where ga.group_id = p_group and ga.activity_id = cl.entity_id
-                           and cl.created_at >= ga.added_at)))
+             and exists (
+               select 1 from public.change_log s
+               where s.entity_type = 'group_activity' and s.entity_id = cl.entity_id
+                 and s.group_id = p_group and s.action = 'created' and s.id < cl.id
+                 and not exists (
+                   select 1 from public.change_log u
+                   where u.entity_type = 'group_activity' and u.entity_id = cl.entity_id
+                     and u.group_id = p_group and u.action = 'deleted'
+                     and u.id > s.id and u.id < cl.id))))
     -- Bookkeeping, not something a person did: an edit that only changed the
     -- owner's private label, a label being cleared from a share (its type
     -- stays), and a participant marked as clashing (the planner's

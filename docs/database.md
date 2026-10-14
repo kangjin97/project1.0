@@ -152,7 +152,7 @@ See [`ai/endpoints.md`](ai/endpoints.md) for parameters, return shapes and error
 | `delete_my_account()` | Deletes the caller's activities (plans become events) and auth user (cascades; groups handed over) |
 | `my_storage_files()` | Caller's avatar and activity photo paths, to remove before deletion |
 | `list_notifications(limit = 50)` | Caller's notifications, newest first, with actor name, group name, invitation status, plan title and timing, clash count. Plan details only while the caller is in the plan or its group; group name only for members or the invitee |
-| `list_group_history(group, before = null, limit = 50)` | A group's change log for its History page, newest first, paged by id, with actor, activity/plan/type names, the member or participant, and old/new type names. Members only. Includes activity edits made while the activity was shared in the group; strips the owner's label; leaves out bookkeeping rows |
+| `list_group_history(group, before = null, limit = 50)` | A group's change log for its History page, newest first, paged by id, with actor, activity/plan/type names, the member or participant, and old/new type names. Members only. Includes activity edits made while the activity was shared in the group (decided from the log's share and removal rows, so they stay after it leaves); strips the owner's label; leaves out bookkeeping rows; plans come with their id and timing while they exist |
 | `cancel_email_change()` | Clears the caller's pending email change in `auth.users` (address and both tokens), so the links already sent stop working. Supabase Auth has no API for this. |
 | `list_timezones()` | Zones for the picker: name, region, readable city, current offset in minutes (sorted by offset) |
 

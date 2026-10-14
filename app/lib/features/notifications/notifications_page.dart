@@ -6,7 +6,6 @@ import 'package:intl/intl.dart';
 import '../../data/app_clock.dart';
 import '../../data/models.dart';
 import '../../data/notifications_repository.dart';
-import '../../data/schedule_models.dart';
 import '../../data/schedule_repository.dart';
 import '../../widgets/async_body.dart';
 import '../../widgets/dialogs.dart';
@@ -96,20 +95,11 @@ class _NotificationsPageState extends ConsumerState<NotificationsPage> {
         showMessage(context, 'You’re no longer in this plan.');
         return;
       }
-      showEntryDetail(context, _queryFor(n), id);
+      showEntryDetail(
+          context,
+          queryAroundEntry(groupId: n.groupId, date: n.entryDate, start: n.entryStartAt, end: n.entryEndAt),
+          id);
     }
-  }
-
-  /// A schedule window that contains the plan, so the detail sheet finds it.
-  /// Group view when the group is visible (also covers "no date yet" ideas).
-  ScheduleQuery _queryFor(AppNotification n) {
-    final start = n.entryDate ?? n.entryStartAt;
-    if (start == null) {
-      final today = AppClock.today();
-      return (from: today, to: today, groupId: n.groupId, includeUnscheduled: true);
-    }
-    final end = n.entryDate ?? n.entryEndAt ?? start;
-    return (from: dateOnly(start), to: dateOnly(end), groupId: n.groupId, includeUnscheduled: false);
   }
 
   @override

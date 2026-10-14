@@ -29,12 +29,6 @@ with x as (insert into activities (name, price_min, price_max) values ('Beach da
 insert into ids select 'beach', id from x;
 update activities set price_max = 20 where id = (select v from ids where k = 'beach');
 
--- Same-transaction rows share now(); move the private edits before the share.
-reset role;
-update change_log set created_at = created_at - interval '1 hour'
- where entity_id = (select v from ids where k = 'beach');
-set local role authenticated;
-
 insert into group_activities (group_id, activity_id, type_id)
 select 'aaaaaaaa-0000-0000-0000-000000000001', v,
        (select id from activity_types where group_id = 'aaaaaaaa-0000-0000-0000-000000000001' and name = 'Food')
@@ -116,6 +110,11 @@ select is((select event_title from public.list_group_history('aaaaaaaa-0000-0000
             where entity_type = 'schedule_entry' and action = 'created'), 'Picnic',
           'plans carry their own name, kept for when an activity replaces the event');
 select results_eq(
+  $$ select distinct entry_id, entry_all_day, entry_date, entry_start_at from public.list_group_history('aaaaaaaa-0000-0000-0000-000000000001')
+      where entity_type in ('schedule_entry', 'schedule_participant') $$,
+  $$ select v, true, '2026-11-01'::date, null::timestamptz from ids where k = 'picnic' $$,
+  'plan lines carry the plan and its timing, so the app can open it');
+select results_eq(
   $$ select actor_username, subject_name, to_type_name from public.list_group_history('aaaaaaaa-0000-0000-0000-000000000001')
       where entity_type = 'type_merge' $$,
   $$ values ('ben'::text, 'yummy'::text, 'Food'::text) $$,
@@ -153,12 +152,39 @@ select results_eq(
   $$ values ('ben'::text, 'ben'::text) $$,
   'leaving is listed with who left');
 
--- Ann deletes the activity: its removal is listed, and its name is no longer shown.
+-- A second activity goes in, out and back in: only edits made while it was in
+-- the group are listed.
+with x as (insert into activities (name, price_min, price_max) values ('Kayak', 0, 1) returning id)
+insert into ids select 'kayak', id from x;
+insert into group_activities (group_id, activity_id, type_id)
+select 'aaaaaaaa-0000-0000-0000-000000000001', v,
+       (select id from activity_types where group_id = 'aaaaaaaa-0000-0000-0000-000000000001' and name = 'Outdoors')
+from ids where k = 'kayak';
+update activities set price_max = 2 where id = (select v from ids where k = 'kayak');
+delete from group_activities where activity_id = (select v from ids where k = 'kayak');
+update activities set price_max = 3 where id = (select v from ids where k = 'kayak');
+insert into group_activities (group_id, activity_id, type_id)
+select 'aaaaaaaa-0000-0000-0000-000000000001', v,
+       (select id from activity_types where group_id = 'aaaaaaaa-0000-0000-0000-000000000001' and name = 'Outdoors')
+from ids where k = 'kayak';
+update activities set price_max = 4 where id = (select v from ids where k = 'kayak');
+select results_eq(
+  $$ select after from public.list_group_history('aaaaaaaa-0000-0000-0000-000000000001')
+      where entity_type = 'activity' and entity_id = (select v from ids where k = 'kayak') order by id $$,
+  $$ values ('{"price_max": 2}'::jsonb), ('{"price_max": 4}') $$,
+  'edits made while it was out of the group are not listed');
+
+-- Ann deletes Beach day: its removal is listed, the edits made while it was
+-- shared stay listed, and its name is no longer shown.
 select delete_activity((select v from ids where k = 'beach'));
 select is((select count(*)::int from public.list_group_history('aaaaaaaa-0000-0000-0000-000000000001')
-            where entity_type = 'group_activity' and action = 'deleted'), 1, 'removing it from the group is listed');
+            where entity_type = 'group_activity' and action = 'deleted'
+              and entity_id = (select v from ids where k = 'beach')), 1, 'removing it from the group is listed');
 select is((select count(*)::int from public.list_group_history('aaaaaaaa-0000-0000-0000-000000000001')
-            where entity_type in ('activity', 'group_activity') and subject_name is not null), 0,
+            where entity_type = 'activity' and entity_id = (select v from ids where k = 'beach')), 2,
+          'edits made while it was shared stay listed after it leaves the group');
+select is((select count(*)::int from public.list_group_history('aaaaaaaa-0000-0000-0000-000000000001')
+            where entity_id = (select v from ids where k = 'beach') and subject_name is not null), 0,
           'a deleted activity''s name is no longer shown');
 
 select * from finish();
