@@ -16,6 +16,14 @@ import 'features/home/home_shell.dart';
 import 'features/profile/profile_page.dart';
 import 'features/schedule/my_schedule_page.dart';
 
+/// Shows snackbars from outside any page, e.g. a note carried by an auth link.
+final rootMessengerKey = GlobalKey<ScaffoldMessengerState>();
+
+/// Supabase sends auth links back to the site root, sometimes with a note for
+/// the user: `message` (an email change waiting for the other address's link)
+/// or `error_description` (an expired or already-used link).
+String? authLinkNotice(Uri uri) => uri.queryParameters['message'] ?? uri.queryParameters['error_description'];
+
 final routerProvider = Provider<GoRouter>((ref) {
   final auth = Supabase.instance.client.auth;
   final refresh = _AuthRefresh(auth.onAuthStateChange);
@@ -30,6 +38,16 @@ final routerProvider = Provider<GoRouter>((ref) {
       final atReset = state.matchedLocation == '/reset-password';
       // A password-reset link signs the user in temporarily; send them to set a new password.
       if (refresh.recovering && !atReset) return '/reset-password';
+      // The root has no page. A bare "/" becomes initialLocation, but auth links
+      // arrive as "/?..." and would otherwise hit "no routes for location".
+      if (state.uri.path == '/' || state.uri.path.isEmpty) {
+        final notice = authLinkNotice(state.uri);
+        if (notice != null) {
+          WidgetsBinding.instance.addPostFrameCallback((_) => rootMessengerKey.currentState
+              ?.showSnackBar(SnackBar(content: Text(notice), duration: const Duration(seconds: 10))));
+        }
+        return '/schedule';
+      }
       // The reset page handles its own "link expired" state.
       if (atReset) return null;
       if (!signedIn) {

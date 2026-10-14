@@ -35,6 +35,7 @@ There is no custom server. The Flutter app talks to Supabase directly, and **eve
 
 | Path | Screen | Notes |
 |---|---|---|
+| `/` | (none) | Redirects to `/schedule`. Auth emails land here with `?code=`, `?message=` or `?error_description=`; the message is shown as a snackbar. |
 | `/reset-password` | `ResetPasswordPage` | Opened from a password-reset email; any `passwordRecovery` session is redirected here. |
 | `/auth?next=` | `AuthPage` | Sign in or sign up. Signed-out users are redirected here with `next`, so invite links survive sign-in. |
 | `/join/:token` | `JoinPage` | Previews and joins a group from an invite link. Outside the shell. |
