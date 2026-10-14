@@ -115,14 +115,14 @@ rollback;
 
 ## Adding a feature: checklist
 
-1. **Schema:** a new migration with tables, RLS policies, column grants and any RPCs. Revoke `execute` on new functions from `public, anon` (and from `authenticated` for internal helpers).
+1. **Schema:** a new migration with tables, RLS policies, column grants and any RPCs. Revoke `execute` on new functions from `public, anon` (and from `authenticated` for internal helpers). If a screen shows the new table, add a `broadcast_change` trigger on it so other people's changes arrive live (see `docs/database.md` → Realtime).
 2. **Tests:** a pgTAP file covering the rules, run as real users through RLS.
 3. **Models:** add to `app/lib/data/models.dart`, including a `columns` select string if it embeds relations.
 4. **Repository:** methods in `app/lib/data/*_repository.dart`, plus `FutureProvider`s.
-5. **UI:** screens in `app/lib/features/<area>/`. After a mutation, invalidate every provider that shows the changed data (see `invalidateActivity` and `invalidateLabels`).
+5. **UI:** screens in `app/lib/features/<area>/`. After a mutation, invalidate every provider that shows the changed data (see `invalidateActivity` and `invalidateLabels`). For live updates, add the table's providers to `providersAffectedBy` in `data/realtime_repository.dart`.
 6. **Routes:** register in `app/lib/router.dart`.
 7. **Docs:** update `docs/ai/features.md`, `docs/ai/endpoints.md`, `docs/database.md` and `SPEC.md` as needed.
-8. **Checks:** `flutter analyze` (must be clean), `flutter test`, then `supabase test db`.
+8. **Checks:** `flutter analyze` (must be clean), `flutter test`, then `supabase test db`. Then try it in the app locally; for anything two people see, test with two sessions (`docs/ai/handover.md` → Pitfalls → Testing with two people).
 
 ## Git workflow
 

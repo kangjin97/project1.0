@@ -184,3 +184,4 @@ Open at the time of writing:
 | #16 Server-side search and filters for large groups | F7 | feature |
 | #17 Recurring plans | F8 | feature (v2) |
 | #18 Push notifications on phones | F9 | feature (v2) |
+| #49 Test live updates on two phones against the live site | F13 | chore |

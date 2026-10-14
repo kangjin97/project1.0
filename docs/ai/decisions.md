@@ -74,7 +74,7 @@ Product and technical decisions, with the reason. Newest last. When a decision c
 | 2026-10-02 | Schedule times change only through RPCs (column grants). | Clash checks can't be bypassed. |
 | 2026-10-02 | Emails live only in `auth.users`; lookup is exact-match only. | Avoids exposing or enumerating addresses. |
 | 2026-10-02 | Private photo bucket with signed URLs; access follows `can_access_activity`. | Photos are as private as their activity. |
-| 2026-10-09 | Riverpod `FutureProvider`s with explicit invalidation, no realtime yet. | Simple; realtime is a later step. |
+| 2026-10-09 | Riverpod `FutureProvider`s with explicit invalidation, no realtime yet (realtime added 2026-10-15, below). | Simple; realtime is a later step. |
 | 2026-10-09 | Search and filters run client-side. | Friend-group sizes; revisit if lists grow. |
 | 2026-10-09 | Apply local migrations with `supabase migration up`, never `db reset` without asking. | A reset wiped the owner's manual test data once. |
 | 2026-10-09 | `list_schedule` RPC as the schedule read model. | Mixed date/timestamp windows and joined names don't fit plain table queries. |

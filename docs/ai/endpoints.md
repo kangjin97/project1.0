@@ -5,7 +5,7 @@ Every backend call the app makes, plus the RPCs the database exposes but the app
 **Conventions**
 - "Who" is enforced by the database (RLS, grants or the RPC body), not by the app.
 - `P0001 "<msg>"` means the RPC raises that message; the app shows it via `friendlyError`.
-- Dart methods are in `app/lib/data/groups_repository.dart` (G), `activities_repository.dart` (A), `schedule_repository.dart` (S), `profile_repository.dart` (P), `auth_repository.dart` (Au) and `notifications_repository.dart` (N); `friendlyError` is in `groups_repository.dart`.
+- Dart methods are in `app/lib/data/groups_repository.dart` (G), `activities_repository.dart` (A), `schedule_repository.dart` (S), `profile_repository.dart` (P), `auth_repository.dart` (Au), `notifications_repository.dart` (N) and `realtime_repository.dart` (R); `friendlyError` is in `groups_repository.dart`.
 - `<Profile.columns>` is `id, username, display_name, avatar_path` (`data/models.dart`); embedded profiles use it.
 - Each repository file ends with its Riverpod providers (`FutureProvider` / `.family`, keyed by id) and invalidation helpers (`invalidateActivity`, `invalidateLabels`, `invalidateSchedule`). Providers are named after the method, e.g. `myGroupsProvider`, `membersProvider(groupId)`, `scheduleProvider(query)`; only ones that differ are listed below.
 
