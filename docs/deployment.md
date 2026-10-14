@@ -21,10 +21,10 @@ Order: **1 → 2 → 3** gets friends using it on their phones via the browser. 
 | Supabase Auth URLs | Site URL `https://easyplan-hehe.netlify.app`; redirect `https://easyplan-hehe.netlify.app/**` |
 | `app/env/prod.json` | Filled in on the owner's Mac (git-ignored) |
 | Auth emails | Sent through **Resend** from `no-reply@easyplanhehe.online` (custom SMTP in Supabase). Domain `easyplanhehe.online` at Namecheap; Resend region Tokyo, Japan (`ap-northeast-1`) |
-| Auth email templates | **Change email address**: EasyPlan template from `supabase/templates/email_change.html`, pasted into the dashboard. Confirm signup and Reset password: Supabase defaults |
+| Auth email templates | EasyPlan templates from `supabase/templates/` pasted into the dashboard: **Confirm signup** (`confirmation.html`), **Reset password** (`recovery.html`), **Change email address** (`email_change.html`). Magic link, invite and reauthentication aren't used |
 | Privacy policy | Live at `<APP_URL>/privacy.html`; names Supabase (Singapore), Netlify and Resend (Tokyo); contact easyplanhehe@gmail.com |
 | Deploys | **Automatic** on every push to `main`, after the checks pass (GitHub Actions → Netlify). See [Automatic deploys](#automatic-deploys). |
-| Still to do | Phone smoke test (#5); EasyPlan wording for the sign-up and reset emails (#36); Android (#13) and iOS (#14) store builds |
+| Still to do | Phone smoke test (#5); Android (#13) and iOS (#14) store builds |
 
 The cloud database is separate from the local one: local accounts and test data don't exist there, and the local seed accounts are never pushed.
 
@@ -62,7 +62,9 @@ The cloud database is separate from the local one: local accounts and test data 
      - Changing provider later: update these settings and name the new provider in the privacy policy.
    - **Emails → Templates**: templates kept in the repo live in `supabase/templates/` (the local stack uses them through `supabase/config.toml`). The cloud copy is set by hand: open the template, set the subject from `config.toml`, paste the file's contents into the body (the HTML comment at the top can stay), and save. Re-paste whenever the file changes.
      - **Change email address** → `supabase/templates/email_change.html`, subject "Confirm your EasyPlan email change". Sent to both the old and new address; says both links are needed.
-     - Confirm signup and Reset password still use Supabase's defaults (#36).
+     - **Confirm signup** → `supabase/templates/confirmation.html`, subject "Confirm your EasyPlan account". Only sent while **Confirm email** is on (cloud; off locally).
+     - **Reset password** → `supabase/templates/recovery.html`, subject "Reset your EasyPlan password". The link opens `/reset-password`.
+     - Magic link, Invite user and Reauthentication aren't used by the app; their defaults are fine.
 4. **(you)** Copy **Project URL** and the **Publishable key** (Project Settings → API keys) into `app/env/prod.json`.
 5. Plan: the free plan pauses a project after a week without activity and has small storage limits. Fine for a trial with friends; move to Pro before a public launch. Turn on backups (Pro includes daily backups).
 
@@ -192,6 +194,6 @@ If any are missing, the deploy job fails with a message naming them, and nothing
 - [x] `app/env/prod.json` filled in; web deployed to https://easyplan-hehe.netlify.app
 - [ ] Smoke test passed on a phone
 - [x] Privacy policy filled in and published (names Supabase, Netlify and Resend)
-- [ ] Email templates mention EasyPlan (change email done; confirm signup and reset password still default)
+- [x] Email templates mention EasyPlan (confirm signup, reset password, change email)
 - [ ] (Stores) upload key backed up; data safety / App Privacy answered; reviewer demo account ready
 - [ ] (Optional) replace the placeholder icon (`app/assets/icon/`, then `dart run flutter_launcher_icons`)

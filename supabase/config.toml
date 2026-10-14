@@ -250,6 +250,14 @@ otp_expiry = 3600
 subject = "Confirm your EasyPlan email change"
 content_path = "./supabase/templates/email_change.html"
 
+[auth.email.template.confirmation]
+subject = "Confirm your EasyPlan account"
+content_path = "./supabase/templates/confirmation.html"
+
+[auth.email.template.recovery]
+subject = "Reset your EasyPlan password"
+content_path = "./supabase/templates/recovery.html"
+
 # Uncomment to customize email template
 # [auth.email.template.invite]
 # subject = "You have been invited"
