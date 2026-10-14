@@ -1,6 +1,6 @@
 # Setting up a Windows PC
 
-Step-by-step setup for developing EasyPlan on Windows 11. The Mac equivalent is [`setup-mac.md`](setup-mac.md); everything after setup (running, testing, the git workflow, working on both computers) is shared and lives in [`development.md`](development.md). A Windows PC can do everything the Mac does except iOS builds, with the same workflow (issues, board, branches, pull requests, automatic deploys).
+Step-by-step setup for developing EasyPlan on Windows 11. The Mac equivalent is [`setup-mac.md`](setup-mac.md); everything after setup (running, testing, the git workflow, working on both computers) is shared and lives in [`development.md`](development.md). A Windows PC can do everything the Mac does except iOS builds, with the same workflow (issues, board, branches, pull requests, deploys on request).
 
 ## What you need
 
@@ -115,12 +115,12 @@ See [Working on both computers](development.md#working-on-both-computers): GitHu
 
 ## Deploying from Windows
 
-Deploys don't run on your PC: GitHub Actions builds and publishes the web app on Linux when `main` changes. So it works the same from either PC.
+Deploys don't run on your PC: GitHub Actions builds and publishes the web app on Linux when you start a deploy. So it works the same from either PC.
 
 | Step | On Windows |
 |---|---|
-| Web app to Netlify | **Same.** Merge the PR to `main`; the `deploy-web` job deploys after the checks pass. |
-| Database migrations to the cloud | **Same commands**, once per PC: `supabase login`, then `supabase link --project-ref <project-ref>` (stored in git-ignored `supabase/.temp`). After that, `supabase db push` before merging a PR that adds migrations. |
+| Web app to Netlify | **Same.** Merging doesn't deploy; when you want the live site updated, run `gh workflow run ci.yml --ref main` and the `deploy-web` job deploys after the checks pass ([`deployment.md`](deployment.md#deploying-the-web-app)). |
+| Database migrations to the cloud | **Same commands**, once per PC: `supabase login`, then `supabase link --project-ref <project-ref>` (stored in git-ignored `supabase/.temp`). After that, `supabase db push` before deploying app code that needs new migrations. |
 | Deploy settings (secrets) | **Same:** `gh secret set NAME --repo kangjin97/project1.0` prompts for the value. |
 | Roll back | **Same:** Netlify → Deploys → publish an earlier deploy. |
 | Manual web build (fallback) | Copy `app/env/prod.json` to this PC by hand, then in Git Bash: `./scripts/build.sh web`, and drag `app/build/web` onto Netlify's Deploys page. |

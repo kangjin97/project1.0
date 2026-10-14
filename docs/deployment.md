@@ -23,7 +23,7 @@ Order: **1 → 2 → 3** gets friends using it on their phones via the browser. 
 | Auth emails | Sent through **Resend** from `no-reply@easyplanhehe.online` (custom SMTP in Supabase). Domain `easyplanhehe.online` at Namecheap; Resend region Tokyo, Japan (`ap-northeast-1`) |
 | Auth email templates | EasyPlan templates from `supabase/templates/` pasted into the dashboard: **Confirm signup** (`confirmation.html`), **Reset password** (`recovery.html`), **Change email address** (`email_change.html`). Magic link, invite and reauthentication aren't used |
 | Privacy policy | Live at `<APP_URL>/privacy.html`; names Supabase (Singapore), Netlify and Resend (Tokyo); contact easyplanhehe@gmail.com |
-| Deploys | **Automatic** on every push to `main`, after the checks pass (GitHub Actions → Netlify). See [Automatic deploys](#automatic-deploys). |
+| Deploys | **On request only** (since 2026-10-15): merging to `main` doesn't deploy. The owner decides when; a manual run of CI deploys `main` after the checks pass (GitHub Actions → Netlify). See [Deploying the web app](#deploying-the-web-app). |
 | Still to do | Phone smoke test (#5); Android (#13) and iOS (#14) store builds |
 
 The cloud database is separate from the local one: local accounts and test data don't exist there, and the local seed accounts are never pushed.
@@ -86,10 +86,10 @@ Release builds refuse to start if they would point at the local database. Instea
    ./scripts/build.sh web
    ```
    Then in Netlify open the project → **Deploys** and drag the `app/build/web` folder onto the drop area. Drop it on the project's **Deploys** page; dropping on the Projects list creates a new project instead.
-   - This was the first deploy. Later deploys happen automatically when `main` changes (see [Automatic deploys](#automatic-deploys)); drag-and-drop remains the manual fallback. (`netlify-cli` locally needs Node 18 or newer; this Mac has Node 15.)
+   - This was the first deploy. Later deploys run from GitHub Actions when the owner asks for one (see [Deploying the web app](#deploying-the-web-app)); drag-and-drop remains the manual fallback. (`netlify-cli` locally needs Node 18 or newer; this Mac has Node 15.)
    - `netlify.toml` publishes `app/build/web`. `web/_redirects` makes every path load the app; that's needed because the app uses clean URLs like `/join/abc`.
    - Quick check after deploying: `curl -s https://easyplan-hehe.netlify.app/main.dart.js | grep -c easyplan-hehe` should print `1`, and `/join/x` should return 200.
-3. Privacy policy: `app/web/privacy.html`, live at `<APP_URL>/privacy.html` (the stores need this URL). Contact address: easyplanhehe@gmail.com. When you change what the app stores or add a provider (e.g. a new email sender), update the page and its date, then merge to `main`; it deploys automatically.
+3. Privacy policy: `app/web/privacy.html`, live at `<APP_URL>/privacy.html` (the stores need this URL). Contact address: easyplanhehe@gmail.com. When you change what the app stores or add a provider (e.g. a new email sender), update the page and its date, merge to `main`, then deploy.
 4. Smoke test on a phone:
    - sign up and confirm the email;
    - create a group and copy its invite link;
@@ -122,7 +122,7 @@ Toolchain first. `flutter doctor` currently reports Android SDK 30; Flutter need
    - New personal developer accounts must run a closed test with testers for 14 days before production access.
 6. **Invite links that open the app (App Links):**
    - Copy the **SHA-256 certificate fingerprint** from Play Console → Setup → App signing into `app/deploy/well-known/assetlinks.json`.
-   - Copy that file to `app/web/.well-known/assetlinks.json` and merge to `main`; the web app redeploys automatically.
+   - Copy that file to `app/web/.well-known/assetlinks.json`, merge to `main`, then deploy the web app.
    - The manifest already declares `https://<APP_URL host>/join/*`; the host comes from `APP_URL` at build time.
 
 ## 5. iPhone: App Store (Stage B and C)
@@ -141,17 +141,28 @@ Toolchain first:
 6. Before release, fill in:
    - **App Privacy** answers (same data as the Play data safety form) and the privacy policy URL.
    - Screenshots and a demo account for App Review. Give reviewers a test login; they will try **Delete account**, which Apple requires.
-7. **Universal Links:** put your Team ID into `app/deploy/well-known/apple-app-site-association`, copy it to `app/web/.well-known/` and merge to `main` (redeploys automatically). `netlify.toml` serves it as JSON.
+7. **Universal Links:** put your Team ID into `app/deploy/well-known/apple-app-site-association`, copy it to `app/web/.well-known/`, merge to `main`, then deploy the web app. `netlify.toml` serves it as JSON.
 
-## Automatic deploys
+## Deploying the web app
 
-`.github/workflows/ci.yml` has a **Deploy web (Netlify)** job. On every push to `main` (merging a pull request counts) it runs only after the **App** and **Database** checks pass. It then:
+Deploys happen **only when the owner asks**: typically at the end of a day of work, or whenever the live app needs the latest `main`. Every production deploy costs Netlify credits, so merging a pull request doesn't deploy (until 2026-10-15 it did, and several merges a day used the credits up too fast). Develop and test on the local stack; merge to `main` as often as you like.
+
+**To deploy** (the owner, or an agent when the owner says so):
+1. If anything merged since the last deploy adds migrations, run `supabase db push` on the cloud project **first** (owner).
+2. Start the deploy:
+   ```bash
+   gh workflow run ci.yml --ref main
+   ```
+   or GitHub → Actions → CI → **Run workflow** on `main`.
+3. Watch it: `gh run watch` (or the Actions tab). It takes a few minutes.
+
+`.github/workflows/ci.yml` has a **Deploy web (Netlify)** job that runs only on that manual run, on `main`, after the **App** and **Database** checks pass. It then:
 1. writes `app/env/prod.json` from GitHub settings;
 2. runs `./scripts/build.sh web`;
 3. deploys `app/build/web` to Netlify as the live version;
 4. checks that the live site serves the new build.
 
-Pull requests run the checks but never deploy.
+Pull requests and pushes to `main` run the checks but never deploy.
 
 **Settings it needs** (GitHub repo → Settings → Secrets and variables → Actions). Set them from a terminal; each `gh secret set` prompts for the value, so nothing is pasted into chats or files:
 
@@ -173,19 +184,19 @@ gh variable set APP_URL --repo kangjin97/project1.0 --body https://easyplan-hehe
 
 If any are missing, the deploy job fails with a message naming them, and nothing is published.
 
-**Redeploy without a code change** (e.g. after updating a secret): GitHub → Actions → CI → **Run workflow** on `main`.
+**Redeploy without a code change** (e.g. after updating a secret): the same manual run.
 
-**Roll back**: Netlify → easyplan-hehe → Deploys → pick an earlier deploy → **Publish deploy**. Then fix forward on `main`; the next push deploys again.
+**Roll back**: Netlify → easyplan-hehe → Deploys → pick an earlier deploy → **Publish deploy**. Then fix forward on `main` and deploy again.
 
-**Database changes are not automatic.** Merging deploys the app immediately, so if a pull request adds migrations, run `supabase db push` on the cloud project **before** merging it. Otherwise the live app may call tables or functions that don't exist yet.
+**Database changes are not automatic.** Run `supabase db push` on the cloud project **before** the deploy that ships the app code needing them. Otherwise the live app may call tables or functions that don't exist yet. Merging alone is safe: nothing reaches the live site until the deploy. Pushing migrations early is fine as long as they don't break the app that's currently live (adding tables or functions doesn't; dropping or renaming does).
 
 **Manual fallback**: `./scripts/build.sh web`, then drag `app/build/web` onto the project's **Deploys** page.
 
 ## 6. Each release
 
 1. Bump `version:` in `app/pubspec.yaml` (e.g. `1.0.1+2`; the number after `+` must increase for every store upload).
-2. `supabase db push` if there are new migrations, **before** merging (web) or shipping app builds that need them.
-3. Web: merge to `main`; it deploys automatically. Phones: `./scripts/build.sh android` / `ios` + upload.
+2. `supabase db push` if there are new migrations, **before** deploying the web app or shipping app builds that need them.
+3. Web: merge to `main`, then deploy ([Deploying the web app](#deploying-the-web-app)). Phones: `./scripts/build.sh android` / `ios` + upload.
 
 ## Checklist before inviting real users
 

@@ -2,11 +2,11 @@
 
 Read this first if you're picking EasyPlan up without the history of earlier sessions: a new AI agent, a new account, or a new developer. It holds what used to live only in chat and in local agent memory. Then read [`CLAUDE.md`](../../CLAUDE.md) (rules and gotchas) and follow its "Where to look" table.
 
-Last updated: 2026-10-14.
+Last updated: 2026-10-15.
 
 ## The project in one paragraph
 
-EasyPlan is a Flutter web/mobile app (`app/`) on Supabase (`supabase/`) for friends planning things together: activity ideas, groups, labels and type merging, shared schedules with clash checks. There is no custom server; every rule is in Postgres (RLS, grants, triggers, `security definer` RPCs) with pgTAP tests. The web app is live and deploys automatically from `main`. Phone store apps are not built yet. The product spec is [`SPEC.md`](../../SPEC.md); what's built is [`features.md`](features.md).
+EasyPlan is a Flutter web/mobile app (`app/`) on Supabase (`supabase/`) for friends planning things together: activity ideas, groups, labels and type merging, shared schedules with clash checks. There is no custom server; every rule is in Postgres (RLS, grants, triggers, `security definer` RPCs) with pgTAP tests. The web app is live; it's deployed from `main` only when the owner asks (see "Working agreements"). Phone store apps are not built yet. The product spec is [`SPEC.md`](../../SPEC.md); what's built is [`features.md`](features.md).
 
 ## The owner
 
@@ -51,8 +51,10 @@ Settings that exist only in dashboards, and how to redo them, are in [`deploymen
 
 These come from the owner's instructions and from how sessions have gone. They are in addition to the hard rules in `CLAUDE.md`.
 
-- **The owner merges.** Agents open PRs and wait. Agents never run `supabase db push`, never deploy by hand, and never sign up or sign in on the live site.
-- **Dashboard steps are the owner's.** When a change needs something in Supabase, Resend, Namecheap, Netlify or GitHub settings, put the exact steps in the PR description and in `deployment.md`, and tell the owner. Examples: pasting an email template, `supabase db push` for a migration (before merging), DNS records.
+- **Develop and test locally.** The local stack is where features are built and checked; the live site is not a test environment.
+- **The owner merges.** Agents open PRs and wait. Agents never run `supabase db push` and never sign up or sign in on the live site.
+- **Deploys happen only when the owner asks** (since 2026-10-15; each Netlify deploy costs credits). Merging to `main` doesn't deploy. When the owner says to deploy, usually at the end of the day: check whether anything merged since the last deploy adds migrations (if so, the owner runs `supabase db push` first), then run `gh workflow run ci.yml --ref main`, watch it, and report the result. Never start one on your own. Steps: [`deployment.md`](../deployment.md#deploying-the-web-app).
+- **Dashboard steps are the owner's.** When a change needs something in Supabase, Resend, Namecheap, Netlify or GitHub settings, put the exact steps in the PR description and in `deployment.md`, and tell the owner. Examples: pasting an email template, `supabase db push` for a migration (before the next deploy), DNS records.
 - **Every bug or follow-up gets an issue**, even small ones found while testing, before it's fixed. Don't park work in docs or chat.
 - **Explain options with a recommendation**; the owner decides on cost, accounts and product questions (e.g. which email provider, buying a domain).
 - **Verify before claiming.** Run the checks, test in the browser where possible, and say plainly what wasn't tested (often "on the phone, after deploy").
