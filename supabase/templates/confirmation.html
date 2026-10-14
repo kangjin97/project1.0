@@ -1,0 +1,14 @@
+<!--
+  Supabase "Confirm signup" template (subject: "Confirm your EasyPlan account").
+  Sent after sign-up when Confirm email is on (the cloud project; it's off locally).
+  Used locally via supabase/config.toml; the cloud project needs the same text pasted
+  into Authentication → Emails → Templates.
+-->
+<div style="font-family: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif; font-size: 16px; line-height: 1.5; color: #1b1b1f; max-width: 560px;">
+  <h2 style="margin: 0 0 16px;">Welcome to EasyPlan</h2>
+  <p>Confirm <strong>{{ .Email }}</strong> to finish creating your account. Then you can start collecting ideas and planning them with your friends.</p>
+  <p>
+    <a href="{{ .ConfirmationURL }}" style="display: inline-block; padding: 10px 20px; background: #3b6fe0; color: #ffffff; text-decoration: none; border-radius: 20px;">Confirm my email</a>
+  </p>
+  <p style="color: #5b5d67; font-size: 14px;">Didn't sign up for EasyPlan? You can ignore this email; the account isn't activated without the link.</p>
+</div>
