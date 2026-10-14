@@ -27,6 +27,7 @@ Product and technical decisions, with the reason. Newest last. When a decision c
 | 2026-10-12 | Web app published at **https://easyplan-hehe.netlify.app** (Netlify project `easyplan-hehe`; `easyplan` was taken). Deploys were manual drag-and-drop at first (superseded by continuous deployment, below). |
 | 2026-10-12 | Deleting an account: groups pass to the longest-standing member (empty groups deleted); their activities and photos are deleted; plans that used them stay as events; history shows "deleted user". |
 | 2026-10-13 | Privacy policy published: effective 13 October 2026, contact easyplanhehe@gmail.com (a dedicated Gmail; no custom domain yet), data in Supabase's Singapore region; it mentions hosting providers' server logs. |
+| 2026-10-13 | Auth emails go through **Resend** (custom SMTP in Supabase), sent from `no-reply@easyplanhehe.online`. The owner bought `easyplanhehe.online` (Namecheap) for this; the web app stays on `easyplan-hehe.netlify.app` for now. Resend region: Tokyo, Japan. Named in the privacy policy. |
 
 ## Choices made on the owner's behalf (confirm or revise)
 

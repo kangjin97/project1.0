@@ -105,13 +105,14 @@ Status legend: **Done** = DB + UI + tests. **DB only** = schema/RPCs/tests exist
 - **Forgot password**: sign-in screen → email → `resetPasswordForEmail(redirectTo: <APP_URL>/reset-password)` → link opens `ResetPasswordPage` (waits for the PKCE code exchange, then "Choose a new password"; "link expired" after 10 s). The router sends any `passwordRecovery` session to `/reset-password`.
 - **Delete account**: Profile → Delete account (type username) → removes storage files (`my_storage_files`) → `delete_my_account` → local sign-out. DB: activities deleted (unshared first so plans become events), auth user deleted (cascades), groups handed over by `hand_over_ownership` trigger (also on normal "leave"), "who did it" columns `on delete set null`.
 - **Privacy policy**: `app/web/privacy.html` (effective 13 October 2026; contact easyplanhehe@gmail.com; data in Singapore), linked from sign-up and the profile (`AppConfig.privacyPolicyUrl`).
+- **Auth emails** (sign-up confirmation, password reset, email change): Supabase custom SMTP through Resend, from `no-reply@easyplanhehe.online`; set up in the Supabase dashboard, not in the repo (`docs/deployment.md` §1). Locally they still go to Mailpit.
 - **Identity**: EasyPlan, `com.kangjin.easyplan` (Android namespace/applicationId, iOS bundle ID), web manifest/title, placeholder icon (`app/assets/icon/generate_icon.py` → `flutter_launcher_icons`).
 - **Config**: `AppConfig` reads `SUPABASE_URL`, `SUPABASE_PUBLISHABLE_KEY`, `APP_URL` (`--dart-define-from-file=env/prod.json`); release builds against the local backend show a "no server configured" screen. Path URL strategy; invite links `AppConfig.inviteLink(token)` = `<APP_URL>/join/<token>`.
 - **Build/deploy**: `deploy-web` job in `.github/workflows/ci.yml` (on push to `main`, after CI; settings from GitHub secrets/variables), `scripts/build.sh web|android|ios`, `netlify.toml`, `app/web/_redirects`, Android release signing from `key.properties`, Android App Links intent filter (`appLinkHost` placeholder from `APP_URL`), `.well-known` templates in `app/deploy/well-known/`. Guide: `docs/deployment.md`.
 - UI: `features/auth/auth_page.dart` (`_forgotPassword`, privacy link), `features/auth/reset_password_page.dart`, `features/profile/profile_page.dart` (`_DeleteAccountDialog`, privacy link). Data: `ProfileRepository.deleteAccount`.
 - Tests: `delete_account.test.sql` (hand-over on leave, deletion cascade, events kept, others untouched, history kept). Forgot-password and deletion were exercised end to end in the browser with a throwaway local account.
 - **Deployed:** the web app is live at https://easyplan-hehe.netlify.app against the Supabase cloud project. Pushes to `main` deploy automatically after CI passes (`deploy-web` job; `docs/deployment.md` → Automatic deploys).
-- Gaps: iOS Associated Domains must be added in Xcode; `.well-known` files need the Play signing SHA-256 and Apple Team ID; the privacy policy must name the email provider once #4 connects one; store listings are manual.
+- Gaps: iOS Associated Domains must be added in Xcode; `.well-known` files need the Play signing SHA-256 and Apple Team ID; store listings are manual.
 
 ## F9. Notifications — DB only (planned as its own branch)
 - Kinds: `group_invitation`, `added_to_entry`, `schedule_clash` (the schedule feature already writes the last two).
@@ -131,7 +132,6 @@ Open at the time of writing:
 
 | Issue | Feature | Label |
 |---|---|---|
-| #4 Connect a custom SMTP provider for auth emails | F12 | chore, priority:high |
 | #5 Smoke-test the live web app on a phone | F12 | chore, priority:high |
 | #6 Notifications screen and unread badge | F9 | feature |
 | #7 Realtime updates | F5, F8, F9 | feature |

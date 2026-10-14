@@ -12,16 +12,19 @@ How to take EasyPlan from your computer to people's phones. Everything here also
 
 Order: **1 → 2 → 3** gets friends using it on their phones via the browser. **4 / 5** are the store apps.
 
-## Current state (2026-10-12)
+## Current state (2026-10-14)
 
 | Piece | Status |
 |---|---|
 | Web app | **Live at https://easyplan-hehe.netlify.app** (Netlify project `easyplan-hehe`; `easyplan` was taken) |
-| Supabase cloud project | Created, linked from this repo, schema pushed with `supabase db push` |
+| Supabase cloud project | Created and linked from the Mac; schema pushed with `supabase db push` (link once per computer: [`setup-windows.md`](setup-windows.md#deploying-from-windows)). Includes `cancel_email_change` once #33 is pushed |
 | Supabase Auth URLs | Site URL `https://easyplan-hehe.netlify.app`; redirect `https://easyplan-hehe.netlify.app/**` |
 | `app/env/prod.json` | Filled in on the owner's Mac (git-ignored) |
+| Auth emails | Sent through **Resend** from `no-reply@easyplanhehe.online` (custom SMTP in Supabase). Domain `easyplanhehe.online` at Namecheap; Resend region Tokyo, Japan (`ap-northeast-1`) |
+| Auth email templates | **Change email address**: EasyPlan template from `supabase/templates/email_change.html`, pasted into the dashboard. Confirm signup and Reset password: Supabase defaults |
+| Privacy policy | Live at `<APP_URL>/privacy.html`; names Supabase (Singapore), Netlify and Resend (Tokyo); contact easyplanhehe@gmail.com |
 | Deploys | **Automatic** on every push to `main`, after the checks pass (GitHub Actions → Netlify). See [Automatic deploys](#automatic-deploys). |
-| Still to do | Custom SMTP (#4); phone smoke test (#5); Android (#13) and iOS (#14) store builds |
+| Still to do | Phone smoke test (#5); EasyPlan wording for the sign-up and reset emails; Android (#13) and iOS (#14) store builds |
 
 The cloud database is separate from the local one: local accounts and test data don't exist there, and the local seed accounts are never pushed.
 
@@ -42,7 +45,21 @@ The cloud database is separate from the local one: local accounts and test data 
      - Site URL: `https://easyplan-hehe.netlify.app`
      - Redirect URLs: add `https://easyplan-hehe.netlify.app/**`. Password-reset links return here.
    - **Sign In / Providers → Email**: keep **Confirm email** and **Secure email change** on. The app tells people to open the links sent to both their old and new address; with secure email change off that message would be wrong.
-   - **Emails → SMTP Settings**: connect a real email provider, e.g. Resend, Postmark or SendGrid. The built-in sender is limited to a few emails an hour and is only for testing.
+   - **Emails → SMTP Settings**: connect a real email provider; the built-in sender is limited to a few emails an hour and is only for testing. Ours is **Resend**:
+     - Resend → Domains: `easyplanhehe.online`, region Tokyo (`ap-northeast-1`). Receiving and click/open tracking stay **off** (tracking rewrites links, which can break password-reset links).
+     - DNS at Namecheap (Advanced DNS → Host Records; Host is the part before `.easyplanhehe.online`; Mail Settings stays on Email Forwarding):
+
+       | Type | Host | Value |
+       |---|---|---|
+       | TXT | `resend._domainkey` | DKIM key from Resend's domain page |
+       | CNAME | `rsend` | `rsend-apne1.forge.rmta.net` |
+       | CNAME | `send` | `send.forge.rmta.net` (Resend's bounce handling; don't also add an MX on `send`) |
+       | TXT | `_dmarc` | `v=DMARC1; p=none;` |
+
+     - Resend → API Keys: sending access only, limited to that domain. The key is the SMTP password; it goes straight into Supabase and nowhere else.
+     - Supabase SMTP: sender `no-reply@easyplanhehe.online`, name `EasyPlan`, host `smtp.resend.com`, port `465`, username `resend`, password = the API key.
+     - **Authentication → Rate Limits**: raise emails per hour (e.g. 30); the default assumes the built-in sender.
+     - Changing provider later: update these settings and name the new provider in the privacy policy.
    - **Emails → Templates**: templates kept in the repo live in `supabase/templates/` (the local stack uses them through `supabase/config.toml`). The cloud copy is set by hand: open the template, set the subject from `config.toml`, paste the file's contents into the body (the HTML comment at the top can stay), and save. Re-paste whenever the file changes.
      - **Change email address** → `supabase/templates/email_change.html`, subject "Confirm your EasyPlan email change". Sent to both the old and new address; says both links are needed.
      - Confirm signup and Reset password still use Supabase's defaults.
@@ -70,7 +87,7 @@ Release builds refuse to start if they would point at the local database. Instea
    - This was the first deploy. Later deploys happen automatically when `main` changes (see [Automatic deploys](#automatic-deploys)); drag-and-drop remains the manual fallback. (`netlify-cli` locally needs Node 18 or newer; this Mac has Node 15.)
    - `netlify.toml` publishes `app/build/web`. `web/_redirects` makes every path load the app; that's needed because the app uses clean URLs like `/join/abc`.
    - Quick check after deploying: `curl -s https://easyplan-hehe.netlify.app/main.dart.js | grep -c easyplan-hehe` should print `1`, and `/join/x` should return 200.
-3. Privacy policy: `app/web/privacy.html`, live at `<APP_URL>/privacy.html` (the stores need this URL). Contact address: easyplanhehe@gmail.com. When you change what the app stores or add a provider (e.g. the email sender from #4), update the page and its date, then merge to `main`; it deploys automatically.
+3. Privacy policy: `app/web/privacy.html`, live at `<APP_URL>/privacy.html` (the stores need this URL). Contact address: easyplanhehe@gmail.com. When you change what the app stores or add a provider (e.g. a new email sender), update the page and its date, then merge to `main`; it deploys automatically.
 4. Smoke test on a phone:
    - sign up and confirm the email;
    - create a group and copy its invite link;
@@ -171,10 +188,10 @@ If any are missing, the deploy job fails with a message naming them, and nothing
 ## Checklist before inviting real users
 
 - [x] Supabase cloud project, `db push` done, auth URLs set
-- [ ] SMTP connected (built-in email only sends a few messages an hour)
+- [x] SMTP connected (Resend, `easyplanhehe.online`)
 - [x] `app/env/prod.json` filled in; web deployed to https://easyplan-hehe.netlify.app
 - [ ] Smoke test passed on a phone
-- [x] Privacy policy filled in and published (update it when #4 adds an email provider)
+- [x] Privacy policy filled in and published (names Supabase, Netlify and Resend)
 - [ ] Email templates mention EasyPlan (change email done; confirm signup and reset password still default)
 - [ ] (Stores) upload key backed up; data safety / App Privacy answered; reviewer demo account ready
 - [ ] (Optional) replace the placeholder icon (`app/assets/icon/`, then `dart run flutter_launcher_icons`)
