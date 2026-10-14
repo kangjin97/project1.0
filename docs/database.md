@@ -15,6 +15,7 @@ Source of truth: `supabase/migrations/`. Test coverage: `supabase/tests/database
 | `20261014064145_cancel_email_change.sql` | `cancel_email_change` |
 | `20261014082408_function_grants_and_search_path.sql` | Revoke `execute` on trigger functions and `entry_range` from `authenticated`; pin `search_path` on the remaining invoker functions |
 | `20261014085422_list_notifications.sql` | `list_notifications` |
+| `20261014203717_list_group_history.sql` | `list_group_history` |
 
 ## Tables
 
@@ -107,6 +108,8 @@ You can read an entry if any of these is true:
 - you're a member of its group;
 - it's about an activity or activity photo you can access (`entity_type` `activity` or `activity_photo`).
 
+The group History page reads it through `list_group_history` instead, which applies its own rules (members only; activity edits only from while the activity was shared in the group; no labels).
+
 | `entity_type` | `entity_id` is | Actions |
 |---|---|---|
 | `activity` | activity id | created, updated, deleted |
@@ -149,6 +152,7 @@ See [`ai/endpoints.md`](ai/endpoints.md) for parameters, return shapes and error
 | `delete_my_account()` | Deletes the caller's activities (plans become events) and auth user (cascades; groups handed over) |
 | `my_storage_files()` | Caller's avatar and activity photo paths, to remove before deletion |
 | `list_notifications(limit = 50)` | Caller's notifications, newest first, with actor name, group name, invitation status, plan title and timing, clash count. Plan details only while the caller is in the plan or its group; group name only for members or the invitee |
+| `list_group_history(group, before = null, limit = 50)` | A group's change log for its History page, newest first, paged by id, with actor, activity/plan/type names, the member or participant, and old/new type names. Members only. Includes activity edits made while the activity was shared in the group; strips the owner's label; leaves out bookkeeping rows |
 | `cancel_email_change()` | Clears the caller's pending email change in `auth.users` (address and both tokens), so the links already sent stop working. Supabase Auth has no API for this. |
 | `list_timezones()` | Zones for the picker: name, region, readable city, current offset in minutes (sorted by offset) |
 

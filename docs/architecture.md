@@ -42,7 +42,8 @@ There is no custom server. The Flutter app talks to Supabase directly, and **eve
 | `/join/:token` | `JoinPage` | Previews and joins a group from an invite link. Outside the shell. |
 | `/schedule` | `MySchedulePage` | List / Week / Month switch on all sizes; phones default to List, wide screens to Week. |
 | `/groups` | `GroupsPage` | Groups list and pending invitations. |
-| `/groups/:id` | `GroupPage` | Tabs: Activities, Schedule, Members, Types. |
+| `/groups/:id` | `GroupPage` | Tabs: Activities, Schedule, Members, Types. The ⋮ menu has Rename, History and Leave. |
+| `/groups/:id/history` | `GroupHistoryPage` | Who did what in the group, newest first; opened with `context.push` from the group's menu. |
 | `/activities` | `ActivitiesPage` | My activities. |
 | `/notifications` | `NotificationsPage` | The "Alerts" tab: notifications, newest first; opening marks them read. |
 | `/profile` | `ProfilePage` | Own profile, stats, account settings, sign out. |

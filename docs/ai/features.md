@@ -125,9 +125,23 @@ Status legend: **Done** = DB + UI + tests. **DB only** = schema/RPCs/tests exist
 - DB: `notifications`, `list_notifications` (resolves names and plan details; hides plan/group details the caller can no longer see).
 - Tests: `notifications.test.sql` (own only, names and order, clash count, current invitation status, limit, mark read own only, details hidden after leaving, anon refused); `app/test/notifications_text_test.dart` (wording, time ago).
 
-## F10. Change log — Done for activities, DB for everything else
+## F10. Change log — Done
 - Every insert/update/delete on core tables is logged by trigger with actor and before/after.
-- Shown on the activity detail page and the schedule entry sheet. **To build:** per-group log view.
+- Shown on the activity detail page, the schedule entry sheet, and the group's **History** page.
+- **Group history** (`/groups/:id/history`, group page ⋮ → History): who did what in the group, newest first, under day headings ("Today", "Yesterday", dates), 50 at a time with **Show older**; pull to refresh. Lists:
+  - shares, removals and type changes;
+  - types added, renamed and deleted; merges and undone merges;
+  - plans planned, retimed, renamed, removed or swapped; events replaced (named as they were); people added to or leaving plans; clash overrides;
+  - members joining (or creating the group), leaving or being removed;
+  - edits and photo changes to an activity **made while it was shared in the group**. Edits from before it was shared stay private, and the owner's label never shows.
+- Members see the group's whole history, including from before they joined. Former members and outsiders see nothing.
+- Names follow visibility: a deleted activity reads "an activity", a plan with no name left reads "a plan", a deleted account reads "a deleted user". Joining or leaving by yourself vs. being added or removed is told apart by id, so it still reads right after an account is deleted.
+- Left out on purpose (bookkeeping, not a person's action): edits that only changed the owner's label, a label being cleared from a share, and participants being marked as clashing (the clash override line covers it).
+- UI: `features/groups/group_history_page.dart` (`GroupHistoryPage`, `describeGroupChange`, `historyDayHeading`); menu item in `group_page.dart`; route in `router.dart`.
+- Data: G `history(groupId, {beforeId, limit})`, `historyPageSize`; provider `groupHistoryProvider(groupId)` (first page; later pages are kept by the page). `ChangeEntry.fromGroupHistory` in `models.dart`.
+- DB: `list_group_history`.
+- Tests: `group_history.test.sql` (whole history for members incl. before joining, names, edits only while shared, label never shown, merges, paging, outsiders and former members see nothing, deleted activity names hidden); `app/test/group_history_text_test.dart` (wording).
+- Gaps: rows aren't tappable yet (e.g. to open the activity or plan); a plan's participant changes are named after the plan's current activity; edits made while an activity was shared drop out of the history if it's later removed from the group.
 
 ---
 
@@ -141,7 +155,6 @@ Open at the time of writing:
 |---|---|---|
 | #5 Smoke-test the live web app on a phone | F12 | chore, priority:high |
 | #7 Realtime updates | F5, F8, F9 | feature |
-| #8 Group history (change log) view | F10 | feature |
 | #9 Manage invite links and sent invitations | F3 | feature |
 | #10 Delete a group and transfer ownership manually | F2 | feature |
 | #11 Browse past plans on the phone schedule list | F8 | feature |

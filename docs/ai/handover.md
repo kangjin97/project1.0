@@ -37,11 +37,12 @@ Settings that exist only in dashboards, and how to redo them, are in [`deploymen
 - **Both computers are set up:** the Windows 11 PC got Flutter 3.47.6, Supabase CLI 2.119.0, WSL 2 and Docker on 2026-10-15; its local database holds only the seed accounts.
 - **Auth emails:** through Resend, with EasyPlan templates from `supabase/templates/` for *Confirm signup*, *Reset password* and *Change email address*. The cloud copies are pasted by hand; if the dashboard and the files ever disagree, the files are the intended version.
 - **Privacy policy:** live at `/privacy.html`.
-- **In flight at the time of writing:** the PR for #45 and #44 (on-request deploys; Windows setup fixes). Always check `gh pr list` and the board's In Progress column.
+- **In flight at the time of writing:** the PR for #8 (group history). It adds `20261014203717_list_group_history.sql`, which must be pushed to the cloud (`supabase db push`) before the next deploy. Always check `gh pr list` and the board's In Progress column.
 - **Docs were audited against the code on 2026-10-14** (endpoints, database, features, architecture, README, SPEC, setup and deployment guides) and fixed. Code-level gaps it found became issues and are fixed: #19 (function grants and `search_path`; now guarded by `function_privileges.test.sql`) and #38 (all Supabase calls go through repositories).
 - **Notifications** (#6): Alerts tab with an unread badge; no realtime yet (#7).
-- **Not built:** realtime (#7), group history view (#8), invite management (#9), store apps (#13, #14). Full list: `gh issue list`.
-- **Next priorities (owner's labels):** `priority:high` issues first: #5 phone smoke test. Then features from the backlog (`gh issue list`), e.g. #7 realtime (would make the badge live) or #8 group history.
+- **Group history** (#8): group page ⋮ → History.
+- **Not built:** realtime (#7), invite management (#9), store apps (#13, #14). Full list: `gh issue list`.
+- **Next priorities (owner's labels):** `priority:high` issues first: #5 phone smoke test. Then features from the backlog (`gh issue list`), e.g. #7 realtime (would make the badge live).
 
 ## How to resume work
 

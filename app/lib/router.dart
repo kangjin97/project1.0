@@ -9,6 +9,7 @@ import 'features/activities/activities_page.dart';
 import 'features/activities/activity_detail_page.dart';
 import 'features/auth/auth_page.dart';
 import 'features/auth/reset_password_page.dart';
+import 'features/groups/group_history_page.dart';
 import 'features/groups/group_page.dart';
 import 'features/groups/groups_page.dart';
 import 'features/groups/join_page.dart';
@@ -79,6 +80,12 @@ final routerProvider = Provider<GoRouter>((ref) {
               GoRoute(
                 path: ':id',
                 builder: (_, state) => GroupPage(groupId: state.pathParameters['id']!),
+                routes: [
+                  GoRoute(
+                    path: 'history',
+                    builder: (_, state) => GroupHistoryPage(groupId: state.pathParameters['id']!),
+                  ),
+                ],
               ),
             ],
           ),

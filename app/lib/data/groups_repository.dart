@@ -142,7 +142,19 @@ class GroupsRepository {
 
   /// Activities that came in with that label return to a type of that name.
   Future<void> removeMerge(String mergeId) => _db.rpc('remove_type_merge', params: {'p_merge': mergeId});
+
+  // ---- History -------------------------------------------------------------
+
+  /// Who did what in the group, newest first, [limit] at a time. For the next
+  /// page pass the smallest `id` of the previous one as [beforeId].
+  Future<List<ChangeEntry>> history(String groupId, {int? beforeId, int limit = historyPageSize}) async {
+    final rows = await _db.rpc('list_group_history',
+        params: {'p_group': groupId, 'p_before': beforeId, 'p_limit': limit}) as List;
+    return [for (final r in rows.cast<Map<String, dynamic>>()) ChangeEntry.fromGroupHistory(r)];
+  }
 }
+
+const historyPageSize = 50;
 
 final groupsRepositoryProvider = Provider((_) => GroupsRepository());
 
@@ -162,6 +174,10 @@ final mergesProvider =
 
 final typesProvider =
     FutureProvider.family<List<ActivityType>, String>((ref, id) => ref.watch(groupsRepositoryProvider).types(id));
+
+/// The first page of a group's history; later pages are loaded by the page itself.
+final groupHistoryProvider = FutureProvider.autoDispose.family<List<ChangeEntry>, String>(
+    (ref, id) => ref.watch(groupsRepositoryProvider).history(id));
 
 /// Turns database errors into something a person can act on.
 String friendlyError(Object e) {

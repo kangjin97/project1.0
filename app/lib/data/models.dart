@@ -233,7 +233,33 @@ class ChangeEntry {
     required this.createdAt,
     this.before,
     this.after,
+    this.id,
+    this.entityId,
+    this.actorId,
+    this.subjectName,
+    this.personUsername,
+    this.fromTypeName,
+    this.toTypeName,
+    this.eventTitle,
   });
+
+  /// A row from `list_group_history`, which also names what it's about.
+  factory ChangeEntry.fromGroupHistory(Map<String, dynamic> j) => ChangeEntry(
+        id: (j['id'] as num).toInt(),
+        entityType: j['entity_type'] as String,
+        entityId: j['entity_id'] as String?,
+        action: j['action'] as String,
+        actorId: j['actor_id'] as String?,
+        actorUsername: j['actor_username'] as String?,
+        createdAt: DateTime.parse(j['created_at'] as String),
+        before: j['before'] as Map<String, dynamic>?,
+        after: j['after'] as Map<String, dynamic>?,
+        subjectName: j['subject_name'] as String?,
+        personUsername: j['person_username'] as String?,
+        fromTypeName: j['from_type_name'] as String?,
+        toTypeName: j['to_type_name'] as String?,
+        eventTitle: j['event_title'] as String?,
+      );
 
   final String entityType;
   final String action;
@@ -241,6 +267,23 @@ class ChangeEntry {
   final DateTime createdAt;
   final Map<String, dynamic>? before;
   final Map<String, dynamic>? after;
+
+  // Only set for group history (null elsewhere). Null names mean deleted, or no
+  // longer visible to the caller.
+  final int? id;
+  final String? entityId;
+  final String? actorId;
+
+  /// The activity, plan, type or merged label the change is about.
+  final String? subjectName;
+
+  /// The member or participant the change is about.
+  final String? personUsername;
+  final String? fromTypeName;
+  final String? toTypeName;
+
+  /// A plan's own name, kept when an activity replaces the event.
+  final String? eventTitle;
 }
 
 /// One of the user's own activity labels.
