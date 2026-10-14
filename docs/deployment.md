@@ -12,12 +12,12 @@ How to take EasyPlan from your computer to people's phones. Everything here also
 
 Order: **1 → 2 → 3** gets friends using it on their phones via the browser. **4 / 5** are the store apps.
 
-## Current state (2026-10-14)
+## Current state (2026-10-15)
 
 | Piece | Status |
 |---|---|
 | Web app | **Live at https://easyplan-hehe.netlify.app** (Netlify project `easyplan-hehe`; `easyplan` was taken) |
-| Supabase cloud project | Created and linked from the Mac; schema pushed with `supabase db push` (link once per computer: [`setup-windows.md`](setup-windows.md#deploying-from-windows)). Up to date as of 2026-10-14 (last migration `20261014064145_cancel_email_change.sql`) |
+| Supabase cloud project | Created and linked from the Mac; schema pushed with `supabase db push` (link once per computer: [`setup-windows.md`](setup-windows.md#deploying-from-windows)). Last confirmed up to date on 2026-10-14 (`20261014064145_cancel_email_change.sql`); two migrations merged after that (`20261014082408_function_grants_and_search_path.sql`, `20261014085422_list_notifications.sql`). Check with `supabase migration list --linked` before the next deploy |
 | Supabase Auth URLs | Site URL `https://easyplan-hehe.netlify.app`; redirect `https://easyplan-hehe.netlify.app/**` |
 | `app/env/prod.json` | Filled in on the owner's Mac (git-ignored) |
 | Auth emails | Sent through **Resend** from `no-reply@easyplanhehe.online` (custom SMTP in Supabase). Domain `easyplanhehe.online` at Namecheap; Resend region Tokyo, Japan (`ap-northeast-1`) |

@@ -70,6 +70,7 @@ The Supabase CLI may be at `~/.local/bin/supabase` rather than on `PATH`. The ow
 - Mac: current Dart needs macOS ≥ 14.
 - Each computer (Mac, Windows) has its own local database; data made on one isn't on the other.
 - Windows: Docker Desktop needs WSL 2; the `supabase_vector` container restart-loops there, which is harmless.
+- Windows: tools installed during a session (`gh`, `flutter`, `supabase`, `docker`) aren't on the agent's PATH until the owner quits the Claude app from the system tray and reopens it. Until then, call them by full path (e.g. `$env:USERPROFILE\dev\flutter\bin`, `$env:USERPROFILE\.local\bin`, `$env:ProgramFiles\Docker\Docker\resources\bin`).
 - Mac: the preview launcher can't read `~/Documents` (macOS TCC). Start the dev server via Bash; `.claude/launch.json` attaches to `http://127.0.0.1:3000`.
 
 ## Production

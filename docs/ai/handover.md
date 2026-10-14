@@ -30,12 +30,14 @@ All accounts belong to the owner. **No secrets are stored in the repo or in this
 
 Settings that exist only in dashboards, and how to redo them, are in [`deployment.md`](../deployment.md) §1 (Supabase auth URLs, SMTP, rate limits, email templates, DNS).
 
-## Current state (2026-10-14)
+## Current state (2026-10-15)
 
-- **Live:** web app with all features in `features.md` marked Done. Cloud database is up to date with `supabase/migrations/` (last: `20261014064145_cancel_email_change.sql`).
+- **Live:** web app with all features in `features.md` marked Done. The cloud database was last confirmed up to date on 2026-10-14 (`20261014064145_cancel_email_change.sql`); #42 and #43 then added `20261014082408_function_grants_and_search_path.sql` and `20261014085422_list_notifications.sql`. Check with `supabase migration list --linked` before the next deploy.
+- **Deploys are on request only** (since 2026-10-15, #45): merging to `main` no longer deploys. See "Working agreements" below.
+- **Both computers are set up:** the Windows 11 PC got Flutter 3.47.6, Supabase CLI 2.119.0, WSL 2 and Docker on 2026-10-15; its local database holds only the seed accounts.
 - **Auth emails:** through Resend, with EasyPlan templates from `supabase/templates/` for *Confirm signup*, *Reset password* and *Change email address*. The cloud copies are pasted by hand; if the dashboard and the files ever disagree, the files are the intended version.
 - **Privacy policy:** live at `/privacy.html`.
-- **In flight at the time of writing:** #35 (Resend named in the privacy policy; closes #4) and the PR for #37 (this handover and a full doc audit). Always check `gh pr list` and the board's In Progress column.
+- **In flight at the time of writing:** the PR for #45 and #44 (on-request deploys; Windows setup fixes). Always check `gh pr list` and the board's In Progress column.
 - **Docs were audited against the code on 2026-10-14** (endpoints, database, features, architecture, README, SPEC, setup and deployment guides) and fixed. Code-level gaps it found became issues and are fixed: #19 (function grants and `search_path`; now guarded by `function_privileges.test.sql`) and #38 (all Supabase calls go through repositories).
 - **Notifications** (#6): Alerts tab with an unread badge; no realtime yet (#7).
 - **Not built:** realtime (#7), group history view (#8), invite management (#9), store apps (#13, #14). Full list: `gh issue list`.
@@ -45,7 +47,7 @@ Settings that exist only in dashboards, and how to redo them, are in [`deploymen
 
 1. Set up the computer ([`setup-mac.md`](../setup-mac.md) or [`setup-windows.md`](../setup-windows.md)), then `supabase start`, `supabase test db`, `cd app && flutter analyze && flutter test`.
 2. Check what's in progress: `gh pr list`, `gh issue list`, and the board.
-3. For any task: issue → `./scripts/board.sh <n> progress` → branch `fix|feature|chore/<n>-name` from `main` → PR with `Closes #<n>` → CI green → **the owner merges** → delete the branch locally and on GitHub. Details: [`development.md`](../development.md#git-workflow).
+3. For any task: issue → `./scripts/board.sh <n> progress` → branch `fix|feature|chore/<n>-name` from `main` → PR with `Closes #<n>` → CI green → **the owner merges** → delete the branch locally and on GitHub. Details: [`development.md`](../development.md#git-workflow). The live site updates only when the owner asks for a deploy.
 
 ## Working agreements with the owner
 
