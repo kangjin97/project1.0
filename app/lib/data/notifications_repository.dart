@@ -31,6 +31,7 @@ final notificationsRepositoryProvider = Provider((_) => NotificationsRepository(
 final notificationsProvider =
     FutureProvider.autoDispose<List<AppNotification>>((ref) => ref.watch(notificationsRepositoryProvider).list());
 
-/// Shown as a badge on the navigation. Refreshed when the route changes, when
-/// the app returns to the foreground and after marking read (no realtime yet, #7).
+/// Shown as a badge on the navigation. Refreshed live when a notification
+/// arrives (liveUpdatesProvider), and also when the route changes, when the app
+/// returns to the foreground and after marking read.
 final unreadCountProvider = FutureProvider<int>((ref) => ref.watch(notificationsRepositoryProvider).unreadCount());

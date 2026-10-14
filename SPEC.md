@@ -150,6 +150,8 @@ Notes:
 
 ## 5. Screens
 
+While the app is open, screens update by themselves within a second or two when other people change something (no banners or pop-ups); the Alerts badge counts up live.
+
 1. **Auth:** sign up (pick a unique username), log in
 2. **Home / My Schedule:** list (agenda), week and month views across all groups; clash badges
 3. **My Activities:** private and shared activities; create/edit; share to a group
@@ -178,7 +180,7 @@ Notes:
 | 5 | Search & filter (my activities and group) | Done |
 | 6 | Schedules: entries, participants, clash detection | Done |
 | 7 | Events and replacement | Done |
-| 8 | Change-log views and notifications | Activity, entry and group history and the notifications screen done; realtime (#7) to do |
+| 8 | Change-log views, notifications and live updates | Done: activity, entry and group history; notifications screen; live updates (#7) |
 
 Details and backlog: [`docs/ai/features.md`](docs/ai/features.md).
 

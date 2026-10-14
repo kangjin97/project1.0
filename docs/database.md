@@ -16,6 +16,7 @@ Source of truth: `supabase/migrations/`. Test coverage: `supabase/tests/database
 | `20261014082408_function_grants_and_search_path.sql` | Revoke `execute` on trigger functions and `entry_range` from `authenticated`; pin `search_path` on the remaining invoker functions |
 | `20261014085422_list_notifications.sql` | `list_notifications` |
 | `20261014203717_list_group_history.sql` | `list_group_history` |
+| `20261014210549_realtime_broadcasts.sql` | `broadcast_change` triggers; who may listen on `realtime.messages` |
 
 ## Tables
 
@@ -173,7 +174,7 @@ Used by RLS policies and RPCs. Clients can call the read-only access helpers, bu
 
 Not executable by clients (`function_privileges.test.sql` checks all of this):
 - Internal helpers `resolve_group_type`, `apply_participants`, `entry_range` (only called inside `security definer` RPCs).
-- Every trigger function: `handle_new_user`, `handle_new_group`, `log_change`, `notify_invitee`, `revert_entries_to_events`, `touch_updated`, `group_activity_defaults`, `guard_personal_type`, `refile_activity`, `refile_renamed_label`, `guard_timezone`, `hand_over_ownership`. Postgres doesn't check `execute` when firing a trigger.
+- Every trigger function: `handle_new_user`, `handle_new_group`, `log_change`, `notify_invitee`, `revert_entries_to_events`, `touch_updated`, `group_activity_defaults`, `guard_personal_type`, `refile_activity`, `refile_renamed_label`, `guard_timezone`, `hand_over_ownership`, `broadcast_change`. Postgres doesn't check `execute` when firing a trigger.
 - Still callable by signed-in users because policies or invoker triggers use them: `try_uuid` (storage policies), `is_valid_timezone` (`guard_timezone`); and `list_timezones` (the picker).
 - Signed-out (`anon`) callers can execute only `username_available`.
 - Every function in `public` sets `search_path` (`= ''` and fully qualified names).
@@ -195,6 +196,7 @@ Not executable by clients (`function_privileges.test.sql` checks all of this):
 | `group_activities` | `group_activities_revert` | On unshare, the group's entries become events titled with the activity name |
 | `schedule_entries` | `schedule_entries_touch` | Sets `updated_at` / `updated_by` |
 | many | `log_*` | Writes `change_log` |
+| many | `broadcast_*` | Sends a Realtime "changed" message to the group and/or user topics (see Realtime) |
 
 ## Storage
 
@@ -203,7 +205,14 @@ Not executable by clients (`function_privileges.test.sql` checks all of this):
 
 ## Realtime
 
-The `supabase_realtime` publication includes `schedule_entries`, `schedule_participants`, `notifications` and `group_activities`. The app doesn't subscribe to it yet.
+Live updates use **Broadcast from the database** on private channels:
+- **Sending:** the `broadcast_change` trigger (after insert/update/delete) calls `realtime.send({table}, 'changed', <topic>, private => true)`.
+  - Topics: `group:<group_id>` and/or `user:<user_id>`, depending on the table. Activities go to their owner and every group they're shared in. Plans go to their group and each participant (who may have left the group). Plan participants go to the person and the plan's group. Invitations go to the invitee.
+  - Tables: `groups`, `group_members`, `group_invitations`, `group_activities`, `activities`, `activity_photos`, `activity_types`, `type_merges`, `schedule_entries`, `schedule_participants`, `notifications`.
+  - Messages carry only the table name, never row data. At most one is sent per topic and table per transaction (tracked in the `easyplan.broadcasts_sent` setting).
+  - `realtime.send` swallows its own errors, so a failed broadcast never blocks a write.
+- **Listening:** the `easyplan_listen` select policy on `realtime.messages` lets an authenticated user join a private channel when `realtime.topic()` is `user:<their id>`, or `group:<id>` of a group they're a member of. There's no insert or update policy, so clients can't send. Signed-out users can't listen.
+- **Not used:** the `supabase_realtime` publication from the init migration (`schedule_entries`, `schedule_participants`, `notifications`, `group_activities`, for "Postgres Changes") is still there but unused. That feed doesn't apply RLS to deletes and sends every subscriber the deleted row's key.
 
 ## Known gaps
 

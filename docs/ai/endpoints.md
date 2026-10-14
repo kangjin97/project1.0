@@ -5,7 +5,7 @@ Every backend call the app makes, plus the RPCs the database exposes but the app
 **Conventions**
 - "Who" is enforced by the database (RLS, grants or the RPC body), not by the app.
 - `P0001 "<msg>"` means the RPC raises that message; the app shows it via `friendlyError`.
-- Dart methods are in `app/lib/data/groups_repository.dart` (G), `activities_repository.dart` (A), `schedule_repository.dart` (S), `profile_repository.dart` (P), `auth_repository.dart` (Au) and `notifications_repository.dart` (N); `friendlyError` is in `groups_repository.dart`.
+- Dart methods are in `app/lib/data/groups_repository.dart` (G), `activities_repository.dart` (A), `schedule_repository.dart` (S), `profile_repository.dart` (P), `auth_repository.dart` (Au), `notifications_repository.dart` (N) and `realtime_repository.dart` (R); `friendlyError` is in `groups_repository.dart`.
 - `<Profile.columns>` is `id, username, display_name, avatar_path` (`data/models.dart`); embedded profiles use it.
 - Each repository file ends with its Riverpod providers (`FutureProvider` / `.family`, keyed by id) and invalidation helpers (`invalidateActivity`, `invalidateLabels`, `invalidateSchedule`). Providers are named after the method, e.g. `myGroupsProvider`, `membersProvider(groupId)`, `scheduleProvider(query)`; only ones that differ are listed below.
 
@@ -199,5 +199,16 @@ Returns `{status:'clash', clashes:[...]}` (nothing saved) or `{status:'created',
 | N `unreadCount()` | REST `HEAD notifications?select=id&user_id=eq.<me>&read_at=is.null` (`count=exact`) | self | `unreadCountProvider`, the nav badge. |
 | N `markAllRead()` | REST `PATCH notifications?user_id=eq.<me>&read_at=is.null {read_at: now}` | self | Only `read_at` is writable (column grant); RLS limits it to your rows. |
 
+## Realtime
+
+Dart: `app/lib/data/realtime_repository.dart` (R).
+
+| Dart | Call | Who | Notes |
+|---|---|---|---|
+| R `listen(topic, {onChange, onRejoin})` → used by `liveUpdatesProvider` | `channel(topic, private: true).onBroadcast(event: 'changed').subscribe()`; leave with `removeChannel` | `user:<me>`: self; `group:<id>`: members (`easyplan_listen` policy on `realtime.messages`) | Payload `{table, id}`, where `id` is a message id. Clients can't send. On rejoin after a drop, everything for the topic is re-fetched. |
+
+The database sends on writes to `groups`, `group_members`, `group_invitations`, `group_activities`, `activities`, `activity_photos`, `activity_types`, `type_merges`, `schedule_entries`, `schedule_participants` and `notifications` (`broadcast_change` trigger; topics in `docs/database.md` → Realtime). `providersAffectedBy(topic, table)` lists what each message refreshes.
+
 ### Not yet used by the app
 - `find_clashes` directly (the RPCs above call it).
+- The `supabase_realtime` publication ("Postgres Changes"); the app uses the broadcasts above instead.

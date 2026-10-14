@@ -25,9 +25,9 @@ EasyPlan (repo: group-planner) is a web and mobile app for friends to plan thing
 | Release setup: app ID `com.kangjin.easyplan`, icon, Android signing, Netlify, build script | Done; see [`docs/deployment.md`](docs/deployment.md) |
 | Web app deployed (Netlify + Supabase cloud) | Live at https://easyplan-hehe.netlify.app; deployed from `main` on request ([`docs/deployment.md`](docs/deployment.md#deploying-the-web-app)) |
 | Android / iOS store apps | Not yet built; see [`docs/deployment.md`](docs/deployment.md) |
-| Notifications | Done: Alerts tab with unread badge (live updates: #7) |
+| Notifications | Done: Alerts tab with a live unread badge |
 | Group history: who did what in a group, with links to the activity, plan or person | Done |
-| Realtime updates | Publication configured, not used by the app yet |
+| Live updates: other people's changes appear without refreshing | Done (Supabase Realtime broadcasts) |
 
 See [`docs/ai/features.md`](docs/ai/features.md) for the detailed feature map. The backlog and bugs live in [GitHub Issues](https://github.com/kangjin97/project1.0/issues); see [`docs/development.md`](docs/development.md#git-workflow) for the issue → branch → pull request workflow.
 
