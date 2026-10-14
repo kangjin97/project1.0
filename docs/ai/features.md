@@ -27,7 +27,7 @@ Status legend: **Done** = DB + UI + tests. **DB only** = schema/RPCs/tests exist
 - Direct: search by username prefix or exact email → invitation → invitee accepts/declines on Groups page.
 - Link: 7-day invite code/link (`<APP_URL>/join/<token>`, built by `AppConfig.inviteLink`); "Join with code" accepts the bare code or a pasted link; preview shows group name and member count; joining is idempotent. On Android the link opens the installed app once App Links are verified (see `docs/deployment.md`).
 - UI: `group_page.dart` (`_InviteSheet`, invite link dialog), `groups_page.dart` (invitations, "Join with code"), `join_page.dart`.
-- Data: G `searchUsers`, `invite`, `pendingInvitations`, `respond`, `createInviteLink`, `previewLink`, `joinViaLink`.
+- Data: G `searchUsers`, `invite`, `pendingInvitations`, `respond`, `createInviteLink`, `previewLink`, `joinViaLink`; provider `invitationsProvider`.
 - DB: `group_invitations`, `group_invite_links`, `find_user_by_email`, `respond_to_invitation`, `preview_invite_link`, `join_group_via_link`, trigger `notify_invitee`.
 - Tests: `core_rules.test.sql`.
 - Gaps: no UI to revoke links or see sent invitations.
@@ -88,14 +88,14 @@ Status legend: **Done** = DB + UI + tests. **DB only** = schema/RPCs/tests exist
 - Gaps: past entries aren't browsable on phones (agenda starts today); no drag-to-reschedule; no recurring entries.
 
 ## F11. Profiles — Done
-- **Own profile** (`/profile`, a navigation tab): picture (tap → choose photo / remove), display name, @username, bio ("Add a bio" when empty), stats (groups, activities, upcoming plans; each taps through), your groups, account (email with change → confirmation links to **both** the current and new address (Supabase secure email change; both must be opened; the snackbar, the tile's subtitle and the email itself say so; template `supabase/templates/email_change.html`; **Cancel change** while pending (`cancel_email_change`); the tile reads the user from the server and again on app resume, so a change confirmed from the mail app shows without signing in again), password change with current-password check, time zone read-only), **Sign out** (moved here from other screens).
+- **Own profile** (`/profile`, a navigation tab): picture (tap → choose photo / remove), display name, @username, bio ("Add a bio" when empty), stats (groups, activities, upcoming plans; each taps through), your groups, account (email with change → confirmation links to **both** the current and new address (Supabase secure email change; both must be opened; the snackbar, the tile's subtitle and the email itself say so; template `supabase/templates/email_change.html`; **Cancel change** while pending (`cancel_email_change`); the tile reads the user from the server and again on app resume, so a change confirmed from the mail app shows without signing in again), password change with current-password check, time zone with **Change**), **Sign out** (moved here from other screens).
 - **Edit profile**: display name (≤50), username with live "Available / That username is taken / invalid" check (same rules as sign-up), bio (≤160).
 - **Other people** (`/people/:id`): picture, name, @username, bio, "Groups you share". Opened by tapping someone in a group's Members tab or a plan's "Going" list. Stats are only shown on your own profile.
 - **Avatars everywhere people are listed**: members, invite search, plan participants (`UserAvatar`, initial-letter fallback).
 - Username changes don't break history: logs store user ids and resolve names when shown.
 - UI: `features/profile/profile_page.dart` (`ProfilePage`, `PersonPage`, `_ChangePasswordDialog`, `_TimezoneTile`), `edit_profile_page.dart` (`showEditProfile`), `timezone_picker.dart` (`showTimezonePicker`), `widgets/user_avatar.dart`.
 - Clock: `data/app_clock.dart` — `AppClock` (display zone; `now`, `today`, `inZone`, `at`, `offsetLabel`, `differsFromDevice`), `formatOffset`, `TimezoneController`/`timezoneProvider`, `timezoneOptionsProvider`, `localTimezone()`. Uses `package:timezone` with the full data set (`latest_all`, includes aliases such as Asia/Kuala_Lumpur). Unit tests: `app/test/app_clock_test.dart`.
-- Data: `data/profile_repository.dart` (`profile`, `update`, `usernameAvailable`, `setAvatar`, `removeAvatar`, `avatarUrl`, `sharedGroups`, `myStats`, `changeEmail`, `changePassword`); providers `profileProvider(id)`, `sharedGroupsProvider(id)`, `myStatsProvider`, `avatarUrlProvider(path)`. `Profile` now has `avatarPath`, `bio`, `timezone` and a `columns` select string.
+- Data: `data/profile_repository.dart` (`profile`, `update`, `usernameAvailable`, `setAvatar`, `removeAvatar`, `avatarUrl`, `sharedGroups`, `myStats`, `changeEmail`, `account`, `cancelEmailChange`, `changePassword`); providers `profileProvider(id)`, `accountProvider` (server copy of the signed-in user; the email tile re-reads it on app resume), `sharedGroupsProvider(id)`, `myStatsProvider`, `avatarUrlProvider(path)`. `Profile` now has `avatarPath`, `bio`, `timezone` and a `columns` select string.
 - DB: `profiles.bio`, bucket `avatars`, `shared_groups`, `my_profile_stats`; `list_schedule` participants include `avatar_path`.
 - Tests: `timezones.test.sql` (sign-up zone, validation, picker list); `cancel_email_change.test.sql` (own change cleared incl. tokens, others untouched, anon refused); `profiles.test.sql` (own edits, taken/invalid username, bio limit, can't edit others, shared groups, stats, avatar folder rules).
 - **Time zone**: set at sign-up from the device; changeable on the profile via a searchable picker (city · region · current UTC offset, search by name or offset like "+8"; "Use this device's time zone" shortcut). The whole app shows times in this zone (`AppClock`, `timezoneProvider`); My schedule shows a note when it differs from the device.
@@ -104,7 +104,7 @@ Status legend: **Done** = DB + UI + tests. **DB only** = schema/RPCs/tests exist
 ## F12. Account lifecycle and release readiness — Done
 - **Forgot password**: sign-in screen → email → `resetPasswordForEmail(redirectTo: <APP_URL>/reset-password)` → link opens `ResetPasswordPage` (waits for the PKCE code exchange, then "Choose a new password"; "link expired" after 10 s). The router sends any `passwordRecovery` session to `/reset-password`.
 - **Delete account**: Profile → Delete account (type username) → removes storage files (`my_storage_files`) → `delete_my_account` → local sign-out. DB: activities deleted (unshared first so plans become events), auth user deleted (cascades), groups handed over by `hand_over_ownership` trigger (also on normal "leave"), "who did it" columns `on delete set null`.
-- **Privacy policy**: `app/web/privacy.html` (effective 13 October 2026; contact easyplanhehe@gmail.com; data in Singapore), linked from sign-up and the profile (`AppConfig.privacyPolicyUrl`).
+- **Privacy policy**: `app/web/privacy.html` (effective 13 October 2026; contact easyplanhehe@gmail.com; names Supabase (Singapore), Netlify and Resend (Japan)), linked from sign-up and the profile (`AppConfig.privacyPolicyUrl`).
 - **Auth emails** (sign-up confirmation, password reset, email change): Supabase custom SMTP through Resend, from `no-reply@easyplanhehe.online`; set up in the Supabase dashboard, not in the repo (`docs/deployment.md` §1). Locally they still go to Mailpit.
 - **Identity**: EasyPlan, `com.kangjin.easyplan` (Android namespace/applicationId, iOS bundle ID), web manifest/title, placeholder icon (`app/assets/icon/generate_icon.py` → `flutter_launcher_icons`).
 - **Config**: `AppConfig` reads `SUPABASE_URL`, `SUPABASE_PUBLISHABLE_KEY`, `APP_URL` (`--dart-define-from-file=env/prod.json`); release builds against the local backend show a "no server configured" screen. Path URL strategy; invite links `AppConfig.inviteLink(token)` = `<APP_URL>/join/<token>`.
@@ -126,7 +126,7 @@ Status legend: **Done** = DB + UI + tests. **DB only** = schema/RPCs/tests exist
 
 ## Backlog
 
-The backlog lives in **GitHub Issues**: https://github.com/kangjin97/project1.0/issues, shown on the **EasyPlan project board** (https://github.com/users/kangjin97/projects/3; Todo → In Progress → Done) (labels `bug`, `feature`, `chore`, `priority:high`). This file describes what's built; issues track what's next. When a feature ships, update its section here and close the issue from the PR ("Closes #n").
+The backlog lives in **GitHub Issues**: https://github.com/kangjin97/project1.0/issues, shown on the **EasyPlan project board** (https://github.com/users/kangjin97/projects/3; Todo → In Progress → Done) (labels `bug`, `feature`, `chore`, `documentation`, `priority:high`). This file describes what's built; issues track what's next. When a feature ships, update its section here and close the issue from the PR ("Closes #n").
 
 Open at the time of writing:
 
@@ -146,4 +146,5 @@ Open at the time of writing:
 | #16 Server-side search and filters for large groups | F7 | feature |
 | #17 Recurring plans | F8 | feature (v2) |
 | #18 Push notifications on phones | F9 | feature (v2) |
-| #19 Revoke execute on trigger functions from authenticated | DB | chore |
+| #19 Revoke execute on trigger functions from authenticated (and pin `search_path`) | DB | chore |
+| #36 EasyPlan wording for the sign-up and password-reset emails | F12 | chore |

@@ -151,15 +151,18 @@ Notes:
 ## 5. Screens
 
 1. **Auth:** sign up (pick a unique username), log in
-2. **Home / My Schedule:** day, week, and month views across all groups; clash badges
+2. **Home / My Schedule:** list (agenda), week and month views across all groups; clash badges
 3. **My Activities:** private and shared activities; create/edit; share to a group
 4. **Activity detail:** fields, photos, groups it's in, change history
 5. **Groups list:** create group, pending invitations
-6. **Group home:** tabs for Activities (search/filter), Schedule, Events, Members, Types, Log
+6. **Group home:** tabs for Activities (search/filter), Schedule (with unscheduled events as "Ideas"), Members, Types. A group Log view is planned (#8).
 7. **Schedule entry sheet:** pick activity or name an event, all-day or a time range, pick members, then the clash confirmation dialog
 8. **Replace event:** pick an activity from the group to fill the placeholder
 9. **Invite:** copy link, or search by username/email
-10. **Notifications:** invitations, added to entry, clash alerts, event replaced
+10. **Notifications:** invitations, added to entry, clash alerts, event replaced (not built yet, #6)
+11. **Profile:** own profile, stats, account settings; **other people's profiles** from shared groups
+12. **Join:** preview and join a group from an invite link
+13. **Reset password:** set a new password from the emailed link
 
 ---
 
@@ -184,8 +187,7 @@ Details and backlog: [`docs/ai/features.md`](docs/ai/features.md).
 ## 7. Open points
 
 - Decisions made so far (including assumptions awaiting confirmation) are logged in [`docs/ai/decisions.md`](docs/ai/decisions.md).
-- Can members **remove an activity from the group** (unshare), or only remove its schedule entries? Assumed: any member can unshare; it's logged.
-- Should "similar" labels merge automatically (fuzzy matching)? Currently only explicit merge rules and exact (case-insensitive) names.
-- Recurring entries (e.g. weekly game night): out of scope for v1.
-- Push notifications on mobile vs. in-app only for v1.
-- Time zones: store UTC (`timestamptz`), display in each user's local zone.
+- Assumed, awaiting the owner's confirmation (see `decisions.md`): any member can unshare an activity (logged); labels match by exact name only (no fuzzy "similar" matching).
+- Recurring entries (e.g. weekly game night): out of scope for v1; tracked as #17.
+- Push notifications on phones: in-app only for v1; tracked as #18.
+- Time zones: stored in UTC (`timestamptz`), shown in each user's **profile** time zone (not the device's).

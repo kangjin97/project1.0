@@ -1,7 +1,7 @@
-# Netlify hosts the prebuilt Flutter web app. Build locally, then deploy:
-#   ./scripts/build.sh web
-#   netlify deploy --prod
-# (or drag app/build/web onto the Netlify dashboard). See docs/deployment.md.
+# Netlify hosts the prebuilt Flutter web app. GitHub Actions builds it and deploys
+# it on every push to main (deploy-web in .github/workflows/ci.yml). Manual
+# fallback: ./scripts/build.sh web, then drag app/build/web onto the Netlify
+# dashboard. See docs/deployment.md.
 [build]
   publish = "app/build/web"
 

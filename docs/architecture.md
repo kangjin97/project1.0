@@ -26,10 +26,11 @@ There is no custom server. The Flutter app talks to Supabase directly, and **eve
 | Entry | `main.dart` | Path URL strategy, release-config guard, `Supabase.initialize`, `AppClock.init`, `ProviderScope`, Material 3 theme |
 | Config | `config.dart` | `SUPABASE_URL`, `SUPABASE_PUBLISHABLE_KEY`, `APP_URL` (defaults to local; `--dart-define-from-file=env/prod.json` for releases); invite and privacy links |
 | Routing | `router.dart` | `go_router` routes, auth redirect, `ShellRoute` with the navigation shell |
-| Data | `data/models.dart` | Plain immutable models with `fromJson`, plus select-column strings |
-| Data | `data/*_repository.dart` | All Supabase calls, plus `FutureProvider`s exposing them |
+| Data | `data/models.dart`, `data/schedule_models.dart` | Plain immutable models with `fromJson`, plus select-column strings; schedule entries, timing and date helpers |
+| Data | `data/*_repository.dart` | Supabase calls, plus `FutureProvider`s exposing them. `friendlyError` lives in `groups_repository.dart`. Exceptions to "all calls here": see `CLAUDE.md` rule 5 |
+| Data | `data/app_clock.dart` | `AppClock` (display time zone) and `TimezoneController` (reads/writes `profiles.timezone`, lists zones) |
 | Features | `features/<area>/` | Screens, sheets and widgets for one area |
-| Shared UI | `widgets/` | `AsyncBody`, `EmptyState`, prompt and confirm dialogs, snackbars |
+| Shared UI | `widgets/` | `AsyncBody`, `EmptyState` (`async_body.dart`); prompt and confirm dialogs, `showMessage`, `showError` (`dialogs.dart`); `UserAvatar` (`user_avatar.dart`) |
 
 ### Routing
 
@@ -47,7 +48,7 @@ There is no custom server. The Flutter app talks to Supabase directly, and **eve
 | `/people/:id` | `PersonPage` | Someone else's profile; opened with `context.push` from members / "Going" lists. |
 | `/activities/:id` | `ActivityDetailPage` | Any activity the user can see. Opened with `context.push` so Back returns to where you came from. |
 
-`HomeShell` shows a bottom `NavigationBar` below 720 px wide and a `NavigationRail` above. It reads the current location from `GoRouter.routerDelegate`, so the highlighted tab is always correct.
+`HomeShell` shows a bottom `NavigationBar` below 720 px wide and a `NavigationRail` above. It reads the current location from `GoRouter.routerDelegate`, so the highlighted tab follows the URL. Pages outside the four tabs (e.g. `/people/:id`) highlight Schedule.
 
 Full-screen forms (`showActivityForm`) and bottom sheets are pushed on the **root** navigator, so they cover the navigation bar.
 
@@ -65,14 +66,16 @@ All times are stored in UTC (`timestamptz`) or as calendar dates. The app shows 
 
 ### Errors
 
-Repositories throw `PostgrestException`, `AuthException` or `StorageException`. Screens catch them and call `showError`, which maps them through `friendlyError`:
+Repositories throw `PostgrestException`, `AuthException` or `StorageException`. Screens catch them and call `showError`, which maps them through `friendlyError` (`data/groups_repository.dart`):
 
 | Postgres code | Shown as |
 |---|---|
 | 23505 unique violation | "That already exists." |
 | 23503 foreign key | "It's still in use, so it can't be removed yet." |
 | 42501 insufficient privilege (RLS, grants, guard triggers) | "You don't have permission to do that." |
-| P0001 `raise exception` in RPCs | The exception message, e.g. "only the owner can delete this activity" |
+| Any other Postgres code, e.g. P0001 `raise exception` in RPCs | The error's message, e.g. "only the owner can delete this activity" |
+| `AuthException` | Its message (from Supabase Auth) |
+| Anything else, including `StorageException` | "Something went wrong. Please try again." |
 
 ## Backend security model
 

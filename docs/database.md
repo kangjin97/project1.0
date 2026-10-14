@@ -35,7 +35,7 @@ Access: any signed-in user can read; users update their own row (`username`, `di
 - `group_members`: primary key `(group_id, user_id)`, `role` `owner|member`.
 
 Access:
-- **Groups:** members can read. Invitees with a pending invitation can read the group too, to see its name. Only owners can rename or delete.
+- **Groups:** members can read, and so can the group's creator. Invitees with a pending invitation can read the group too, to see its name. Only owners can rename or delete.
 - **Members:** members can read the member list. You can remove yourself (leave), and the owner can remove anyone. Joining only happens through `respond_to_invitation` or `join_group_via_link`. If the owner leaves, ownership passes to the longest-standing member.
 
 ### `group_invite_links`, `group_invitations`
@@ -46,10 +46,10 @@ Access:
 
 | Column | Notes |
 |---|---|
-| `owner_id` | Creator. Can't be changed (no column grant). |
+| `owner_id` | Creator. Can't be changed (no column grant). FK to `profiles` has no `on delete`, so the owner's activities must be deleted first (`delete_my_account` does). |
 | `name` | 1–120 characters, required |
 | `description`, `location`, `url` | Optional |
-| `price_min`, `price_max`, `currency` | Numeric ≥ 0, `max ≥ min`; currency is 3 letters, default `SGD` |
+| `price_min`, `price_max`, `currency` | Numeric ≥ 0, `max ≥ min`; currency is `char(3)` (length only, no letter check), default `SGD` |
 | `personal_type_id` | The owner's label. Composite FK `(personal_type_id, owner_id)` → `personal_types`, so it must be the owner's own label. Set to null if the label is deleted. Only the owner can change it (guard trigger, 42501). |
 | `updated_at`, `updated_by` | Set by trigger |
 | `deleted_at` | Soft delete, through `delete_activity` only |
@@ -60,7 +60,7 @@ Access: the owner, plus members of any group it's shared into, can read and upda
 `storage_path` (`<activity_id>/<file>` in the `activity-photos` bucket) and `position`. Anyone who can access the activity can add, remove or reorder its photos.
 
 ### `activity_types`
-Per-group types. Names are unique per group, ignoring case. Members can create, rename and delete them. Deleting a type that's in use fails with 23503 (FK from `group_activities`).
+Per-group types. Names are 1–40 characters and unique per group, ignoring case (`lower(name)`, not trimmed). Members can create, rename and delete them. Deleting a type that's in use fails with 23503 (FK from `group_activities`).
 
 ### `group_activities`
 An activity shared into a group.
@@ -75,10 +75,10 @@ An activity shared into a group.
 Access: members read, insert (only activities they can access), change `type_id`, and delete (unshare). Unsharing turns the group's schedule entries for that activity back into events.
 
 ### `personal_types`
-A user's private labels. Names are unique per owner, ignoring case and surrounding spaces. Only the owner can see or change them. Renaming re-files every activity with that label.
+A user's private labels. Names are 1–40 characters and unique per owner, ignoring case and surrounding spaces. Only the owner can see or change them. Renaming re-files every activity with that label.
 
 ### `type_merges`
-`(group_id, source_name) → target_type_id`. Source names are unique per group, ignoring case. A rule is removed when its target type is deleted. Members can read; writes only through `merge_types` and `remove_type_merge`.
+`(group_id, source_name) → target_type_id`. Source names (1–40 characters) are unique per group, ignoring case and surrounding spaces. A rule is removed when its target type is deleted. Members can read; writes only through `merge_types` and `remove_type_merge`.
 
 ### `schedule_entries`, `schedule_participants`
 - **Entry:**
@@ -91,6 +91,7 @@ A user's private labels. Names are unique per owner, ignoring case and surroundi
 - **Participant:** `(entry_id, user_id)`, `status` `added|clash`.
 
 Access:
+- Group members can read entries; participants can also read entries in groups they've left.
 - Entries are created only through `create_schedule_entry`.
 - Members can update `activity_id` and `title` (swapping in an activity, or replacing an event) and delete entries.
 - Times change only through `reschedule_entry`.
@@ -102,7 +103,7 @@ Access:
 You can read an entry if any of these is true:
 - you made the change;
 - you're a member of its group;
-- it's about an activity you can access.
+- it's about an activity or activity photo you can access (`entity_type` `activity` or `activity_photo`).
 
 | `entity_type` | `entity_id` is | Actions |
 |---|---|---|
@@ -165,7 +166,9 @@ Used by RLS policies and RPCs. Clients can call the read-only access helpers, bu
 
 Not executable by clients:
 - `resolve_group_type`, `apply_participants`.
-- Trigger functions: `handle_new_user`, `handle_new_group`, `log_change`, `notify_invitee`, `revert_entries_to_events`, `touch_updated`, `group_activity_defaults`, `guard_personal_type`, `refile_activity`, `refile_renamed_label`, `guard_timezone`, `hand_over_ownership`.
+- Trigger functions `group_activity_defaults`, `guard_personal_type`, `refile_activity`, `refile_renamed_label`, `guard_timezone`, `hand_over_ownership`.
+- The trigger functions `handle_new_user`, `handle_new_group`, `log_change`, `notify_invitee`, `revert_entries_to_events` and `touch_updated` are revoked from `public, anon` only; see Known gaps (#19).
+- Some non-`security definer` functions don't pin `search_path` (`try_uuid`, `entry_range`, `touch_updated`, `guard_personal_type`, `is_valid_timezone`, `guard_timezone`, `list_timezones`). They use fully qualified names, so this is hardening only; Supabase's linter flags it. Tracked in #19.
 
 ## Triggers
 
@@ -178,7 +181,7 @@ Not executable by clients:
 | `group_invitations` | `on_invitation_created` | Notifies the invitee |
 | `activities` | `activities_touch` | Sets `updated_at` / `updated_by` |
 | `activities` | `activities_guard_personal_type` | Only the owner may change the label (42501) |
-| `activities` | `activities_refile` | Label change → re-resolve type in every group |
+| `activities` | `activities_refile` | Label change → re-resolve type in every group (label removed → only `source_type_name` is cleared; types stay) |
 | `personal_types` | `personal_types_refile` | Rename → re-resolve type for activities with that label |
 | `group_activities` | `group_activities_defaults` | Records `source_type_name`; fills `type_id` from the label |
 | `group_activities` | `group_activities_revert` | On unshare, the group's entries become events titled with the activity name |

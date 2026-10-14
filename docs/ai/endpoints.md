@@ -5,7 +5,9 @@ Every backend call the app makes, plus the RPCs the database exposes but the app
 **Conventions**
 - "Who" is enforced by the database (RLS, grants or the RPC body), not by the app.
 - `P0001 "<msg>"` means the RPC raises that message; the app shows it via `friendlyError`.
-- Dart methods are in `app/lib/data/groups_repository.dart` (G) and `app/lib/data/activities_repository.dart` (A).
+- Dart methods are in `app/lib/data/groups_repository.dart` (G), `activities_repository.dart` (A), `schedule_repository.dart` (S) and `profile_repository.dart` (P); `friendlyError` is in `groups_repository.dart`.
+- `<Profile.columns>` is `id, username, display_name, avatar_path` (`data/models.dart`); embedded profiles use it.
+- Each repository file ends with its Riverpod providers (`FutureProvider` / `.family`, keyed by id) and invalidation helpers (`invalidateActivity`, `invalidateLabels`, `invalidateSchedule`). Providers are named after the method, e.g. `myGroupsProvider`, `membersProvider(groupId)`, `scheduleProvider(query)`; only ones that differ are listed below.
 
 ---
 
@@ -21,7 +23,7 @@ Every backend call the app makes, plus the RPCs the database exposes but the app
 
 | Dart | Call | Who | Notes |
 |---|---|---|---|
-| G `searchUsers(q)` (no `@`) | REST `GET profiles?select=id,username,display_name&username=ilike.<prefix>*&id=neq.<me>&limit=10` | signed in | Query stripped to `[a-z0-9_]`, `_` escaped. |
+| G `searchUsers(q)` (no `@`) | REST `GET profiles?select=<Profile.columns>&username=ilike.<prefix>*&id=neq.<me>&limit=10` | signed in | Query stripped to `[a-z0-9_]`, `_` escaped. Under 2 characters returns `[]` without a call. |
 | G `searchUsers(q)` (has `@`) | `rpc find_user_by_email(p_email text) → setof profiles` | signed in | Exact, case-insensitive. |
 
 ## Groups
@@ -33,7 +35,7 @@ Every backend call the app makes, plus the RPCs the database exposes but the app
 | G `createGroup(name)` | REST `POST groups {name}` → `id` | signed in | Trigger: creator → owner; seeds types Food/Outdoors/Entertainment/Other. |
 | G `renameGroup(id, name)` | REST `PATCH groups?id=eq {name}` | owner | 42501 otherwise. |
 | G `leaveGroup(id)` | REST `DELETE group_members?group_id&user_id=<me>` | self | If you were the owner, the longest-standing member becomes owner; an empty group is deleted. |
-| G `members(groupId)` | REST `GET group_members?select=role,profiles(id,username,display_name)&order=joined_at.asc` | members | |
+| G `members(groupId)` | REST `GET group_members?select=role,profiles(<Profile.columns>)&group_id=eq&order=joined_at.asc` | members | |
 | G `removeMember(groupId, userId)` | REST `DELETE group_members?...` | owner | |
 | G `createInviteLink` → `AppConfig.inviteLink(token)` | — | — | Shared link is `<APP_URL>/join/<token>`. |
 
@@ -42,9 +44,9 @@ Every backend call the app makes, plus the RPCs the database exposes but the app
 | Dart | Call | Who | Errors / side effects |
 |---|---|---|---|
 | G `invite(groupId, userId)` | REST `POST group_invitations {group_id, invitee_id}` | members; invitee must not be a member | 23505 if a pending invite exists. Trigger: `group_invitation` notification. |
-| G `pendingInvitations()` | REST `GET group_invitations?select=id,groups(name),inviter:profiles!group_invitations_invited_by_fkey(username)&invitee_id=eq.<me>&status=eq.pending` | invitee | |
+| G `pendingInvitations()` | REST `GET group_invitations?select=id,groups(name),inviter:profiles!group_invitations_invited_by_fkey(username)&invitee_id=eq.<me>&status=eq.pending&order=created_at.asc` | invitee | |
 | G `respond(id, accept)` | `rpc respond_to_invitation(p_invitation uuid, p_accept bool) → void` | invitee | P0001 "invitation not found". Accept → membership. |
-| G `createInviteLink(groupId)` | REST `POST group_invite_links {group_id, expires_at: now+7d}` → `token` | members | |
+| G `createInviteLink(groupId, {validFor = 7 days})` | REST `POST group_invite_links {group_id, expires_at: now + validFor}` → `token` | members | |
 | G `previewLink(token)` | `rpc preview_invite_link(p_token text) → [{group_id, group_name, member_count}]` | signed in | Empty when invalid/expired/revoked/used up. |
 | G `joinViaLink(token)` | `rpc join_group_via_link(p_token text) → uuid group_id` | signed in | P0001 "invite link is invalid or expired". Idempotent for existing members. |
 | — (no UI) | REST `PATCH group_invite_links {revoked_at}` | members | Revokes a link. |
@@ -105,7 +107,7 @@ Select string `Activity.columns` (in `models.dart`):
 
 | Dart | Call | Who | Notes |
 |---|---|---|---|
-| A `addPhoto(activityId, bytes, extension, position)` | `storage.from('activity-photos').uploadBinary('<activityId>/<random>.<ext>')` then REST `POST activity_photos {activity_id, storage_path, position}` | can access activity | Content type png or jpeg. |
+| A `addPhoto(activityId, bytes, {required extension, position = 0})` | `storage.from('activity-photos').uploadBinary('<activityId>/<random>.<ext>')` then REST `POST activity_photos {activity_id, storage_path, position}` | can access activity | Content type png or jpeg. |
 | A `removePhoto(photo)` | REST `DELETE activity_photos?id=eq` then `storage.remove([path])` | can access activity | |
 | A `photoUrl(path)` | `storage.createSignedUrl(path, 3600)` | can access activity | Cached per path by `photoUrlProvider`. |
 
@@ -145,7 +147,7 @@ Dart: `app/lib/data/schedule_repository.dart` (S). Times are sent as UTC ISO str
 
 | Dart | Call | Who | Notes |
 |---|---|---|---|
-| S `list(query)` | `rpc list_schedule(p_from date, p_to date, p_tz text, p_group uuid = null, p_include_unscheduled bool = false)` | signed in | No group → caller's own entries; with group → whole group (members only), plus "no date yet" events when asked. Returns rows `{id, group_id, group_name, activity_id, activity_name, title, all_day, date, start_at, end_at, created_by, my_status, participants:[{user_id, username, display_name, avatar_path, status}]}`. `p_tz` is the app's display zone (the profile zone); dates are inclusive days in that zone. |
+| S `list(query)` | `rpc list_schedule(p_from date, p_to date, p_tz text = 'UTC', p_group uuid = null, p_include_unscheduled bool = false)` | signed in | No group → caller's own entries; with group → whole group (members only), plus "no date yet" events when asked. Returns rows `{id, group_id, group_name, activity_id, activity_name, title, all_day, date, start_at, end_at, created_by, my_status, participants:[{user_id, username, display_name, avatar_path, status}]}`. `p_tz` is the app's display zone (the profile zone); dates are inclusive days in that zone. |
 | S `create(...)` | `rpc create_schedule_entry` (below) | members | First call without force; on `{status:'clash'}` the UI asks, then retries with `p_force: true`. |
 | S `reschedule(id, timing)` | `rpc reschedule_entry` | members | Same clash flow. |
 | S `addParticipants(id, userIds)` | `rpc add_entry_participants` | members | Same clash flow. |
@@ -154,7 +156,8 @@ Dart: `app/lib/data/schedule_repository.dart` (S). Times are sent as UTC ISO str
 | S `delete(id)` | REST `DELETE schedule_entries?id=eq` | members | Removes for everyone. |
 | S `leave(id)` | REST `DELETE schedule_participants?entry_id&user_id=<me>` | self | |
 | S `acknowledgeClash(id)` | REST `PATCH schedule_participants?entry_id&user_id=<me> {status:'added'}` | self | |
-| S `history(id)` | REST `GET change_log?entity_id=eq&entity_type=in.(schedule_entry,schedule_participant)` + profiles | group members | Rendered by `describeEntryChange()`. |
+| S `history(id)` | REST `GET change_log?select=entity_type,action,actor_id,before,after,created_at&entity_id=eq&entity_type=in.(schedule_entry,schedule_participant)&order=created_at.desc&limit=50` + profiles | group members | Rendered by `describeEntryChange()`. |
+| `TimezoneController` on sign-in / restored session (`data/app_clock.dart`) | REST `GET profiles?select=timezone&id=eq.<me>` (single) | self | Sets the display zone (`timezoneProvider`). |
 | `TimezoneController.change(name)` (`data/app_clock.dart`) | REST `PATCH profiles?id=eq.<me> {timezone}` | self | 22023 for unknown zones. Switches the app's display zone and refetches schedules. |
 | `timezoneOptionsProvider` | `rpc list_timezones() → [{name, region, city, offset_minutes}]` | signed in | Picker list. |
 | Sign-up (`AuthPage`) | `auth.signUp(data: {..., timezone: <device zone>})` | anyone | The trigger stores it on the profile (UTC if unknown). |
