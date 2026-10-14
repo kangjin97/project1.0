@@ -1,22 +1,24 @@
 import 'package:flutter/material.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../../config.dart';
 import '../../data/app_clock.dart';
+import '../../data/auth_repository.dart';
 import '../../data/groups_repository.dart';
+import '../../data/profile_repository.dart';
 import '../../widgets/dialogs.dart';
 
 final _usernamePattern = RegExp(r'^[a-z0-9_]{3,30}$');
 
-class AuthPage extends StatefulWidget {
+class AuthPage extends ConsumerStatefulWidget {
   const AuthPage({super.key});
 
   @override
-  State<AuthPage> createState() => _AuthPageState();
+  ConsumerState<AuthPage> createState() => _AuthPageState();
 }
 
-class _AuthPageState extends State<AuthPage> {
+class _AuthPageState extends ConsumerState<AuthPage> {
   final _form = GlobalKey<FormState>();
   final _email = TextEditingController();
   final _password = TextEditingController();
@@ -25,8 +27,6 @@ class _AuthPageState extends State<AuthPage> {
   bool _signUp = false;
   bool _busy = false;
   String? _error;
-
-  SupabaseClient get _db => Supabase.instance.client;
 
   @override
   void dispose() {
@@ -45,18 +45,20 @@ class _AuthPageState extends State<AuthPage> {
     try {
       if (_signUp) {
         final username = _username.text.trim().toLowerCase();
-        final available = await _db.rpc('username_available', params: {'p_username': username}) as bool;
+        final available = await ref.read(profileRepositoryProvider).usernameAvailable(username);
         if (!available) {
           setState(() => _error = 'That username is taken.');
           return;
         }
-        await _db.auth.signUp(
-          email: _email.text.trim(),
+        await ref.read(authRepositoryProvider).signUp(
+          email: _email.text,
           password: _password.text,
-          data: {'username': username, 'display_name': _displayName.text.trim(), 'timezone': AppClock.deviceZone},
+          username: username,
+          displayName: _displayName.text,
+          timezone: AppClock.deviceZone,
         );
       } else {
-        await _db.auth.signInWithPassword(email: _email.text.trim(), password: _password.text);
+        await ref.read(authRepositoryProvider).signIn(email: _email.text, password: _password.text);
       }
       // The router redirects once the session changes.
     } catch (e) {
@@ -76,7 +78,7 @@ class _AuthPageState extends State<AuthPage> {
     );
     if (email == null || !email.contains('@') || !mounted) return;
     try {
-      await _db.auth.resetPasswordForEmail(email.trim(), redirectTo: '${AppConfig.appUrl}/reset-password');
+      await ref.read(authRepositoryProvider).sendPasswordReset(email);
     } catch (_) {
       // Same message either way, so the form doesn't reveal which emails have accounts.
     }

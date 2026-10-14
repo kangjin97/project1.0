@@ -148,7 +148,7 @@ Never commit `app/env/prod.json`, `app/android/key.properties` or keystores (`*.
 
 ## Code conventions
 
-- All Supabase access lives in repositories under `app/lib/data/`; widgets never call `Supabase.instance.client` directly. The exceptions are `auth.signOut()` and reading `currentUser` for the current user's id. Older code still calls Supabase directly in the auth pages and `data/app_clock.dart`; #38 moves it. Don't add more.
+- All Supabase access lives in repositories under `app/lib/data/`; widgets never call `Supabase.instance.client` directly. Auth calls (sign-up, sign-in, password reset) are in `auth_repository.dart`. The only direct uses allowed elsewhere are local session state: `currentUser` / `currentSession`, `onAuthStateChange`, and `auth.signOut()`.
 - Data loading uses Riverpod `FutureProvider` / `FutureProvider.family`, shown with `AsyncBody`.
 - Show errors with `showError(context, e)`; it runs them through `friendlyError`.
 - Bottom sheets use `useRootNavigator: true` so they appear above the navigation bar.

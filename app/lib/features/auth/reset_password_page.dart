@@ -1,23 +1,25 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
+import '../../data/auth_repository.dart';
 import '../../widgets/dialogs.dart';
 
 /// Opened from a password-reset email. The link signs the user in briefly;
 /// they choose a new password here.
-class ResetPasswordPage extends StatefulWidget {
+class ResetPasswordPage extends ConsumerStatefulWidget {
   const ResetPasswordPage({super.key, required this.onDone});
 
   final VoidCallback onDone;
 
   @override
-  State<ResetPasswordPage> createState() => _ResetPasswordPageState();
+  ConsumerState<ResetPasswordPage> createState() => _ResetPasswordPageState();
 }
 
-class _ResetPasswordPageState extends State<ResetPasswordPage> {
+class _ResetPasswordPageState extends ConsumerState<ResetPasswordPage> {
   final _form = GlobalKey<FormState>();
   final _password = TextEditingController();
   final _confirm = TextEditingController();
@@ -54,7 +56,7 @@ class _ResetPasswordPageState extends State<ResetPasswordPage> {
     if (!_form.currentState!.validate()) return;
     setState(() => _busy = true);
     try {
-      await _db.auth.updateUser(UserAttributes(password: _password.text));
+      await ref.read(authRepositoryProvider).setNewPassword(_password.text);
       if (!mounted) return;
       showMessage(context, 'Password changed');
       widget.onDone();

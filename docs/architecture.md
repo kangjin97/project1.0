@@ -27,8 +27,8 @@ There is no custom server. The Flutter app talks to Supabase directly, and **eve
 | Config | `config.dart` | `SUPABASE_URL`, `SUPABASE_PUBLISHABLE_KEY`, `APP_URL` (defaults to local; `--dart-define-from-file=env/prod.json` for releases); invite and privacy links |
 | Routing | `router.dart` | `go_router` routes, auth redirect, `ShellRoute` with the navigation shell |
 | Data | `data/models.dart`, `data/schedule_models.dart` | Plain immutable models with `fromJson`, plus select-column strings; schedule entries, timing and date helpers |
-| Data | `data/*_repository.dart` | Supabase calls, plus `FutureProvider`s exposing them. `friendlyError` lives in `groups_repository.dart`. Exceptions to "all calls here": see `CLAUDE.md` rule 5 |
-| Data | `data/app_clock.dart` | `AppClock` (display time zone) and `TimezoneController` (reads/writes `profiles.timezone`, lists zones) |
+| Data | `data/*_repository.dart` | Every Supabase call (`auth_repository.dart` for sign-up, sign-in and password resets), plus `FutureProvider`s exposing them. `friendlyError` lives in `groups_repository.dart`. Elsewhere the app only reads local session state (`currentUser`, `onAuthStateChange`) and calls `signOut` |
+| Data | `data/app_clock.dart` | `AppClock` (display time zone) and `TimezoneController`, which loads and saves the profile's zone through `ProfileRepository` |
 | Features | `features/<area>/` | Screens, sheets and widgets for one area |
 | Shared UI | `widgets/` | `AsyncBody`, `EmptyState` (`async_body.dart`); prompt and confirm dialogs, `showMessage`, `showError` (`dialogs.dart`); `UserAvatar` (`user_avatar.dart`) |
 
