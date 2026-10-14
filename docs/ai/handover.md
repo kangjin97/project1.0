@@ -36,7 +36,7 @@ Settings that exist only in dashboards, and how to redo them, are in [`deploymen
 - **Auth emails:** through Resend. *Change email address* uses the EasyPlan template from `supabase/templates/email_change.html`; *Confirm signup* and *Reset password* still use Supabase's defaults (#36).
 - **Privacy policy:** live at `/privacy.html`.
 - **In flight at the time of writing:** #35 (Resend named in the privacy policy; closes #4) and the PR for #37 (this handover and a full doc audit). Always check `gh pr list` and the board's In Progress column.
-- **Docs were audited against the code on 2026-10-14** (endpoints, database, features, architecture, README, SPEC, setup and deployment guides) and fixed. Known code-level gaps found by that audit are issues, not doc notes: #19 (function grants and `search_path`), #38 (direct Supabase calls outside repositories).
+- **Docs were audited against the code on 2026-10-14** (endpoints, database, features, architecture, README, SPEC, setup and deployment guides) and fixed. Code-level gaps it found became issues: #19 (function grants and `search_path`, open) and #38 (direct Supabase calls outside repositories, fixed: all calls now go through repositories).
 - **Not built:** notifications UI (#6), realtime (#7), group history view (#8), store apps (#13, #14). Full list: `gh issue list`.
 - **Next priorities (owner's labels):** `priority:high` issues first: #5 phone smoke test. Then #36 (sign-up and reset email wording).
 

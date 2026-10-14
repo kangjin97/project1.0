@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../data/app_clock.dart';
+import '../../data/profile_repository.dart';
 import '../../data/schedule_repository.dart';
 import '../../widgets/async_body.dart';
 import '../../widgets/dialogs.dart';

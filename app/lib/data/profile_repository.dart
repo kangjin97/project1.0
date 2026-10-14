@@ -16,6 +16,9 @@ typedef SharedGroup = ({String groupId, String name, int members});
 /// Counts shown on the user's own profile.
 typedef ProfileStats = ({int groups, int activities, int upcomingPlans});
 
+/// A zone for the picker, with its current offset (daylight saving included).
+typedef TimezoneOption = ({String name, String region, String city, int offsetMinutes});
+
 class ProfileRepository {
   Future<Profile> profile(String userId) async {
     final row = await _db
@@ -97,6 +100,32 @@ class ProfileRepository {
   }
 
   /// Checks the current password first, since Supabase doesn't ask for it.
+  /// The signed-in user's display zone, or null when signed out.
+  Future<String?> myTimezone() async {
+    final user = _db.auth.currentUser;
+    if (user == null) return null;
+    final row = await _db.from('profiles').select('timezone').eq('id', user.id).single();
+    return row['timezone'] as String?;
+  }
+
+  /// Fails with 22023 for a zone Postgres doesn't know.
+  Future<void> setTimezone(String name) => _db.from('profiles').update({'timezone': name}).eq('id', _me);
+
+  /// Every zone with its current offset, from the database so the offsets are
+  /// the same ones the server uses.
+  Future<List<TimezoneOption>> timezones() async {
+    final rows = await _db.rpc('list_timezones') as List;
+    return [
+      for (final r in rows.cast<Map<String, dynamic>>())
+        (
+          name: r['name'] as String,
+          region: r['region'] as String,
+          city: r['city'] as String,
+          offsetMinutes: r['offset_minutes'] as int,
+        ),
+    ];
+  }
+
   /// The signed-in user as the server has it now. The session's copy dates from
   /// sign-in, so an email change confirmed in another browser (the mail app's)
   /// wouldn't show until the next sign-in.

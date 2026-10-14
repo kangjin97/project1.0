@@ -38,7 +38,7 @@ The Supabase CLI may be at `~/.local/bin/supabase` rather than on `PATH`. The ow
 2. **Rules belong in the database.** Access control and invariants go in RLS policies, column grants, triggers or `security definer` RPCs, with pgTAP tests. The app may hide UI, but must not be the only guard.
 3. **Never edit an applied migration.** Add a new file under `supabase/migrations/` (`supabase migration new <name>`).
 4. **New functions:** `security definer set search_path = ''`, fully qualified names (`public.x`). `revoke execute ... from public, anon`; also from `authenticated` for internal helpers.
-5. **Supabase access only in `app/lib/data/*_repository.dart`.** Widgets use providers and repository methods. Known exceptions, to be moved (#38): `auth_page.dart` and `reset_password_page.dart` (auth calls), `data/app_clock.dart` (time zone). Reading `auth.currentUser` and `auth.signOut()` in widgets is fine. Don't add new exceptions.
+5. **Supabase access only in `app/lib/data/*_repository.dart`.** Widgets use providers and repository methods; auth calls are in `auth_repository.dart`. Only local session state may be used directly: `auth.currentUser`, `auth.currentSession`, `auth.onAuthStateChange`, and `auth.signOut()`.
 6. **After every mutation, invalidate the affected providers** (`invalidateActivity`, `invalidateLabels`, or specific `ref.invalidate(...)`). Otherwise screens show stale data.
 7. Before finishing: `flutter analyze` must be clean and `supabase test db` must pass. If you changed behaviour, update `docs/ai/features.md`, `docs/ai/endpoints.md` and, where relevant, `docs/database.md`, `SPEC.md` and `docs/ai/decisions.md`.
 8. Don't commit or push unless asked.

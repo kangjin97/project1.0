@@ -5,7 +5,7 @@ Every backend call the app makes, plus the RPCs the database exposes but the app
 **Conventions**
 - "Who" is enforced by the database (RLS, grants or the RPC body), not by the app.
 - `P0001 "<msg>"` means the RPC raises that message; the app shows it via `friendlyError`.
-- Dart methods are in `app/lib/data/groups_repository.dart` (G), `activities_repository.dart` (A), `schedule_repository.dart` (S) and `profile_repository.dart` (P); `friendlyError` is in `groups_repository.dart`.
+- Dart methods are in `app/lib/data/groups_repository.dart` (G), `activities_repository.dart` (A), `schedule_repository.dart` (S), `profile_repository.dart` (P) and `auth_repository.dart` (Au); `friendlyError` is in `groups_repository.dart`.
 - `<Profile.columns>` is `id, username, display_name, avatar_path` (`data/models.dart`); embedded profiles use it.
 - Each repository file ends with its Riverpod providers (`FutureProvider` / `.family`, keyed by id) and invalidation helpers (`invalidateActivity`, `invalidateLabels`, `invalidateSchedule`). Providers are named after the method, e.g. `myGroupsProvider`, `membersProvider(groupId)`, `scheduleProvider(query)`; only ones that differ are listed below.
 
@@ -15,8 +15,8 @@ Every backend call the app makes, plus the RPCs the database exposes but the app
 
 | Dart | Call | Notes |
 |---|---|---|
-| `AuthPage._submit` (sign up) | `rpc username_available(p_username text) → bool`, then `auth.signUp(email, password, data: {username, display_name})` | Callable signed-out. Trigger creates `profiles` row; username lower-cased. Duplicate username at insert → sign-up fails. |
-| `AuthPage._submit` (sign in) | `auth.signInWithPassword(email, password)` | |
+| `AuthPage._submit` (sign up): P `usernameAvailable`, then Au `signUp(email, password, username, displayName, timezone)` | `rpc username_available(p_username text) → bool`, then `auth.signUp(email, password, data: {username, display_name, timezone})` | Callable signed-out. Trigger creates `profiles` row; username lower-cased. Duplicate username at insert → sign-up fails. |
+| `AuthPage._submit` (sign in): Au `signIn(email, password)` | `auth.signInWithPassword(email, password)` | Email trimmed. |
 | `ProfilePage` | `auth.signOut()` | |
 
 ## Profiles
@@ -137,8 +137,8 @@ Dart: `app/lib/data/profile_repository.dart` (P). `Profile.columns` = `id, usern
 | P `account()` | `auth.refreshSession()` → `user` | self | The user as the server has it now (the session's copy dates from sign-in). `accountProvider`; the profile's email tile re-reads it on app resume. |
 | P `cancelEmailChange()` | `rpc cancel_email_change()`, then `auth.refreshSession()` | self | Clears the pending change and its tokens; the links already sent stop working. |
 | P `deleteAccount()` | `rpc my_storage_files() → [{bucket, path}]`, `storage.remove` per bucket, `rpc delete_my_account()`, `auth.signOut(local)` | self | See F12 for what is deleted or handed over. |
-| `AuthPage._forgotPassword` | `auth.resetPasswordForEmail(email, redirectTo: <APP_URL>/reset-password)` | anyone | Same message whether or not the email exists. |
-| `ResetPasswordPage` | `auth.updateUser(password)` | recovery session | Opened from the email link (PKCE `?code=`). |
+| Au `sendPasswordReset(email)` (`AuthPage._forgotPassword`) | `auth.resetPasswordForEmail(email, redirectTo: <APP_URL>/reset-password)` | anyone | Same message whether or not the email exists. |
+| Au `setNewPassword(password)` (`ResetPasswordPage`) | `auth.updateUser(password)` | recovery session | Opened from the email link (PKCE `?code=`). |
 | P `changePassword(current, next)` | `auth.signInWithPassword(email, current)` then `auth.updateUser(password)` | self | Re-checks the current password first. |
 
 ## Schedules
@@ -157,9 +157,9 @@ Dart: `app/lib/data/schedule_repository.dart` (S). Times are sent as UTC ISO str
 | S `leave(id)` | REST `DELETE schedule_participants?entry_id&user_id=<me>` | self | |
 | S `acknowledgeClash(id)` | REST `PATCH schedule_participants?entry_id&user_id=<me> {status:'added'}` | self | |
 | S `history(id)` | REST `GET change_log?select=entity_type,action,actor_id,before,after,created_at&entity_id=eq&entity_type=in.(schedule_entry,schedule_participant)&order=created_at.desc&limit=50` + profiles | group members | Rendered by `describeEntryChange()`. |
-| `TimezoneController` on sign-in / restored session (`data/app_clock.dart`) | REST `GET profiles?select=timezone&id=eq.<me>` (single) | self | Sets the display zone (`timezoneProvider`). |
-| `TimezoneController.change(name)` (`data/app_clock.dart`) | REST `PATCH profiles?id=eq.<me> {timezone}` | self | 22023 for unknown zones. Switches the app's display zone and refetches schedules. |
-| `timezoneOptionsProvider` | `rpc list_timezones() → [{name, region, city, offset_minutes}]` | signed in | Picker list. |
+| P `myTimezone()`, called by `TimezoneController` on sign-in / restored session | REST `GET profiles?select=timezone&id=eq.<me>` (single) | self | Sets the display zone (`timezoneProvider`). |
+| P `setTimezone(name)`, via `TimezoneController.change(name)` | REST `PATCH profiles?id=eq.<me> {timezone}` | self | 22023 for unknown zones. Switches the app's display zone and refetches schedules. |
+| P `timezones()` → `timezoneOptionsProvider` | `rpc list_timezones() → [{name, region, city, offset_minutes}]` | signed in | Picker list. |
 | Sign-up (`AuthPage`) | `auth.signUp(data: {..., timezone: <device zone>})` | anyone | The trigger stores it on the profile (UTC if unknown). |
 
 ---

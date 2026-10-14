@@ -6,6 +6,8 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:timezone/data/latest_all.dart' as tzdata;
 import 'package:timezone/timezone.dart' as tz;
 
+import 'profile_repository.dart';
+
 /// The device's IANA time zone (e.g. "Asia/Singapore"); UTC if unknown.
 Future<String> localTimezone() async {
   try {
@@ -114,12 +116,9 @@ class TimezoneController extends Notifier<String> {
   }
 
   Future<void> _loadFromProfile() async {
-    final db = Supabase.instance.client;
-    final user = db.auth.currentUser;
-    if (user == null) return;
+    if (Supabase.instance.client.auth.currentUser == null) return;
     try {
-      final row = await db.from('profiles').select('timezone').eq('id', user.id).single();
-      _apply(row['timezone'] as String? ?? 'UTC');
+      _apply(await ref.read(profileRepositoryProvider).myTimezone() ?? 'UTC');
     } catch (_) {
       // Keep the device zone if the profile can't be read.
     }
@@ -127,8 +126,7 @@ class TimezoneController extends Notifier<String> {
 
   /// Saves a new zone on the profile and switches the app to it.
   Future<void> change(String name) async {
-    final db = Supabase.instance.client;
-    await db.from('profiles').update({'timezone': name}).eq('id', db.auth.currentUser!.id);
+    await ref.read(profileRepositoryProvider).setTimezone(name);
     _apply(name);
   }
 
@@ -141,17 +139,5 @@ class TimezoneController extends Notifier<String> {
 final timezoneProvider = NotifierProvider<TimezoneController, String>(TimezoneController.new);
 
 /// Zones for the picker, from the database (current offsets, daylight saving included).
-typedef TimezoneOption = ({String name, String region, String city, int offsetMinutes});
-
-final timezoneOptionsProvider = FutureProvider<List<TimezoneOption>>((ref) async {
-  final rows = await Supabase.instance.client.rpc('list_timezones') as List;
-  return [
-    for (final r in rows.cast<Map<String, dynamic>>())
-      (
-        name: r['name'] as String,
-        region: r['region'] as String,
-        city: r['city'] as String,
-        offsetMinutes: r['offset_minutes'] as int,
-      ),
-  ];
-});
+final timezoneOptionsProvider =
+    FutureProvider<List<TimezoneOption>>((ref) => ref.watch(profileRepositoryProvider).timezones());
