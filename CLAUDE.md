@@ -43,7 +43,7 @@ The Supabase CLI may be at `~/.local/bin/supabase` rather than on `PATH`. The ow
 7. Before finishing: `flutter analyze` must be clean and `supabase test db` must pass. If you changed behaviour, update `docs/ai/features.md`, `docs/ai/endpoints.md` and, where relevant, `docs/database.md`, `SPEC.md` and `docs/ai/decisions.md`.
 8. Don't commit or push unless asked.
 9. **Never commit secrets or signing material:** `app/env/prod.json`, `app/android/key.properties`, `*.jks` are git-ignored; keep it that way. Never change the app ID `com.kangjin.easyplan`.
-10. New migrations reach production only via `supabase db push` (owner runs it). **Merging to `main` deploys the web app automatically**, so migrations must be pushed to the cloud *before* merging a PR that needs them; say so in the PR.
+10. New migrations reach production only via `supabase db push` (owner runs it). **Merging to `main` does not deploy**; the web app deploys only when the owner asks (`docs/deployment.md` → Deploying the web app). Migrations must be pushed to the cloud *before* the deploy that needs them; say so in the PR.
 
 ## Gotchas (each has bitten this project)
 
@@ -70,14 +70,15 @@ The Supabase CLI may be at `~/.local/bin/supabase` rather than on `PATH`. The ow
 - Mac: current Dart needs macOS ≥ 14.
 - Each computer (Mac, Windows) has its own local database; data made on one isn't on the other.
 - Windows: Docker Desktop needs WSL 2; the `supabase_vector` container restart-loops there, which is harmless.
+- Windows: tools installed during a session (`gh`, `flutter`, `supabase`, `docker`) aren't on the agent's PATH until the owner quits the Claude app from the system tray and reopens it. Until then, call them by full path (e.g. `$env:USERPROFILE\dev\flutter\bin`, `$env:USERPROFILE\.local\bin`, `$env:ProgramFiles\Docker\Docker\resources\bin`).
 - Mac: the preview launcher can't read `~/Documents` (macOS TCC). Start the dev server via Bash; `.claude/launch.json` attaches to `http://127.0.0.1:3000`.
 
 ## Production
 
 - Live web app: **https://easyplan-hehe.netlify.app** (Netlify project `easyplan-hehe`), backed by a Supabase cloud project linked from this repo. Current state and steps: `docs/deployment.md`.
 - The cloud database is separate from the local one; nothing local (accounts, seed data) is in it.
-- **Deploys are automatic:** the `deploy-web` job in `.github/workflows/ci.yml` builds and publishes to Netlify on every push to `main`, after the app and database checks pass. Settings come from GitHub secrets/variables (`docs/deployment.md` → Automatic deploys). Rollback: Netlify → Deploys → Publish an earlier deploy.
-- Agents don't deploy by hand, don't merge without the owner's go-ahead, don't run `supabase db push`, and don't sign up/sign in on the live site. Test locally.
+- **Deploys are on request only** (each Netlify deploy costs credits). The owner develops and tests locally, merges to `main` as often as they like, and says when to deploy, usually at the end of the day. The `deploy-web` job in `.github/workflows/ci.yml` runs only on a manual run on `main` (`gh workflow run ci.yml --ref main`), after the app and database checks pass. Settings come from GitHub secrets/variables (`docs/deployment.md` → Deploying the web app). Rollback: Netlify → Deploys → Publish an earlier deploy.
+- Agents start a deploy only when the owner asks for one in chat. Before starting it, check whether anything merged since the last deploy adds migrations; if so, remind the owner to run `supabase db push` first. Agents don't deploy by any other route, don't merge without the owner's go-ahead, don't run `supabase db push`, and don't sign up/sign in on the live site. Test locally.
 
 ## Local test data
 

@@ -1,16 +1,18 @@
-# Checks every pull request and every push to main. Pushes to main (and manual
-# runs on main) then deploy the web app to Netlify, but only if the checks pass.
+# Checks every pull request and every push to main. Only a manual run on main
+# ("Run workflow", or `gh workflow run ci.yml --ref main`) deploys the web app to
+# Netlify, after the checks pass. Each deploy costs Netlify credits, so merging
+# doesn't deploy; the owner decides when to release (docs/deployment.md).
 name: CI
 
 on:
   pull_request:
   push:
     branches: [main]
-  # "Run workflow" button: redeploy main, e.g. after changing a secret.
   workflow_dispatch:
 
 concurrency:
-  group: ci-${{ github.ref }}
+  # Deploy runs get their own group, so a push to main can't cancel a queued deploy.
+  group: ci-${{ github.ref }}-${{ github.event_name == 'workflow_dispatch' && 'deploy' || 'checks' }}
   # Superseded PR runs are cancelled; runs on main finish so a deploy is never cut short.
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
@@ -49,7 +51,7 @@ jobs:
   deploy-web:
     name: Deploy web (Netlify)
     needs: [app, database]
-    if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
+    if: github.ref == 'refs/heads/main' && github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -75,7 +77,7 @@ jobs:
             [ -n "${!name}" ] || missing="$missing $name"
           done
           if [ -n "$missing" ]; then
-            echo "::error::Missing deploy settings:$missing (secrets, or the APP_URL variable). See docs/deployment.md → Automatic deploys."
+            echo "::error::Missing deploy settings:$missing (secrets, or the APP_URL variable). See docs/deployment.md → Deploying the web app."
             exit 1
           fi
           case "$SUPABASE_PUBLISHABLE_KEY" in
