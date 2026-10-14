@@ -77,7 +77,13 @@ These come from the owner's instructions and from how sessions have gone. They a
 - **Windows: `supabase test db` says `docker: command not found`** in an agent shell started before Docker was installed. Prepend `$env:ProgramFiles\Docker\Docker\resources\bin` to PATH for that command (or have the owner restart the Claude app).
 - **A dev server an agent starts in the background can't hot-reload** (nothing can type `r`/`R` into it). After Dart changes, stop whatever listens on port 3000 and run `flutter run -d web-server …` again; reloading the page alone keeps the old code.
 - **Changing a migration that hasn't left this computer** (still in an open PR, not pushed to the cloud): edit the file, then drop what it created and forget the version, and re-apply: `docker exec supabase_db_group-planner psql -U postgres -c "drop function …" -c "delete from supabase_migrations.schema_migrations where version = '<version>'"`, then `supabase migration up`. Once a migration is merged or pushed, never edit it (CLAUDE.md rule 3); add a new one.
-- **Testing live updates locally:** keep the app open as one seed user and make the other user's changes from the database, acting as them through RLS (`set role authenticated` + `set_config('request.jwt.claims', …)` in `psql` via `docker exec -i supabase_db_group-planner psql -U postgres`). Screens should change within about 2 s without a reload. In pgTAP, call `set_config('easyplan.broadcasts_sent', '', true)` between steps, because the whole test is one transaction and the trigger sends once per topic and table per transaction.
+- **Testing with two people signed in at once:**
+  - Tabs on the same address share one session, and the debug dev server only starts the app in one tab.
+  - So run a second server as a **profile** build on another port: `flutter run --profile -d web-server --web-hostname 127.0.0.1 --web-port 3001`. Release builds refuse the local backend; profile builds don't.
+  - Sign in as `dev_alice` on :3000 and `dev_bob` on :3001. Profile builds don't hot-reload either; restart after changes.
+  - To simulate a dropped connection: `docker stop supabase_realtime_group-planner`, make a change, then `docker start` it. The open app should catch up once its channels rejoin.
+  - You can also play the other person from the database, acting as them through RLS (`set role authenticated` + `set_config('request.jwt.claims', …)` in `psql` via `docker exec -i supabase_db_group-planner psql -U postgres`).
+  - Either way, screens should change within about 2 s without a reload. In pgTAP, call `set_config('easyplan.broadcasts_sent', '', true)` between steps, because the whole test is one transaction and the trigger sends once per topic and table per transaction.
 - **Rows in one transaction share `now()`**, so `created_at` can't order them (pgTAP tests run in one transaction). Order change-log rows by `change_log.id`, as `list_group_history` does.
 
 ## Open questions for the owner
