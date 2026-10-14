@@ -73,19 +73,21 @@ Status legend: **Done** = DB + UI + tests. **DB only** = schema/RPCs/tests exist
 - Entries belong to a group; either an activity or an event (title only). Timing: timed (may run past midnight), all-day, or "no date yet" (events only).
 - Adding people adds them directly; if anyone is busy the planner sees a clash dialog listing who has what (all-day clashes with everything that day, in each person's time zone; other groups' entries show as "Busy"). Proceeding saves with `clash` status for those people, notifies them and logs it.
 - **My schedule** (`/schedule`): entries the user is in, across groups, with a **List | Week | Month** switch on every screen size (phones default to List, ≥720 px to Week).
-  - List: day-by-day agenda from today (4 weeks, "Show 4 more weeks").
+  - List: day-by-day agenda from today (4 weeks, "Show 4 more weeks"). **Show earlier** at the top adds 4 weeks before today each tap, so past plans can be browsed on phones.
   - Week: all-day row + hourly blocks, overlaps side by side, opens at 8am. Phones get single-letter days, a slim hour gutter and title-only blocks.
   - Month: six-week grid with titles; on phones, coloured dots (primary = yours, red = clash).
   - Week/Month have ‹ › Today navigation; tapping a day opens that day's list with "Add". On phone calendars the add button is a small round FAB.
-- **Group Schedule tab**: "Ideas · not scheduled yet" events first, then the next 8 weeks of the group's entries (all members' plans; the user's highlighted).
+- **Group Schedule tab**: "Ideas · not scheduled yet" events first, then the next 8 weeks of the group's entries (all members' plans; the user's highlighted). **Show earlier** sits above the dated list, as in My schedule.
+- **Past plans are muted** wherever plans are listed (`EntryTile`): an all-day plan once its day is behind you, a timed one once it has ended, even earlier today (`ScheduleEntry.isPastAt`). Past day headings are grey, and headings say "Yesterday" and show the year for other years. Past plans still open normally.
 - **Entry detail sheet**: when, who (clash badges), change time (re-checks clashes), add people (checks new people), replace event with activity / swap activity, rename event, view activity, leave, remove for everyone, history. If the user has a clash: "Keep both" or "Leave this".
 - **Add to schedule** from: My schedule FAB, group Schedule tab, and the activity detail page (per group).
 - Times, calendar days and "today" use the profile's time zone (see F11); all-day clash checks use each participant's zone.
-- UI: `features/schedule/my_schedule_page.dart`, `calendar_views.dart` (`WeekView`, `MonthView`), `schedule_widgets.dart` (`EntryTile`, `AgendaList`, `confirmClashes`, time labels), `entry_editor.dart` (`showEntryEditor`, `showRescheduleEditor`), `entry_detail_sheet.dart` (`showEntryDetail`, `describeEntryChange`); `features/groups/group_schedule_tab.dart`.
+- UI: `features/schedule/my_schedule_page.dart`, `calendar_views.dart` (`WeekView`, `MonthView`), `schedule_widgets.dart` (`EntryTile`, `AgendaList`, `ShowEarlierButton`, `agendaStepWeeks`, `confirmClashes`, time labels and `dayHeading`), `entry_editor.dart` (`showEntryEditor`, `showRescheduleEditor`), `entry_detail_sheet.dart` (`showEntryDetail`, `describeEntryChange`); `features/groups/group_schedule_tab.dart`.
 - Data: `data/schedule_models.dart` (`ScheduleEntry`, `ScheduleParticipant`, `ScheduleClash`, `ScheduleResult`, `EntryTiming`, date helpers), `data/schedule_repository.dart` (`list`, `create`, `reschedule`, `addParticipants`, `setActivity`, `rename`, `delete`, `leave`, `acknowledgeClash`, `history`; `queryAroundEntry` builds a schedule window around one plan so its detail sheet can be opened from elsewhere, used by notifications and group history); providers `scheduleProvider(ScheduleQuery)`, `entryHistoryProvider(id)`; helper `invalidateSchedule`.
 - DB: `schedule_entries`, `schedule_participants`, `list_schedule`, `create_schedule_entry`, `reschedule_entry`, `add_entry_participants`, `find_clashes`, `apply_participants`, `entry_range`.
 - Tests: `core_rules.test.sql` (clash, force, acknowledge, reschedule, replace event, delete → event), `list_schedule.test.sql` (personal vs group view, windows, time zones, privacy).
-- Gaps: past entries aren't browsable on phones (agenda starts today); no drag-to-reschedule; no recurring entries.
+- Not built yet (issues): drag-to-reschedule (#12), recurring entries (#17).
+- Tests: also `app/test/past_plans_test.dart` (when a plan counts as past; day headings).
 
 ## F11. Profiles — Done
 - **Own profile** (`/profile`, a navigation tab): picture (tap → choose photo / remove), display name, @username, bio ("Add a bio" when empty), stats (groups, activities, upcoming plans; each taps through), your groups, account (email with change → confirmation links to **both** the current and new address (Supabase secure email change; both must be opened; the snackbar, the tile's subtitle and the email itself say so; template `supabase/templates/email_change.html`; **Cancel change** while pending (`cancel_email_change`); the tile reads the user from the server and again on app resume, so a change confirmed from the mail app shows without signing in again), password change with current-password check, time zone with **Change**), **Sign out** (moved here from other screens).
@@ -176,7 +178,6 @@ Open at the time of writing:
 | #5 Smoke-test the live web app on a phone | F12 | chore, priority:high |
 | #9 Manage invite links and sent invitations | F3 | feature |
 | #10 Delete a group and transfer ownership manually | F2 | feature |
-| #11 Browse past plans on the phone schedule list | F8 | feature |
 | #12 Drag to reschedule in the week view | F8 | feature |
 | #13 Android: toolchain + Play internal test build | F12 | chore |
 | #14 iOS: toolchain + TestFlight build | F12 | chore |

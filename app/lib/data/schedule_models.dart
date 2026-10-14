@@ -102,6 +102,13 @@ class ScheduleEntry {
   }
 
   bool occursOn(DateTime day) => days.any((d) => isSameDay(d, day));
+
+  /// Whether it's over at [now] (`AppClock.now()`): an all-day entry once its
+  /// day is behind us, a timed one once it has ended. "No date yet" never is.
+  bool isPastAt(DateTime now) {
+    if (allDay && date != null) return dateOnly(date!).isBefore(dateOnly(now));
+    return endAt != null && !endAt!.isAfter(now);
+  }
 }
 
 /// An existing entry that overlaps the proposed time for one person.

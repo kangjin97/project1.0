@@ -153,7 +153,7 @@ Notes:
 While the app is open, screens update by themselves within a second or two when other people change something (no banners or pop-ups); the Alerts badge counts up live.
 
 1. **Auth:** sign up (pick a unique username), log in
-2. **Home / My Schedule:** list (agenda), week and month views across all groups; clash badges
+2. **Home / My Schedule:** list (agenda), week and month views across all groups; clash badges. The list starts today and can show earlier weeks; plans that are over are muted (the group Schedule tab works the same).
 3. **My Activities:** private and shared activities; create/edit; share to a group
 4. **Activity detail:** fields, photos, groups it's in, change history
 5. **Groups list:** create group, pending invitations

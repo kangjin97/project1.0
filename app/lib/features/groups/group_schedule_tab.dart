@@ -23,12 +23,16 @@ class GroupScheduleTab extends ConsumerStatefulWidget {
 class _GroupScheduleTabState extends ConsumerState<GroupScheduleTab> {
   int _weeks = 8;
 
+  /// Weeks before today, added with "Show earlier".
+  int _earlierWeeks = 0;
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final today = AppClock.today();
+    final from = addDays(today, -_earlierWeeks * 7);
     final ScheduleQuery query =
-        (from: today, to: addDays(today, _weeks * 7 - 1), groupId: widget.groupId, includeUnscheduled: true);
+        (from: from, to: addDays(today, _weeks * 7 - 1), groupId: widget.groupId, includeUnscheduled: true);
 
     return RefreshIndicator(
       onRefresh: () async {
@@ -42,10 +46,12 @@ class _GroupScheduleTabState extends ConsumerState<GroupScheduleTab> {
           void open(ScheduleEntry e) => showEntryDetail(context, query, e.id);
           return AgendaList(
             entries: entries.where((e) => !e.isUnscheduled).toList(),
-            days: [for (var i = 0; i < _weeks * 7; i++) addDays(today, i)],
+            days: [for (var i = 0; i < (_earlierWeeks + _weeks) * 7; i++) addDays(from, i)],
             showGroup: false,
             onTap: open,
-            emptyMessage: 'Nothing planned in the next $_weeks weeks.',
+            emptyMessage: _earlierWeeks == 0
+                ? 'Nothing planned in the next $_weeks weeks.'
+                : 'Nothing planned in these ${_earlierWeeks + _weeks} weeks.',
             header: [
               Padding(
                 padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
@@ -77,6 +83,7 @@ class _GroupScheduleTabState extends ConsumerState<GroupScheduleTab> {
                 ),
                 for (final e in ideas) EntryTile(entry: e, showGroup: false, onTap: () => open(e)),
               ],
+              ShowEarlierButton(onPressed: () => setState(() => _earlierWeeks += agendaStepWeeks)),
             ],
             footer: [
               Padding(
