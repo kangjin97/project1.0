@@ -68,9 +68,13 @@ class ProfilePage extends ConsumerWidget {
     final email = await promptText(context, title: 'Change email', label: 'New email', action: 'Send link');
     if (email == null || !email.contains('@') || !context.mounted) return;
     try {
+      final current = Supabase.instance.client.auth.currentUser!;
       await ref.read(profileRepositoryProvider).changeEmail(email);
+      // Rebuilds the email tile, which reads the pending address from the session.
+      ref.invalidate(profileProvider(current.id));
       if (context.mounted) {
-        showMessage(context, 'Check your inbox at ${email.trim()} to confirm the change.');
+        // Secure email change is on: Supabase emails both addresses and needs both links.
+        showMessage(context, 'We’ve sent a link to ${current.email} and another to ${email.trim()}. Open both to finish the change.');
       }
     } catch (e) {
       if (context.mounted) showError(context, e);
@@ -141,7 +145,7 @@ class ProfilePage extends ConsumerWidget {
             ListTile(
               leading: const Icon(Icons.mail_outline),
               title: Text(me.email ?? ''),
-              subtitle: me.newEmail == null ? const Text('Email') : Text('Waiting to confirm ${me.newEmail}'),
+              subtitle: me.newEmail == null ? const Text('Email') : Text('Changing to ${me.newEmail}: open the links sent to both addresses'),
               trailing: TextButton(onPressed: () => _changeEmail(context, ref), child: const Text('Change')),
             ),
             ListTile(

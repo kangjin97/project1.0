@@ -88,7 +88,7 @@ Status legend: **Done** = DB + UI + tests. **DB only** = schema/RPCs/tests exist
 - Gaps: past entries aren't browsable on phones (agenda starts today); no drag-to-reschedule; no recurring entries.
 
 ## F11. Profiles — Done
-- **Own profile** (`/profile`, a navigation tab): picture (tap → choose photo / remove), display name, @username, bio ("Add a bio" when empty), stats (groups, activities, upcoming plans; each taps through), your groups, account (email with change → confirmation link, password change with current-password check, time zone read-only), **Sign out** (moved here from other screens).
+- **Own profile** (`/profile`, a navigation tab): picture (tap → choose photo / remove), display name, @username, bio ("Add a bio" when empty), stats (groups, activities, upcoming plans; each taps through), your groups, account (email with change → confirmation links to **both** the current and new address (Supabase secure email change; both must be opened; the snackbar, the tile's subtitle and the email itself say so; template `supabase/templates/email_change.html`), password change with current-password check, time zone read-only), **Sign out** (moved here from other screens).
 - **Edit profile**: display name (≤50), username with live "Available / That username is taken / invalid" check (same rules as sign-up), bio (≤160).
 - **Other people** (`/people/:id`): picture, name, @username, bio, "Groups you share". Opened by tapping someone in a group's Members tab or a plan's "Going" list. Stats are only shown on your own profile.
 - **Avatars everywhere people are listed**: members, invite search, plan participants (`UserAvatar`, initial-letter fallback).

@@ -63,6 +63,8 @@ The Supabase CLI may be at `~/.local/bin/supabase` rather than on `PATH`. The ow
 - The app uses **path URLs** (`usePathUrlStrategy`), not `#/`. Hosting must serve `index.html` for unknown paths (`app/web/_redirects`). Links: `AppConfig.inviteLink`, `AppConfig.appUrl`; never build URLs from `Uri.base` directly.
 - Deleting a user sets "who did it" columns to null; models must treat `createdBy`, `sharedById`, actor names as nullable ("a deleted user").
 - `touch_updated` only stamps `updated_by` for users that still exist (needed during account deletion).
+- Supabase auth emails link back to the site root with query parameters (`/?code=`, `/?message=`, `/?error_description=`); the router redirects `/` and shows the message (`authLinkNotice`). Keep that redirect.
+- Email templates in `supabase/templates/` only apply to the local stack (`config.toml`). The cloud copy is pasted by hand in the dashboard (`docs/deployment.md` §1); say so in the PR whenever a template changes. Don't use `supabase config push`: it would also push local-only settings such as `site_url`.
 - Mac: current Dart needs macOS ≥ 14.
 - Each computer (Mac, Windows) has its own local database; data made on one isn't on the other.
 - Windows: Docker Desktop needs WSL 2; the `supabase_vector` container restart-loops there, which is harmless.

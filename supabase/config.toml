@@ -244,6 +244,12 @@ otp_expiry = 3600
 # admin_email = "admin@email.com"
 # sender_name = "Admin"
 
+# Sent to both the current and the new address (double_confirm_changes). The cloud
+# project's copy is set by hand in the dashboard; keep the two in sync.
+[auth.email.template.email_change]
+subject = "Confirm your EasyPlan email change"
+content_path = "./supabase/templates/email_change.html"
+
 # Uncomment to customize email template
 # [auth.email.template.invite]
 # subject = "You have been invited"

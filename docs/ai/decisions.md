@@ -51,6 +51,7 @@ Product and technical decisions, with the reason. Newest last. When a decision c
 | 2026-10-12 | Password-reset links open the web app (`APP_URL`), even for phone-app users. | Works without deep-link setup; users then sign in on the app. |
 | 2026-10-12 | Placeholder icon (white calendar + check on blue) until a designed one exists. | Stores need an icon; easy to replace. |
 | 2026-10-09 | The time zone picker lists all IANA zones (including aliases like Asia/Calcutta) with current offsets, searchable by name or offset. | A plain dropdown of ~490 zones is unusable. |
+| 2026-10-14 | Supabase's **secure email change** stays on: links go to both the old and new address, and the change needs both. The app's message, the profile and the email itself say so. | Someone with brief access to an account can't move it to their own email. The owner asked whether two emails were intended. |
 
 ## Technical
 
@@ -74,3 +75,4 @@ Product and technical decisions, with the reason. Newest last. When a decision c
 | 2026-10-12 | GitHub Projects board **EasyPlan** (https://github.com/users/kangjin97/projects/3) with Todo → In Progress → Done; cards move to In Progress when work starts (`scripts/board.sh`) and to Done when the PR merges. | One visual view of what's next, in progress and finished. |
 | 2026-10-12 | Backlog and bugs in GitHub Issues (labels `bug`, `feature`, `chore`, `priority:high`; issue forms); branches `fix\|feature\|chore/<n>-name`; PRs say `Closes #n`; CI runs analyze, Dart tests and pgTAP on every PR. | One place for work, linked to code; checks before merge. |
 | 2026-10-13 | Development also happens on a Windows 11 PC. Its Flutter (3.47.6, a git clone of the tag) and Supabase CLI (2.119.0) are pinned to CI's versions; Docker Desktop runs on WSL 2. Same issue → branch → PR workflow; GitHub is the source of truth and each computer keeps its own local database; iOS builds stay on the Mac. Setup: `docs/setup-mac.md`, `docs/setup-windows.md`. | The owner works from both machines; matching CI's versions keeps results the same everywhere. |
+| 2026-10-14 | Auth email templates are kept in `supabase/templates/` (used locally via `config.toml`) and pasted into the cloud dashboard by hand. | `supabase config push` would also push local-only settings; templates change rarely. |
