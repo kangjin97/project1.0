@@ -12,6 +12,7 @@ Source of truth: `supabase/migrations/`. Test coverage: `supabase/tests/database
 | `20261012010000_delete_account.sql` | "Who did it" FKs → `on delete set null`; `hand_over_ownership` trigger; `my_storage_files`, `delete_my_account` |
 | `20261012020000_delete_account_order.sql` | `delete_my_account` unshares activities before deleting them |
 | `20261012030000_touch_updated_existing_users.sql` | `touch_updated` stamps `updated_by` only for existing users |
+| `20261014064145_cancel_email_change.sql` | `cancel_email_change` |
 
 ## Tables
 
@@ -144,6 +145,7 @@ See [`ai/endpoints.md`](ai/endpoints.md) for parameters, return shapes and error
 | `my_profile_stats()` | Caller's counts: groups, activities, upcoming plans |
 | `delete_my_account()` | Deletes the caller's activities (plans become events) and auth user (cascades; groups handed over) |
 | `my_storage_files()` | Caller's avatar and activity photo paths, to remove before deletion |
+| `cancel_email_change()` | Clears the caller's pending email change in `auth.users` (address and both tokens), so the links already sent stop working. Supabase Auth has no API for this. |
 | `list_timezones()` | Zones for the picker: name, region, readable city, current offset in minutes (sorted by offset) |
 
 ### Internal helpers

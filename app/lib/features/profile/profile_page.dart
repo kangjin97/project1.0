@@ -64,23 +64,6 @@ class ProfilePage extends ConsumerWidget {
     }
   }
 
-  Future<void> _changeEmail(BuildContext context, WidgetRef ref) async {
-    final email = await promptText(context, title: 'Change email', label: 'New email', action: 'Send link');
-    if (email == null || !email.contains('@') || !context.mounted) return;
-    try {
-      final current = Supabase.instance.client.auth.currentUser!;
-      await ref.read(profileRepositoryProvider).changeEmail(email);
-      // Rebuilds the email tile, which reads the pending address from the session.
-      ref.invalidate(profileProvider(current.id));
-      if (context.mounted) {
-        // Secure email change is on: Supabase emails both addresses and needs both links.
-        showMessage(context, 'We’ve sent a link to ${current.email} and another to ${email.trim()}. Open both to finish the change.');
-      }
-    } catch (e) {
-      if (context.mounted) showError(context, e);
-    }
-  }
-
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final me = Supabase.instance.client.auth.currentUser!;
@@ -142,12 +125,7 @@ class ProfilePage extends ConsumerWidget {
             _GroupsList(userId: me.id, emptyText: 'You’re not in any groups yet.'),
             const Divider(height: 40),
             _SectionTitle('Account'),
-            ListTile(
-              leading: const Icon(Icons.mail_outline),
-              title: Text(me.email ?? ''),
-              subtitle: me.newEmail == null ? const Text('Email') : Text('Changing to ${me.newEmail}: open the links sent to both addresses'),
-              trailing: TextButton(onPressed: () => _changeEmail(context, ref), child: const Text('Change')),
-            ),
+            const _EmailTile(),
             ListTile(
               leading: const Icon(Icons.lock_outline),
               title: const Text('Password'),
@@ -209,6 +187,72 @@ class _TimezoneTile extends ConsumerWidget {
       ),
       trailing: TextButton(onPressed: () => showTimezonePicker(context), child: const Text('Change')),
       onTap: () => showTimezonePicker(context),
+    );
+  }
+}
+
+/// The account email, with any pending change. Reads the user from the server
+/// (not the session from sign-in) and re-reads when the app comes back to the
+/// foreground, so a change confirmed from the mail app shows up here.
+class _EmailTile extends ConsumerStatefulWidget {
+  const _EmailTile();
+
+  @override
+  ConsumerState<_EmailTile> createState() => _EmailTileState();
+}
+
+class _EmailTileState extends ConsumerState<_EmailTile> {
+  late final AppLifecycleListener _lifecycle;
+
+  @override
+  void initState() {
+    super.initState();
+    _lifecycle = AppLifecycleListener(onResume: () => ref.invalidate(accountProvider));
+  }
+
+  @override
+  void dispose() {
+    _lifecycle.dispose();
+    super.dispose();
+  }
+
+  Future<void> _change(User me) async {
+    final email = await promptText(context, title: 'Change email', label: 'New email', action: 'Send link');
+    if (email == null || !email.contains('@') || !mounted) return;
+    try {
+      await ref.read(profileRepositoryProvider).changeEmail(email);
+      ref.invalidate(accountProvider);
+      if (mounted) {
+        // Secure email change is on: Supabase emails both addresses and needs both links.
+        showMessage(context, 'We’ve sent a link to ${me.email} and another to ${email.trim()}. Open both to finish the change.');
+      }
+    } catch (e) {
+      if (mounted) showError(context, e);
+    }
+  }
+
+  Future<void> _cancel() async {
+    try {
+      await ref.read(profileRepositoryProvider).cancelEmailChange();
+      ref.invalidate(accountProvider);
+      if (mounted) showMessage(context, 'Email change cancelled. The links already sent no longer work.');
+    } catch (e) {
+      if (mounted) showError(context, e);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    // Until the server answers, show the session's copy rather than a spinner.
+    final me = ref.watch(accountProvider).value ?? Supabase.instance.client.auth.currentUser!;
+    final pending = me.newEmail;
+    return ListTile(
+      leading: const Icon(Icons.mail_outline),
+      title: Text(me.email ?? ''),
+      subtitle: pending == null ? const Text('Email') : Text('Changing to $pending: open the links sent to both addresses'),
+      trailing: pending == null
+          ? TextButton(onPressed: () => _change(me), child: const Text('Change'))
+          : TextButton(onPressed: _cancel, child: const Text('Cancel change')),
     );
   }
 }

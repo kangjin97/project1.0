@@ -97,6 +97,17 @@ class ProfileRepository {
   }
 
   /// Checks the current password first, since Supabase doesn't ask for it.
+  /// The signed-in user as the server has it now. The session's copy dates from
+  /// sign-in, so an email change confirmed in another browser (the mail app's)
+  /// wouldn't show until the next sign-in.
+  Future<User> account() async => (await _db.auth.refreshSession()).user ?? _db.auth.currentUser!;
+
+  /// Drops a pending email change; the confirmation links already sent stop working.
+  Future<void> cancelEmailChange() async {
+    await _db.rpc('cancel_email_change');
+    await _db.auth.refreshSession();
+  }
+
   Future<void> changePassword({required String current, required String next}) async {
     final email = _db.auth.currentUser!.email!;
     await _db.auth.signInWithPassword(email: email, password: current);
@@ -111,6 +122,8 @@ final profileProvider =
 
 final sharedGroupsProvider = FutureProvider.autoDispose.family<List<SharedGroup>, String>(
     (ref, id) => ref.watch(profileRepositoryProvider).sharedGroups(id));
+
+final accountProvider = FutureProvider.autoDispose<User>((ref) => ref.watch(profileRepositoryProvider).account());
 
 final myStatsProvider =
     FutureProvider.autoDispose<ProfileStats>((ref) => ref.watch(profileRepositoryProvider).myStats());
