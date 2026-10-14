@@ -34,13 +34,13 @@ Settings that exist only in dashboards, and how to redo them, are in [`deploymen
 
 - **Live:** web app with all features in `features.md` marked Done. Cloud database is up to date with `supabase/migrations/` (last: `20261014085422_list_notifications.sql`; checked with `supabase migration list --linked` on 2026-10-15). Both computers are linked to the cloud project.
 - **Deploys are on request only** (since 2026-10-15, #45): merging to `main` no longer deploys. See "Working agreements" below.
-- **Both computers are set up:** the Windows 11 PC got Flutter 3.47.6, Supabase CLI 2.119.0, WSL 2 and Docker on 2026-10-15; its local database holds only the seed accounts.
+- **Both computers are set up:** the Windows 11 PC got Flutter 3.47.6, Supabase CLI 2.119.0, WSL 2 and Docker on 2026-10-15. Its local database holds the seed accounts plus a demo group **"Weekend crew"** (`dev_alice` and `dev_bob`, about 60 history lines, built to test group history); it's test data and safe to change.
 - **Auth emails:** through Resend, with EasyPlan templates from `supabase/templates/` for *Confirm signup*, *Reset password* and *Change email address*. The cloud copies are pasted by hand; if the dashboard and the files ever disagree, the files are the intended version.
 - **Privacy policy:** live at `/privacy.html`.
-- **In flight at the time of writing:** the PR for #8 (group history). It adds `20261014203717_list_group_history.sql`, which must be pushed to the cloud (`supabase db push`) before the next deploy. Always check `gh pr list` and the board's In Progress column.
+- **In flight at the time of writing:** [kangjin97/project1.0#47](https://github.com/kangjin97/project1.0/pull/47) for #8 (group history), waiting for the owner to merge. It adds `20261014203717_list_group_history.sql`, which must be pushed to the cloud (`supabase db push`) before the next deploy. The migration hasn't been pushed anywhere yet, so it can still be changed in place while the PR is open (see Pitfalls). Always check `gh pr list` and the board's In Progress column.
 - **Docs were audited against the code on 2026-10-14** (endpoints, database, features, architecture, README, SPEC, setup and deployment guides) and fixed. Code-level gaps it found became issues and are fixed: #19 (function grants and `search_path`; now guarded by `function_privileges.test.sql`) and #38 (all Supabase calls go through repositories).
 - **Notifications** (#6): Alerts tab with an unread badge; no realtime yet (#7).
-- **Group history** (#8): group page ⋮ → History.
+- **Group history** (#8, PR #47): group page ⋮ → History. Lists who did what in the group, including activity edits made while the activity was shared there (kept after it leaves the group); lines open the activity, plan or person. Details: `features.md` F10.
 - **Not built:** realtime (#7), invite management (#9), store apps (#13, #14). Full list: `gh issue list`.
 - **Next priorities (owner's labels):** `priority:high` issues first: #5 phone smoke test. Then features from the backlog (`gh issue list`), e.g. #7 realtime (would make the badge live).
 
@@ -61,6 +61,8 @@ These come from the owner's instructions and from how sessions have gone. They a
 - **Every bug or follow-up gets an issue**, even small ones found while testing, before it's fixed. Don't park work in docs or chat.
 - **Explain options with a recommendation**; the owner decides on cost, accounts and product questions (e.g. which email provider, buying a domain).
 - **Verify before claiming.** Run the checks, test in the browser where possible, and say plainly what wasn't tested (often "on the phone, after deploy").
+- **Fix gaps; don't just list them.** If a feature has a gap you can close in reach of the same PR, close it there. Don't ship it as a "known gap". If it's genuinely out of scope or needs a product decision, ask the owner first, and raise an issue if they want it later. (The owner pushed back on #8's first PR listing fixable gaps.)
+- **Ask product questions before building.** When a choice changes what gets built (e.g. what a group may see, where a screen lives), ask with a recommended option at the start, not halfway through.
 - **Keep docs current in the same PR** as the change: `features.md`, `endpoints.md`, `database.md`, `SPEC.md`, `decisions.md`, `deployment.md` as relevant.
 
 ## Pitfalls that already happened
@@ -71,6 +73,10 @@ These come from the owner's instructions and from how sessions have gone. They a
 - **Email templates and dashboard settings don't deploy from git.** Changing `supabase/templates/*` or `config.toml` affects only the local stack.
 - **A domain email needs DNS you control**: `*.netlify.app` can't be used for sending. Namecheap DNS: Host is the part before the domain; a CNAME and MX can't share a name.
 - **Windows:** Docker Desktop doesn't start on its own after a reboot (start it, then `supabase start`); terminals opened before an install don't see new PATH entries; PowerShell 5.1 has no `&&`. The Claude preview pane doesn't draw Flutter web while it's hidden, so screenshots and clicks time out: use API checks against the local stack, or ask the owner to bring the window forward.
+- **Windows: `supabase test db` says `docker: command not found`** in an agent shell started before Docker was installed. Prepend `$env:ProgramFiles\Docker\Docker\resources\bin` to PATH for that command (or have the owner restart the Claude app).
+- **A dev server an agent starts in the background can't hot-reload** (nothing can type `r`/`R` into it). After Dart changes, stop whatever listens on port 3000 and run `flutter run -d web-server …` again; reloading the page alone keeps the old code.
+- **Changing a migration that hasn't left this computer** (still in an open PR, not pushed to the cloud): edit the file, then drop what it created and forget the version, and re-apply: `docker exec supabase_db_group-planner psql -U postgres -c "drop function …" -c "delete from supabase_migrations.schema_migrations where version = '<version>'"`, then `supabase migration up`. Once a migration is merged or pushed, never edit it (CLAUDE.md rule 3); add a new one.
+- **Rows in one transaction share `now()`**, so `created_at` can't order them (pgTAP tests run in one transaction). Order change-log rows by `change_log.id`, as `list_group_history` does.
 
 ## Open questions for the owner
 
