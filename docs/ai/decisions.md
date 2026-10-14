@@ -63,6 +63,7 @@ Product and technical decisions, with the reason. Newest last. When a decision c
 | 2026-10-15 | Group history (#8) shows a member the group's whole history, including from before they joined; former members see none. | Matches what members can already see (the group's activities and plans); the log is about the group, not the member. |
 | 2026-10-15 | Group history leaves out bookkeeping rows: label-only edits, a label being cleared from a share, and participants marked as clashing (the clash override line already says it). An event is named as it was when planned. | Each line should be something a person did, in words that were true at the time. |
 | 2026-10-15 | A deleted activity's name no longer shows in group history ("an activity"). | Same rule as everywhere else: names follow what the caller can still see. |
+| 2026-10-15 | Past plans on phones (#11): a **Show earlier** button at the top of the list (4 weeks per tap) rather than loading on scroll-up; plans that are over are shown at reduced opacity, as soon as they end. | A button is predictable and keeps the list opening at today; scroll-up loading jumps the list on phones. Muting rather than hiding keeps past plans tappable. |
 
 ## Technical
 

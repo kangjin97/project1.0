@@ -11,12 +11,15 @@ final _shortDay = DateFormat('EEE d MMM');
 String formatTime(DateTime t) => _time.format(t);
 String formatShortDay(DateTime d) => _shortDay.format(d);
 
-/// "Today", "Tomorrow", or e.g. "Saturday, 12 October".
+/// "Today", "Tomorrow", "Yesterday", or e.g. "Saturday, 12 October" (with the
+/// year when it isn't this year).
 String dayHeading(DateTime day) {
   final today = AppClock.today();
-  if (isSameDay(day, today)) return 'Today · ${_dayHeader.format(day)}';
-  if (isSameDay(day, addDays(today, 1))) return 'Tomorrow · ${_dayHeader.format(day)}';
-  return _dayHeader.format(day);
+  final date = day.year == today.year ? _dayHeader.format(day) : DateFormat('EEEE, d MMMM y').format(day);
+  if (isSameDay(day, today)) return 'Today · $date';
+  if (isSameDay(day, addDays(today, 1))) return 'Tomorrow · $date';
+  if (isSameDay(day, addDays(today, -1))) return 'Yesterday · $date';
+  return date;
 }
 
 /// When the entry happens, as seen on [day] (matters for multi-day entries).
@@ -60,7 +63,8 @@ class EntryTile extends StatelessWidget {
     final e = entry;
     final accent = e.iAmIn ? scheme.primary : scheme.outlineVariant;
     final muted = theme.textTheme.bodySmall?.copyWith(color: scheme.onSurfaceVariant);
-    return Card(
+    // Plans that are over stay readable but step back.
+    final card = Card(
       margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 3),
       color: e.iAmIn ? scheme.primaryContainer.withValues(alpha: 0.45) : null,
       clipBehavior: Clip.antiAlias,
@@ -120,7 +124,31 @@ class EntryTile extends StatelessWidget {
         ),
       ),
     );
+    return e.isPastAt(AppClock.now()) ? Opacity(opacity: 0.55, child: card) : card;
   }
+}
+
+/// Weeks added before or after an agenda list per tap.
+const agendaStepWeeks = 4;
+
+/// Top-of-list button that extends an agenda back in time; lists otherwise
+/// start today.
+class ShowEarlierButton extends StatelessWidget {
+  const ShowEarlierButton({super.key, required this.onPressed});
+
+  final VoidCallback onPressed;
+
+  @override
+  Widget build(BuildContext context) => Padding(
+        padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
+        child: Center(
+          child: OutlinedButton.icon(
+            onPressed: onPressed,
+            icon: const Icon(Icons.expand_less),
+            label: const Text('Show earlier'),
+          ),
+        ),
+      );
 }
 
 /// Entries grouped under day headings, for every day in [days] that has any.
@@ -148,14 +176,18 @@ class AgendaList extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final children = <Widget>[...header];
+    final today = AppClock.today();
     var any = false;
     for (final day in days) {
       final onDay = entries.where((e) => e.occursOn(day)).toList();
       if (onDay.isEmpty) continue;
       any = true;
+      final past = day.isBefore(today);
       children.add(Padding(
         padding: const EdgeInsets.fromLTRB(16, 16, 16, 4),
-        child: Text(dayHeading(day), style: theme.textTheme.titleSmall?.copyWith(color: theme.colorScheme.primary)),
+        child: Text(dayHeading(day),
+            style: theme.textTheme.titleSmall
+                ?.copyWith(color: past ? theme.colorScheme.onSurfaceVariant : theme.colorScheme.primary)),
       ));
       for (final e in onDay) {
         children.add(EntryTile(entry: e, day: day, showGroup: showGroup, onTap: () => onTap(e)));

@@ -26,7 +26,10 @@ class MySchedulePage extends ConsumerStatefulWidget {
 class _MySchedulePageState extends ConsumerState<MySchedulePage> {
   _Mode? _chosen;
   DateTime _anchor = AppClock.today();
-  int _listWeeks = 4;
+  int _listWeeks = agendaStepWeeks;
+
+  /// Weeks before today in the list view, added with "Show earlier".
+  int _earlierWeeks = 0;
 
   _Mode _mode(bool wide) => _chosen ?? (wide ? _Mode.week : _Mode.list);
 
@@ -34,7 +37,12 @@ class _MySchedulePageState extends ConsumerState<MySchedulePage> {
     switch (mode) {
       case _Mode.list:
         final today = AppClock.today();
-        return (from: today, to: addDays(today, _listWeeks * 7 - 1), groupId: null, includeUnscheduled: false);
+        return (
+          from: addDays(today, -_earlierWeeks * 7),
+          to: addDays(today, _listWeeks * 7 - 1),
+          groupId: null,
+          includeUnscheduled: false,
+        );
       case _Mode.week:
         final start = startOfWeek(_anchor);
         return (from: start, to: addDays(start, 6), groupId: null, includeUnscheduled: false);
@@ -217,18 +225,20 @@ class _MySchedulePageState extends ConsumerState<MySchedulePage> {
           },
           child: AgendaList(
             entries: entries,
-            days: [for (var i = 0; i < _listWeeks * 7; i++) addDays(query.from, i)],
-            emptyMessage:
-                'Nothing planned in the next $_listWeeks weeks.\n'
-                'Add something from a group, or tap “Add to schedule”.',
+            days: [for (var i = 0; i < (_earlierWeeks + _listWeeks) * 7; i++) addDays(query.from, i)],
+            emptyMessage: _earlierWeeks == 0
+                ? 'Nothing planned in the next $_listWeeks weeks.\n'
+                    'Add something from a group, or tap “Add to schedule”.'
+                : 'Nothing planned in these ${_earlierWeeks + _listWeeks} weeks.',
             onTap: (e) => showEntryDetail(context, query, e.id),
+            header: [ShowEarlierButton(onPressed: () => setState(() => _earlierWeeks += agendaStepWeeks))],
             footer: [
               Padding(
                 padding: const EdgeInsets.all(16),
                 child: Center(
                   child: OutlinedButton(
-                    onPressed: () => setState(() => _listWeeks += 4),
-                    child: const Text('Show 4 more weeks'),
+                    onPressed: () => setState(() => _listWeeks += agendaStepWeeks),
+                    child: const Text('Show $agendaStepWeeks more weeks'),
                   ),
                 ),
               ),
