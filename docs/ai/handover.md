@@ -32,7 +32,7 @@ Settings that exist only in dashboards, and how to redo them, are in [`deploymen
 
 ## Current state (2026-10-15)
 
-- **Live:** web app with all features in `features.md` marked Done. The cloud database was last confirmed up to date on 2026-10-14 (`20261014064145_cancel_email_change.sql`); #42 and #43 then added `20261014082408_function_grants_and_search_path.sql` and `20261014085422_list_notifications.sql`. Check with `supabase migration list --linked` before the next deploy.
+- **Live:** web app with all features in `features.md` marked Done. Cloud database is up to date with `supabase/migrations/` (last: `20261014085422_list_notifications.sql`; checked with `supabase migration list --linked` on 2026-10-15). Both computers are linked to the cloud project.
 - **Deploys are on request only** (since 2026-10-15, #45): merging to `main` no longer deploys. See "Working agreements" below.
 - **Both computers are set up:** the Windows 11 PC got Flutter 3.47.6, Supabase CLI 2.119.0, WSL 2 and Docker on 2026-10-15; its local database holds only the seed accounts.
 - **Auth emails:** through Resend, with EasyPlan templates from `supabase/templates/` for *Confirm signup*, *Reset password* and *Change email address*. The cloud copies are pasted by hand; if the dashboard and the files ever disagree, the files are the intended version.

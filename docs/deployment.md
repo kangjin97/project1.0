@@ -17,7 +17,7 @@ Order: **1 → 2 → 3** gets friends using it on their phones via the browser. 
 | Piece | Status |
 |---|---|
 | Web app | **Live at https://easyplan-hehe.netlify.app** (Netlify project `easyplan-hehe`; `easyplan` was taken) |
-| Supabase cloud project | Created and linked from the Mac; schema pushed with `supabase db push` (link once per computer: [`setup-windows.md`](setup-windows.md#deploying-from-windows)). Last confirmed up to date on 2026-10-14 (`20261014064145_cancel_email_change.sql`); two migrations merged after that (`20261014082408_function_grants_and_search_path.sql`, `20261014085422_list_notifications.sql`). Check with `supabase migration list --linked` before the next deploy |
+| Supabase cloud project | Created; linked from the Mac and the Windows PC; schema pushed with `supabase db push` (link once per computer: [`setup-windows.md`](setup-windows.md#deploying-from-windows)). Up to date as of 2026-10-15 (last migration `20261014085422_list_notifications.sql`). Check any time with `supabase migration list --linked` |
 | Supabase Auth URLs | Site URL `https://easyplan-hehe.netlify.app`; redirect `https://easyplan-hehe.netlify.app/**` |
 | `app/env/prod.json` | Filled in on the owner's Mac (git-ignored) |
 | Auth emails | Sent through **Resend** from `no-reply@easyplanhehe.online` (custom SMTP in Supabase). Domain `easyplanhehe.online` at Namecheap; Resend region Tokyo, Japan (`ap-northeast-1`) |
@@ -148,7 +148,7 @@ Toolchain first:
 Deploys happen **only when the owner asks**: typically at the end of a day of work, or whenever the live app needs the latest `main`. Every production deploy costs Netlify credits, so merging a pull request doesn't deploy (until 2026-10-15 it did, and several merges a day used the credits up too fast). Develop and test on the local stack; merge to `main` as often as you like.
 
 **To deploy** (the owner, or an agent when the owner says so):
-1. If anything merged since the last deploy adds migrations, run `supabase db push` on the cloud project **first** (owner).
+1. If anything merged since the last deploy adds migrations, run `supabase db push` on the cloud project **first** (owner). `supabase migration list --linked` shows which migrations the cloud has.
 2. Start the deploy:
    ```bash
    gh workflow run ci.yml --ref main
