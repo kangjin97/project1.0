@@ -41,7 +41,7 @@ The cloud database is separate from the local one: local accounts and test data 
    - **URL Configuration**:
      - Site URL: `https://easyplan-hehe.netlify.app`
      - Redirect URLs: add `https://easyplan-hehe.netlify.app/**`. Password-reset links return here.
-   - **Sign In / Providers → Email**: keep **Confirm email** on.
+   - **Sign In / Providers → Email**: keep **Confirm email** and **Secure email change** on. The app tells people to open the links sent to both their old and new address; with secure email change off that message would be wrong.
    - **Emails → SMTP Settings**: connect a real email provider, e.g. Resend, Postmark or SendGrid. The built-in sender is limited to a few emails an hour and is only for testing.
    - Optionally customise the email templates (confirm signup, reset password, change email) with the EasyPlan name.
 4. **(you)** Copy **Project URL** and the **Publishable key** (Project Settings → API keys) into `app/env/prod.json`.
