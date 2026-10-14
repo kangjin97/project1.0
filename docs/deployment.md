@@ -17,14 +17,14 @@ Order: **1 → 2 → 3** gets friends using it on their phones via the browser. 
 | Piece | Status |
 |---|---|
 | Web app | **Live at https://easyplan-hehe.netlify.app** (Netlify project `easyplan-hehe`; `easyplan` was taken) |
-| Supabase cloud project | Created and linked from the Mac; schema pushed with `supabase db push` (link once per computer: [`setup-windows.md`](setup-windows.md#deploying-from-windows)). Includes `cancel_email_change` once #33 is pushed |
+| Supabase cloud project | Created and linked from the Mac; schema pushed with `supabase db push` (link once per computer: [`setup-windows.md`](setup-windows.md#deploying-from-windows)). Up to date as of 2026-10-14 (last migration `20261014064145_cancel_email_change.sql`) |
 | Supabase Auth URLs | Site URL `https://easyplan-hehe.netlify.app`; redirect `https://easyplan-hehe.netlify.app/**` |
 | `app/env/prod.json` | Filled in on the owner's Mac (git-ignored) |
 | Auth emails | Sent through **Resend** from `no-reply@easyplanhehe.online` (custom SMTP in Supabase). Domain `easyplanhehe.online` at Namecheap; Resend region Tokyo, Japan (`ap-northeast-1`) |
 | Auth email templates | **Change email address**: EasyPlan template from `supabase/templates/email_change.html`, pasted into the dashboard. Confirm signup and Reset password: Supabase defaults |
 | Privacy policy | Live at `<APP_URL>/privacy.html`; names Supabase (Singapore), Netlify and Resend (Tokyo); contact easyplanhehe@gmail.com |
 | Deploys | **Automatic** on every push to `main`, after the checks pass (GitHub Actions → Netlify). See [Automatic deploys](#automatic-deploys). |
-| Still to do | Phone smoke test (#5); EasyPlan wording for the sign-up and reset emails; Android (#13) and iOS (#14) store builds |
+| Still to do | Phone smoke test (#5); EasyPlan wording for the sign-up and reset emails (#36); Android (#13) and iOS (#14) store builds |
 
 The cloud database is separate from the local one: local accounts and test data don't exist there, and the local seed accounts are never pushed.
 
@@ -62,7 +62,7 @@ The cloud database is separate from the local one: local accounts and test data 
      - Changing provider later: update these settings and name the new provider in the privacy policy.
    - **Emails → Templates**: templates kept in the repo live in `supabase/templates/` (the local stack uses them through `supabase/config.toml`). The cloud copy is set by hand: open the template, set the subject from `config.toml`, paste the file's contents into the body (the HTML comment at the top can stay), and save. Re-paste whenever the file changes.
      - **Change email address** → `supabase/templates/email_change.html`, subject "Confirm your EasyPlan email change". Sent to both the old and new address; says both links are needed.
-     - Confirm signup and Reset password still use Supabase's defaults.
+     - Confirm signup and Reset password still use Supabase's defaults (#36).
 4. **(you)** Copy **Project URL** and the **Publishable key** (Project Settings → API keys) into `app/env/prod.json`.
 5. Plan: the free plan pauses a project after a week without activity and has small storage limits. Fine for a trial with friends; move to Pro before a public launch. Turn on backups (Pro includes daily backups).
 

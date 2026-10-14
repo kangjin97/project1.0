@@ -1,11 +1,12 @@
 # CLAUDE.md — steering for AI agents
 
-EasyPlan (repo `group-planner`; Dart package `group_planner`): Flutter app (`app/`) + Supabase backend (`supabase/`) for friends planning activities together. Read this file first, then the doc that matches your task.
+EasyPlan (repo `group-planner`; Dart package `group_planner`): Flutter app (`app/`) + Supabase backend (`supabase/`) for friends planning activities together. Read this file first, then the doc that matches your task. **New to the project, or no memory of earlier sessions?** Read [`docs/ai/handover.md`](docs/ai/handover.md) right after this file: services and accounts, current state, working agreements with the owner, pitfalls.
 
 ## Where to look
 
 | Need | File |
 |---|---|
+| Handover: accounts, current state, how the owner works | `docs/ai/handover.md` |
 | What the product must do | `SPEC.md` |
 | What's built, where it lives, backlog | `docs/ai/features.md` |
 | Every table op / RPC: params, returns, who, errors | `docs/ai/endpoints.md` |
@@ -37,7 +38,7 @@ The Supabase CLI may be at `~/.local/bin/supabase` rather than on `PATH`. The ow
 2. **Rules belong in the database.** Access control and invariants go in RLS policies, column grants, triggers or `security definer` RPCs, with pgTAP tests. The app may hide UI, but must not be the only guard.
 3. **Never edit an applied migration.** Add a new file under `supabase/migrations/` (`supabase migration new <name>`).
 4. **New functions:** `security definer set search_path = ''`, fully qualified names (`public.x`). `revoke execute ... from public, anon`; also from `authenticated` for internal helpers.
-5. **Supabase access only in `app/lib/data/*_repository.dart`.** Widgets use providers and repository methods.
+5. **Supabase access only in `app/lib/data/*_repository.dart`.** Widgets use providers and repository methods. Known exceptions, to be moved (#38): `auth_page.dart` and `reset_password_page.dart` (auth calls), `data/app_clock.dart` (time zone). Reading `auth.currentUser` and `auth.signOut()` in widgets is fine. Don't add new exceptions.
 6. **After every mutation, invalidate the affected providers** (`invalidateActivity`, `invalidateLabels`, or specific `ref.invalidate(...)`). Otherwise screens show stale data.
 7. Before finishing: `flutter analyze` must be clean and `supabase test db` must pass. If you changed behaviour, update `docs/ai/features.md`, `docs/ai/endpoints.md` and, where relevant, `docs/database.md`, `SPEC.md` and `docs/ai/decisions.md`.
 8. Don't commit or push unless asked.
@@ -58,6 +59,7 @@ The Supabase CLI may be at `~/.local/bin/supabase` rather than on `PATH`. The ow
 - On Flutter web, `1 << 32` is 0. Keep `Random().nextInt` bounds ≤ `1 << 30`.
 - Flutter web in the Claude preview pane:
   - Screenshots can show a stale frame. Hover, wait, and re-screenshot before concluding.
+  - While the pane is hidden or the window is behind another, Flutter doesn't draw: screenshots and clicks time out. Check behaviour through the local API instead, or ask the owner to bring the window forward.
   - Typing straight after a click can land in the previously focused field. Wait ~0.5–1 s after clicking.
   - Engine assertions about "targeted input element" come from synthetic clicks; ignore them.
 - The app uses **path URLs** (`usePathUrlStrategy`), not `#/`. Hosting must serve `index.html` for unknown paths (`app/web/_redirects`). Links: `AppConfig.inviteLink`, `AppConfig.appUrl`; never build URLs from `Uri.base` directly.
@@ -88,4 +90,4 @@ The Supabase CLI may be at `~/.local/bin/supabase` rather than on `PATH`. The ow
 - Dart: Riverpod `FutureProvider` / `.family`; `AsyncBody` for loading and error states; `showError` and `friendlyError` for errors; `promptText` and `confirm` dialogs; Material 3. Models in `data/models.dart` with `fromJson` and a `columns` select string when they embed relations.
 - SQL: snake_case; `timestamptz`; soft delete only for activities; composite FKs to keep rows inside one group (`(type_id, group_id)`, `(group_id, activity_id)`) or owned by one user (`(personal_type_id, owner_id)`).
 - Comments explain *why*. Match the surrounding density.
-- Git: `main` tracks `origin` (github.com/kangjin97/project1.0). Work is tracked in **GitHub Issues** and on the **EasyPlan project board** (https://github.com/users/kangjin97/projects/3; Todo → In Progress → Done): read one with `gh issue view <n>`, move its card with `./scripts/board.sh <n> progress` when you start, branch from `main` as `fix|feature|chore/<n>-short-name`, open a PR into `main` whose body starts `Closes #<n>` (template: `.github/pull_request_template.md`), and wait for **CI** (`.github/workflows/ci.yml`: analyze, Dart tests, pgTAP) to pass. Merge only when the owner says so; merging closes the issue and the board moves it to Done. Then delete the branch locally and on GitHub. `gh` is installed and signed in as kangjin97. New work you notice but don't do: raise an issue (with labels) rather than adding it to docs; it lands in Todo. Commit as `Ng Kang Jin <kangjin_97@hotmail.com>` (set in the repo config). Commit messages end with a `Co-Authored-By` line when an agent writes them; PR descriptions end with the Claude Code footer.
+- Git: `main` tracks `origin` (github.com/kangjin97/project1.0). Work is tracked in **GitHub Issues** and on the **EasyPlan project board** (https://github.com/users/kangjin97/projects/3; Todo → In Progress → Done): read one with `gh issue view <n>`, move its card with `./scripts/board.sh <n> progress` when you start, branch from `main` as `fix|feature|chore/<n>-short-name`, open a PR into `main` whose body starts `Closes #<n>` (template: `.github/pull_request_template.md`), and wait for **CI** (`.github/workflows/ci.yml`: analyze, Dart tests, pgTAP) to pass. Merge only when the owner says so; merging closes the issue and the board moves it to Done. Then delete the branch locally and on GitHub. `gh` is installed and signed in as kangjin97. New work you notice but don't do: raise an issue (with labels) rather than adding it to docs; it lands in Todo. Commit as `Ng Kang Jin <kangjin_97@hotmail.com>`: the repo config's `user.name` is "Kang Jin", so pass it explicitly (`git -c user.name="Ng Kang Jin" -c user.email=kangjin_97@hotmail.com commit ...`). Commit messages end with a `Co-Authored-By` line when an agent writes them; PR descriptions end with the Claude Code footer.

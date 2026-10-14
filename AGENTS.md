@@ -1,3 +1,3 @@
 # AGENTS.md
 
-Instructions for AI coding agents live in [`CLAUDE.md`](CLAUDE.md). Read it before making changes. It lists the hard rules (for example, never reset the local database without asking), the commands, the known gotchas, and which doc to read for each kind of task.
+Instructions for AI coding agents live in [`CLAUDE.md`](CLAUDE.md). Read it before making changes. It lists the hard rules (for example, never reset the local database without asking), the commands, the known gotchas, and which doc to read for each kind of task. If you have no history with this project, also read [`docs/ai/handover.md`](docs/ai/handover.md).

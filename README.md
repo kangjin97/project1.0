@@ -52,7 +52,8 @@ supabase test db
 
 ```text
 SPEC.md                         Product rules and decisions
-CLAUDE.md, AGENTS.md            Steering notes for AI coding agents
+CLAUDE.md, AGENTS.md            Steering notes for AI coding agents (start of docs/ai/handover.md)
+.claude/launch.json             Preview config for the Claude desktop app (attaches to :3000)
 .github/                        Issue forms, PR template, CI workflow (analyze, tests, pgTAP)
 netlify.toml                    Web hosting config (publishes app/build/web)
 scripts/build.sh                Release builds (web / android / ios) from app/env/prod.json
@@ -64,18 +65,24 @@ docs/
   setup-windows.md              Setting up a Windows PC (also WSL 2), terminals, deploying from Windows
   architecture.md               How the app and backend fit together
   database.md                   Tables, triggers, functions, policies
-  ai/                           Machine-friendly references (endpoints, feature map, decisions)
+  ai/                           Machine-friendly references (handover, endpoints, feature map, decisions)
 app/                            Flutter app
   lib/main.dart                 Entry point (Supabase init, ProviderScope)
   lib/config.dart               Supabase URL/key (dart-define overridable)
   lib/router.dart               go_router routes and auth redirect
-  lib/data/                     Models and repositories (all Supabase access)
+  lib/data/                     Models, repositories (Supabase access), AppClock
   lib/features/<area>/          Screens and widgets per feature
   lib/widgets/                  Shared widgets and dialogs
+  test/                         Dart unit tests
+  web/                          index.html, privacy.html, _redirects (all paths → app)
+  env/prod.example.json         Template for the git-ignored release config
+  deploy/well-known/            App Links / Universal Links templates
+  assets/icon/                  App icon source
 supabase/
   config.toml                   Local stack config
   migrations/                   Schema, RLS, triggers, RPCs (source of truth)
   seed.sql                      Local test accounts
+  templates/                    Auth email templates (local; cloud copy pasted by hand)
   tests/database/               pgTAP tests
 ```
 
@@ -83,6 +90,7 @@ supabase/
 
 | For | Read |
 |---|---|
+| Picking the project up (new maintainer or AI) | [`docs/ai/handover.md`](docs/ai/handover.md) |
 | Getting the project running | [`docs/development.md`](docs/development.md) |
 | Deploying to the web and app stores | [`docs/deployment.md`](docs/deployment.md) |
 | Understanding the design | [`docs/architecture.md`](docs/architecture.md) |
