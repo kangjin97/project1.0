@@ -13,6 +13,7 @@ Source of truth: `supabase/migrations/`. Test coverage: `supabase/tests/database
 | `20261012020000_delete_account_order.sql` | `delete_my_account` unshares activities before deleting them |
 | `20261012030000_touch_updated_existing_users.sql` | `touch_updated` stamps `updated_by` only for existing users |
 | `20261014064145_cancel_email_change.sql` | `cancel_email_change` |
+| `20261014082408_function_grants_and_search_path.sql` | Revoke `execute` on trigger functions and `entry_range` from `authenticated`; pin `search_path` on the remaining invoker functions |
 
 ## Tables
 
@@ -164,11 +165,12 @@ Used by RLS policies and RPCs. Clients can call the read-only access helpers, bu
 | `is_valid_timezone(name)` | Whether Postgres knows the zone name |
 | `try_uuid(text)` | The text as a uuid, or null (used on storage paths) |
 
-Not executable by clients:
-- `resolve_group_type`, `apply_participants`.
-- Trigger functions `group_activity_defaults`, `guard_personal_type`, `refile_activity`, `refile_renamed_label`, `guard_timezone`, `hand_over_ownership`.
-- The trigger functions `handle_new_user`, `handle_new_group`, `log_change`, `notify_invitee`, `revert_entries_to_events` and `touch_updated` are revoked from `public, anon` only; see Known gaps (#19).
-- Some non-`security definer` functions don't pin `search_path` (`try_uuid`, `entry_range`, `touch_updated`, `guard_personal_type`, `is_valid_timezone`, `guard_timezone`, `list_timezones`). They use fully qualified names, so this is hardening only; Supabase's linter flags it. Tracked in #19.
+Not executable by clients (`function_privileges.test.sql` checks all of this):
+- Internal helpers `resolve_group_type`, `apply_participants`, `entry_range` (only called inside `security definer` RPCs).
+- Every trigger function: `handle_new_user`, `handle_new_group`, `log_change`, `notify_invitee`, `revert_entries_to_events`, `touch_updated`, `group_activity_defaults`, `guard_personal_type`, `refile_activity`, `refile_renamed_label`, `guard_timezone`, `hand_over_ownership`. Postgres doesn't check `execute` when firing a trigger.
+- Still callable by signed-in users because policies or invoker triggers use them: `try_uuid` (storage policies), `is_valid_timezone` (`guard_timezone`); and `list_timezones` (the picker).
+- Signed-out (`anon`) callers can execute only `username_available`.
+- Every function in `public` sets `search_path` (`= ''` and fully qualified names).
 
 ## Triggers
 
@@ -200,6 +202,5 @@ The `supabase_realtime` publication includes `schedule_entries`, `schedule_parti
 ## Known gaps
 
 - Accounts created before the time zone migration keep whatever zone they had (the seed accounts start as `UTC`).
-- The trigger functions `handle_new_user`, `handle_new_group`, `log_change`, `notify_invitee`, `revert_entries_to_events` and `touch_updated` still have `execute` granted to `authenticated`. This is harmless, because Postgres refuses to call a trigger function outside a trigger, but it could be revoked for tidiness.
 - Group deletion is allowed by policy, but there's no UI for it.
 - `change_log` keeps entries by deleted users (no FK); their `before`/`after` may still contain names of things they created.
