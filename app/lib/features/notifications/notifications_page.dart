@@ -25,6 +25,7 @@ import '../schedule/schedule_widgets.dart';
           'pending' => 'Tap to accept or decline',
           'accepted' => 'You joined',
           'declined' => 'You declined',
+          'cancelled' => 'Cancelled',
           _ => null,
         },
       );
@@ -88,6 +89,10 @@ class _NotificationsPageState extends ConsumerState<NotificationsPage> {
 
   void _open(AppNotification n) {
     if (n.isInvitation) {
+      if (n.invitationStatus == 'cancelled') {
+        showMessage(context, 'This invitation was cancelled.');
+        return;
+      }
       context.go('/groups');
     } else if (n.isAboutPlan) {
       final id = n.entryId;

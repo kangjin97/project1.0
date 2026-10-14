@@ -4,14 +4,18 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:intl/intl.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../config.dart';
+import '../../data/app_clock.dart';
 import '../../data/groups_repository.dart';
 import '../../data/models.dart';
 import '../../widgets/async_body.dart';
 import '../../widgets/dialogs.dart';
 import '../../widgets/user_avatar.dart';
+import '../notifications/notifications_page.dart' show timeAgo;
+import '../schedule/schedule_widgets.dart' show formatShortDay;
 import 'group_activities_tab.dart';
 import 'group_schedule_tab.dart';
 import 'group_types_tab.dart';
@@ -141,6 +145,9 @@ class _MembersTab extends ConsumerWidget {
                 ],
               ),
             ),
+            _InviteLinksSection(groupId: groupId),
+            _SentInvitationsSection(groupId: groupId),
+            _SectionHeading('Members · ${list.length}'),
             for (final m in list)
               ListTile(
                 onTap: () => context.push(m.profile.id == me ? '/profile' : '/people/${m.profile.id}'),
@@ -178,44 +185,175 @@ class _MembersTab extends ConsumerWidget {
   Future<void> _shareLink(BuildContext context, WidgetRef ref) async {
     try {
       final token = await ref.read(groupsRepositoryProvider).createInviteLink(groupId);
+      ref.invalidate(inviteLinksProvider(groupId));
+      ref.invalidate(groupHistoryProvider(groupId));
       if (!context.mounted) return;
-      final link = AppConfig.inviteLink(token);
-      await showDialog<void>(
-        context: context,
-        builder: (context) => AlertDialog(
-          title: const Text('Invite link'),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              const Text('Anyone with this code can join for the next 7 days.'),
-              const SizedBox(height: 12),
-              SelectableText(token, style: const TextStyle(fontFamily: 'monospace')),
-            ],
-          ),
-          actions: [
-            TextButton(
-              onPressed: () {
-                Clipboard.setData(ClipboardData(text: token));
-                Navigator.pop(context);
-                showMessage(context, 'Code copied');
-              },
-              child: const Text('Copy code'),
-            ),
-            FilledButton(
-              onPressed: () {
-                Clipboard.setData(ClipboardData(text: link));
-                Navigator.pop(context);
-                showMessage(context, 'Link copied');
-              },
-              child: const Text('Copy link'),
-            ),
-          ],
-        ),
-      );
+      await _showInviteLinkDialog(context, token, expiresAt: null);
     } catch (e) {
       if (context.mounted) showError(context, e);
     }
+  }
+}
+
+/// The code and link for an invite link, with copy buttons. [expiresAt] null
+/// means a link just made (they last 7 days).
+Future<void> _showInviteLinkDialog(BuildContext context, String token, {required DateTime? expiresAt}) {
+  final link = AppConfig.inviteLink(token);
+  final until = expiresAt == null
+      ? 'for the next 7 days'
+      : 'until ${DateFormat('EEE d MMM, h:mm a').format(AppClock.inZone(expiresAt))}';
+  return showDialog<void>(
+    context: context,
+    builder: (context) => AlertDialog(
+      title: const Text('Invite link'),
+      content: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text('Anyone with this code can join $until.'),
+          const SizedBox(height: 12),
+          SelectableText(token, style: const TextStyle(fontFamily: 'monospace')),
+        ],
+      ),
+      actions: [
+        TextButton(
+          onPressed: () {
+            Clipboard.setData(ClipboardData(text: token));
+            Navigator.pop(context);
+            showMessage(context, 'Code copied');
+          },
+          child: const Text('Copy code'),
+        ),
+        FilledButton(
+          onPressed: () {
+            Clipboard.setData(ClipboardData(text: link));
+            Navigator.pop(context);
+            showMessage(context, 'Link copied');
+          },
+          child: const Text('Copy link'),
+        ),
+      ],
+    ),
+  );
+}
+
+class _SectionHeading extends StatelessWidget {
+  const _SectionHeading(this.text);
+
+  final String text;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 16, 16, 4),
+      child: Text(text, style: theme.textTheme.titleSmall?.copyWith(color: theme.colorScheme.primary)),
+    );
+  }
+}
+
+/// Links that still let people join, with who made them, expiry and uses.
+/// Tap to copy again; any member can revoke. Hidden when there are none.
+class _InviteLinksSection extends ConsumerWidget {
+  const _InviteLinksSection({required this.groupId});
+
+  final String groupId;
+
+  Future<void> _revoke(BuildContext context, WidgetRef ref, InviteLink link) async {
+    final ok = await confirm(context,
+        title: 'Revoke this link?',
+        message: 'Nobody new can join with it. People who already joined stay in the group.',
+        action: 'Revoke');
+    if (!ok || !context.mounted) return;
+    try {
+      await ref.read(groupsRepositoryProvider).revokeInviteLink(link.id);
+      ref.invalidate(inviteLinksProvider(groupId));
+      ref.invalidate(groupHistoryProvider(groupId));
+      if (context.mounted) showMessage(context, 'Link revoked');
+    } catch (e) {
+      if (context.mounted) showError(context, e);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    ref.watch(timezoneProvider);
+    final now = AppClock.now();
+    final links = [...?ref.watch(inviteLinksProvider(groupId)).value?.where((l) => l.isActiveAt(now))];
+    if (links.isEmpty) return const SizedBox.shrink();
+    final muted = Theme.of(context).textTheme.bodySmall?.copyWith(color: Theme.of(context).colorScheme.onSurfaceVariant);
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        _SectionHeading('Active invite links · ${links.length}'),
+        for (final l in links)
+          ListTile(
+            leading: const Icon(Icons.link),
+            title: Text('Code ${l.token.substring(0, 6)}…', style: const TextStyle(fontFamily: 'monospace')),
+            subtitle: Text(
+              [
+                'By ${l.createdByUsername == null ? 'a deleted user' : '@${l.createdByUsername}'}',
+                if (l.expiresAt != null) 'until ${formatShortDay(AppClock.inZone(l.expiresAt!))}',
+                l.maxUses == null ? '${l.useCount} joined' : '${l.useCount} of ${l.maxUses} joined',
+              ].join(' · '),
+              style: muted,
+            ),
+            onTap: () => _showInviteLinkDialog(context, l.token, expiresAt: l.expiresAt),
+            trailing: TextButton(onPressed: () => _revoke(context, ref, l), child: const Text('Revoke')),
+          ),
+      ],
+    );
+  }
+}
+
+/// Invitations still waiting for an answer; any member can cancel one.
+/// Hidden when there are none.
+class _SentInvitationsSection extends ConsumerWidget {
+  const _SentInvitationsSection({required this.groupId});
+
+  final String groupId;
+
+  Future<void> _cancel(BuildContext context, WidgetRef ref, SentInvitation inv) async {
+    final ok = await confirm(context,
+        title: 'Cancel the invitation for @${inv.invitee.username}?',
+        message: 'They won’t be able to join with it, and their alert will say it was cancelled.',
+        action: 'Cancel invitation',
+        dismiss: 'Keep it');
+    if (!ok || !context.mounted) return;
+    try {
+      await ref.read(groupsRepositoryProvider).cancelInvitation(inv.id);
+      ref.invalidate(sentInvitationsProvider(groupId));
+      ref.invalidate(groupHistoryProvider(groupId));
+      if (context.mounted) showMessage(context, 'Invitation cancelled');
+    } catch (e) {
+      if (context.mounted) showError(context, e);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final invitations = ref.watch(sentInvitationsProvider(groupId)).value ?? const <SentInvitation>[];
+    if (invitations.isEmpty) return const SizedBox.shrink();
+    final muted = Theme.of(context).textTheme.bodySmall?.copyWith(color: Theme.of(context).colorScheme.onSurfaceVariant);
+    final now = AppClock.now();
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        _SectionHeading('Waiting for an answer · ${invitations.length}'),
+        for (final inv in invitations)
+          ListTile(
+            leading: UserAvatar(label: inv.invitee.label, avatarPath: inv.invitee.avatarPath),
+            title: Text(inv.invitee.label),
+            subtitle: Text(
+              '@${inv.invitee.username} · invited by '
+              '${inv.invitedByUsername == null ? 'a deleted user' : '@${inv.invitedByUsername}'} · '
+              '${timeAgo(inv.createdAt, now)}',
+              style: muted,
+            ),
+            trailing: TextButton(onPressed: () => _cancel(context, ref, inv), child: const Text('Cancel')),
+          ),
+      ],
+    );
   }
 }
 
@@ -258,6 +396,8 @@ class _InviteSheetState extends ConsumerState<_InviteSheet> {
   Future<void> _invite(Profile p) async {
     try {
       await ref.read(groupsRepositoryProvider).invite(widget.groupId, p.id);
+      ref.invalidate(sentInvitationsProvider(widget.groupId));
+      ref.invalidate(groupHistoryProvider(widget.groupId));
       setState(() => _invited.add(p.id));
     } catch (e) {
       if (mounted) showError(context, e);

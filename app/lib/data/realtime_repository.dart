@@ -155,7 +155,13 @@ List<ProviderOrFamily> providersAffectedBy(String topic, String table) {
   ];
   final plans = <ProviderOrFamily>[scheduleProvider, entryHistoryProvider, groupHistory, myStatsProvider];
   final notifications = <ProviderOrFamily>[notificationsProvider, unreadCountProvider, invitationsProvider];
-  final invitations = <ProviderOrFamily>[invitationsProvider, notificationsProvider];
+  final invitations = <ProviderOrFamily>[
+    invitationsProvider,
+    notificationsProvider,
+    inGroup(sentInvitationsProvider, sentInvitationsProvider.call),
+    groupHistory,
+  ];
+  final links = <ProviderOrFamily>[inGroup(inviteLinksProvider, inviteLinksProvider.call), groupHistory];
 
   return switch (table) {
     'group_members' => members,
@@ -167,6 +173,7 @@ List<ProviderOrFamily> providersAffectedBy(String topic, String table) {
     'notifications' => notifications,
     // notificationsProvider too: the Alerts list shows each invitation's status.
     'group_invitations' => invitations,
+    'group_invite_links' => links,
     anyTable => {
         ...members,
         ...group,
@@ -174,6 +181,8 @@ List<ProviderOrFamily> providersAffectedBy(String topic, String table) {
         ...activities,
         ...types,
         ...plans,
+        ...invitations,
+        ...links,
         if (groupId == null) ...notifications,
       }.toList(),
     _ => const [],

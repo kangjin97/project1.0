@@ -53,14 +53,22 @@ class _PromptDialogState extends State<_PromptDialog> {
       );
 }
 
-Future<bool> confirm(BuildContext context, {required String title, required String message, required String action}) async {
+/// [dismiss] labels the button that backs out; change it when [action] itself
+/// is a cancelling, so the dialog doesn't offer two "Cancel"s.
+Future<bool> confirm(
+  BuildContext context, {
+  required String title,
+  required String message,
+  required String action,
+  String dismiss = 'Cancel',
+}) async {
   final ok = await showDialog<bool>(
     context: context,
     builder: (context) => AlertDialog(
       title: Text(title),
       content: Text(message),
       actions: [
-        TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('Cancel')),
+        TextButton(onPressed: () => Navigator.pop(context, false), child: Text(dismiss)),
         FilledButton(onPressed: () => Navigator.pop(context, true), child: Text(action)),
       ],
     ),

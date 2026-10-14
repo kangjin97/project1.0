@@ -82,6 +82,40 @@ class GroupsRepository {
     return row['token'] as String;
   }
 
+  /// The group's links that haven't been revoked, newest first. Expired and
+  /// used-up ones are filtered out by the screen (`InviteLink.isActiveAt`).
+  Future<List<InviteLink>> inviteLinks(String groupId) async {
+    final rows = await _db
+        .from('group_invite_links')
+        .select(InviteLink.columns)
+        .eq('group_id', groupId)
+        .isFilter('revoked_at', null)
+        .order('created_at', ascending: false);
+    return rows.map(InviteLink.fromJson).toList();
+  }
+
+  /// Any member may revoke; the database sets the time and won't undo it.
+  Future<void> revokeInviteLink(String linkId) => _db
+      .from('group_invite_links')
+      .update({'revoked_at': DateTime.now().toUtc().toIso8601String()})
+      .eq('id', linkId);
+
+  /// Pending invitations sent from the group, oldest first.
+  Future<List<SentInvitation>> sentInvitations(String groupId) async {
+    final rows = await _db
+        .from('group_invitations')
+        .select(SentInvitation.columns)
+        .eq('group_id', groupId)
+        .eq('status', 'pending')
+        .order('created_at', ascending: true);
+    return rows.map(SentInvitation.fromJson).toList();
+  }
+
+  /// Any member may cancel a pending invitation; the invitee's alert then
+  /// reads "Cancelled".
+  Future<void> cancelInvitation(String invitationId) =>
+      _db.rpc('cancel_invitation', params: {'p_invitation': invitationId});
+
   Future<List<Invitation>> pendingInvitations() async {
     final rows = await _db
         .from('group_invitations')
@@ -174,6 +208,12 @@ final mergesProvider =
 
 final typesProvider =
     FutureProvider.family<List<ActivityType>, String>((ref, id) => ref.watch(groupsRepositoryProvider).types(id));
+
+final inviteLinksProvider = FutureProvider.autoDispose.family<List<InviteLink>, String>(
+    (ref, id) => ref.watch(groupsRepositoryProvider).inviteLinks(id));
+
+final sentInvitationsProvider = FutureProvider.autoDispose.family<List<SentInvitation>, String>(
+    (ref, id) => ref.watch(groupsRepositoryProvider).sentInvitations(id));
 
 /// The first page of a group's history; later pages are loaded by the page itself.
 final groupHistoryProvider = FutureProvider.autoDispose.family<List<ChangeEntry>, String>(

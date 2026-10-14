@@ -29,6 +29,11 @@ void main() {
     expect(providersAffectedBy('user:u1', 'group_invitations'), contains(invitationsProvider));
   });
 
+  test('invite links and sent invitations refresh the Members tab lists', () {
+    expect(providersAffectedBy('group:g1', 'group_invite_links'), contains(inviteLinksProvider('g1')));
+    expect(providersAffectedBy('group:g1', 'group_invitations'), contains(sentInvitationsProvider('g1')));
+  });
+
   test('plans refresh every schedule view', () {
     expect(providersAffectedBy('group:g1', 'schedule_participants'), contains(scheduleProvider));
     expect(providersAffectedBy('user:u1', 'schedule_entries'), contains(scheduleProvider));

@@ -27,7 +27,7 @@ from unnest(array[
   'public.revert_entries_to_events()', 'public.touch_updated()',
   'public.group_activity_defaults()', 'public.guard_personal_type()', 'public.refile_activity()',
   'public.refile_renamed_label()', 'public.guard_timezone()', 'public.hand_over_ownership()',
-  'public.broadcast_change()',
+  'public.broadcast_change()', 'public.guard_invite_link_revoke()',
   'public.resolve_group_type(uuid, text)', 'public.apply_participants(uuid, uuid[], jsonb)',
   'public.entry_range(boolean, date, timestamptz, timestamptz, text)'
 ]) f;

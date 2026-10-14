@@ -28,6 +28,7 @@ A web and mobile app for friends to plan things to do together: collect activity
 - Members join by:
   - **Invite link** — shareable token, optional expiry, optional max uses.
   - **Direct invite** — search users by username or email; invitee accepts or declines.
+- Any member can see the group's active invite links (who made them, expiry, how many joined) and revoke one, and see pending invitations and cancel one. Revoking can't be undone; a cancelled invitation shows as cancelled to the invitee. Both are logged.
 - Any member can leave a group.
 
 ### 2.2 Activities
@@ -85,6 +86,7 @@ Every change is recorded with who made it and when, so it's always traceable who
 - Schedule entry created / time changed / removed
 - Event replaced with an activity; activity swapped for another
 - Participants added / removed
+- Members joined / left; invite links created / revoked; people invited, invitations declined / cancelled
 - Clash warning overridden (who proceeded, which members clashed)
 
 Users can view the log per activity, per schedule entry, and per group. A group's log shows everything done in the group, plus edits to an activity made while it was shared there; the owner's private edits from before sharing, and labels, stay private.

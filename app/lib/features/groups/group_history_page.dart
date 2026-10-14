@@ -170,6 +170,8 @@ class _GroupHistoryPageState extends ConsumerState<GroupHistoryPage> {
         'schedule_entry' => Icons.event_outlined,
         'schedule_participant' => Icons.person_outline,
         'group_member' => Icons.group_outlined,
+        'invite_link' => Icons.link,
+        'invitation' => Icons.mail_outline,
         _ => Icons.history,
       };
 }
@@ -268,6 +270,19 @@ String describeGroupChange(ChangeEntry e) {
     // plans, or a planner's reschedule that ended the clash.
     case ('schedule_participant', 'updated'):
       return 'cleared a clash on $plan';
+
+    case ('invite_link', 'created'):
+      return 'created an invite link';
+    case ('invite_link', 'updated'):
+      return 'revoked an invite link';
+    case ('invitation', 'created'):
+      return 'invited $person';
+    case ('invitation', 'updated'):
+      return switch (e.after?['status']) {
+        'declined' => 'declined the invitation',
+        'cancelled' => 'cancelled the invitation for $person',
+        _ => 'updated the invitation for $person',
+      };
 
     case ('group_member', 'created'):
       if (e.after?['role'] == 'owner') return 'created the group';

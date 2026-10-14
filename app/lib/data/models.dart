@@ -81,6 +81,69 @@ class Invitation {
   final String invitedBy;
 }
 
+/// An invite link of a group, as listed on the Members tab.
+class InviteLink {
+  InviteLink({
+    required this.id,
+    required this.token,
+    required this.createdByUsername,
+    required this.createdAt,
+    this.expiresAt,
+    this.maxUses,
+    required this.useCount,
+  });
+
+  factory InviteLink.fromJson(Map<String, dynamic> j) => InviteLink(
+        id: j['id'] as String,
+        token: j['token'] as String,
+        createdByUsername: (j['creator'] as Map?)?['username'] as String?,
+        createdAt: DateTime.parse(j['created_at'] as String),
+        expiresAt: j['expires_at'] == null ? null : DateTime.parse(j['expires_at'] as String),
+        maxUses: j['max_uses'] as int?,
+        useCount: j['use_count'] as int,
+      );
+
+  static const columns =
+      'id, token, created_at, expires_at, max_uses, use_count, creator:profiles!group_invite_links_created_by_fkey(username)';
+
+  final String id;
+  final String token;
+
+  /// Null when the creator deleted their account.
+  final String? createdByUsername;
+  final DateTime createdAt;
+  final DateTime? expiresAt;
+  final int? maxUses;
+  final int useCount;
+
+  /// Whether it still lets people join at [now]: not expired or used up.
+  /// (Revoked links aren't loaded.)
+  bool isActiveAt(DateTime now) =>
+      (expiresAt == null || expiresAt!.isAfter(now)) && (maxUses == null || useCount < maxUses!);
+}
+
+/// A pending invitation sent from a group, as listed on the Members tab.
+class SentInvitation {
+  SentInvitation({required this.id, required this.invitee, required this.invitedByUsername, required this.createdAt});
+
+  factory SentInvitation.fromJson(Map<String, dynamic> j) => SentInvitation(
+        id: j['id'] as String,
+        invitee: Profile.fromJson(j['invitee'] as Map<String, dynamic>),
+        invitedByUsername: (j['inviter'] as Map?)?['username'] as String?,
+        createdAt: DateTime.parse(j['created_at'] as String),
+      );
+
+  static const columns = 'id, created_at, invitee:profiles!group_invitations_invitee_id_fkey(${Profile.columns}), '
+      'inviter:profiles!group_invitations_invited_by_fkey(username)';
+
+  final String id;
+  final Profile invitee;
+
+  /// Null when the inviter deleted their account.
+  final String? invitedByUsername;
+  final DateTime createdAt;
+}
+
 class Activity {
   Activity({
     required this.id,
