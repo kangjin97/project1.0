@@ -159,7 +159,7 @@ Notes:
 7. **Schedule entry sheet:** pick activity or name an event, all-day or a time range, pick members, then the clash confirmation dialog
 8. **Replace event:** pick an activity from the group to fill the placeholder
 9. **Invite:** copy link, or search by username/email
-10. **Notifications:** invitations, added to entry, clash alerts, event replaced (not built yet, #6)
+10. **Notifications** ("Alerts" tab with an unread badge): invitations, added to a plan, clash alerts. "Event replaced" isn't written by the database yet.
 11. **Profile:** own profile, stats, account settings; **other people's profiles** from shared groups
 12. **Join:** preview and join a group from an invite link
 13. **Reset password:** set a new password from the emailed link
@@ -178,7 +178,7 @@ Notes:
 | 5 | Search & filter (my activities and group) | Done |
 | 6 | Schedules: entries, participants, clash detection | Done |
 | 7 | Events and replacement | Done |
-| 8 | Change-log views and notifications | Activity and entry history done; group log and notifications UI to do |
+| 8 | Change-log views and notifications | Activity and entry history and the notifications screen done; group log (#8) and realtime (#7) to do |
 
 Details and backlog: [`docs/ai/features.md`](docs/ai/features.md).
 

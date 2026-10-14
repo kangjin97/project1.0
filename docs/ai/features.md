@@ -114,9 +114,16 @@ Status legend: **Done** = DB + UI + tests. **DB only** = schema/RPCs/tests exist
 - **Deployed:** the web app is live at https://easyplan-hehe.netlify.app against the Supabase cloud project. Pushes to `main` deploy automatically after CI passes (`deploy-web` job; `docs/deployment.md` → Automatic deploys).
 - Gaps: iOS Associated Domains must be added in Xcode; `.well-known` files need the Play signing SHA-256 and Apple Team ID; store listings are manual.
 
-## F9. Notifications — DB only (planned as its own branch)
-- Kinds: `group_invitation`, `added_to_entry`, `schedule_clash` (the schedule feature already writes the last two).
-- **To build:** notifications screen/badge, mark read (`PATCH notifications {read_at}`), realtime subscription, optional push.
+## F9. Notifications — Done (screen and badge; realtime #7, push #18 to come)
+- Kinds written by the database: `group_invitation` (on invite), `added_to_entry` and `schedule_clash` (when a planner adds you; clash when you were busy).
+- **Alerts tab** (`/notifications`, 4th of five tabs; the page is titled "Notifications"): newest first, unread highlighted with a dot. Text per kind: "alice invited you to Hikers" (+ pending/joined/declined), "alice added you to Dinner" (group · when), "Dinner clashes with 1 of your plans" (who added you anyway · when). Deleted users read as "Someone"; plans or groups you can no longer see read as "a plan" / "a group".
+- Tap: invitation → Groups (respond there); plan → its detail sheet (Keep both / Leave for clashes), opened on a schedule window around the plan; "You're no longer in this plan" if it's hidden.
+- Opening the page marks everything read and clears the badge; the loaded list keeps its highlights for that visit. Pull to refresh.
+- **Badge** on the Alerts tab (bottom bar and rail): unread count, "99+" cap. No realtime yet: re-counted on every navigation, when the app returns to the foreground, and on refresh.
+- UI: `features/notifications/notifications_page.dart` (`NotificationsPage`, `describeNotification`, `planWhen`, `timeAgo`), `features/home/home_shell.dart` (tab + `Badge`).
+- Data: `data/notifications_repository.dart` (`list`, `unreadCount`, `markAllRead`; `notificationsProvider`, `unreadCountProvider`); model `AppNotification` in `data/models.dart`.
+- DB: `notifications`, `list_notifications` (resolves names and plan details; hides plan/group details the caller can no longer see).
+- Tests: `notifications.test.sql` (own only, names and order, clash count, current invitation status, limit, mark read own only, details hidden after leaving, anon refused); `app/test/notifications_text_test.dart` (wording, time ago).
 
 ## F10. Change log — Done for activities, DB for everything else
 - Every insert/update/delete on core tables is logged by trigger with actor and before/after.
@@ -133,7 +140,6 @@ Open at the time of writing:
 | Issue | Feature | Label |
 |---|---|---|
 | #5 Smoke-test the live web app on a phone | F12 | chore, priority:high |
-| #6 Notifications screen and unread badge | F9 | feature |
 | #7 Realtime updates | F5, F8, F9 | feature |
 | #8 Group history (change log) view | F10 | feature |
 | #9 Manage invite links and sent invitations | F3 | feature |

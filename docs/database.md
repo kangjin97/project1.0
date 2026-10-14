@@ -14,6 +14,7 @@ Source of truth: `supabase/migrations/`. Test coverage: `supabase/tests/database
 | `20261012030000_touch_updated_existing_users.sql` | `touch_updated` stamps `updated_by` only for existing users |
 | `20261014064145_cancel_email_change.sql` | `cancel_email_change` |
 | `20261014082408_function_grants_and_search_path.sql` | Revoke `execute` on trigger functions and `entry_range` from `authenticated`; pin `search_path` on the remaining invoker functions |
+| `20261014085422_list_notifications.sql` | `list_notifications` |
 
 ## Tables
 
@@ -118,7 +119,7 @@ You can read an entry if any of these is true:
 | `type_merge` | rule id | created, deleted |
 
 ### `notifications`
-`user_id`, `kind`, `payload` jsonb, `read_at`. You read your own and can set `read_at`. Kinds written so far:
+`user_id`, `kind`, `payload` jsonb, `read_at`. You read your own and can set `read_at`. The app reads them through `list_notifications`, which resolves the payload's ids. Kinds written so far:
 
 | Kind | Payload |
 |---|---|
@@ -147,6 +148,7 @@ See [`ai/endpoints.md`](ai/endpoints.md) for parameters, return shapes and error
 | `my_profile_stats()` | Caller's counts: groups, activities, upcoming plans |
 | `delete_my_account()` | Deletes the caller's activities (plans become events) and auth user (cascades; groups handed over) |
 | `my_storage_files()` | Caller's avatar and activity photo paths, to remove before deletion |
+| `list_notifications(limit = 50)` | Caller's notifications, newest first, with actor name, group name, invitation status, plan title and timing, clash count. Plan details only while the caller is in the plan or its group; group name only for members or the invitee |
 | `cancel_email_change()` | Clears the caller's pending email change in `auth.users` (address and both tokens), so the links already sent stop working. Supabase Auth has no API for this. |
 | `list_timezones()` | Zones for the picker: name, region, readable city, current offset in minutes (sorted by offset) |
 

@@ -1,3 +1,5 @@
+import 'app_clock.dart';
+
 class Profile {
   Profile({required this.id, required this.username, this.displayName, this.avatarPath, this.bio, this.timezone});
 
@@ -282,4 +284,75 @@ class TypePreview {
   final String typeName;
   final bool merged;
   final bool isNew;
+}
+
+/// A row from `list_notifications`. Plan and group fields are null when the
+/// user can no longer see them (left the plan or the group).
+class AppNotification {
+  AppNotification({
+    required this.id,
+    required this.kind,
+    required this.createdAt,
+    this.readAt,
+    this.actorName,
+    this.groupId,
+    this.groupName,
+    this.invitationStatus,
+    this.entryId,
+    this.entryTitle,
+    this.entryAllDay = false,
+    this.entryDate,
+    this.entryStartAt,
+    this.entryEndAt,
+    this.clashCount = 0,
+  });
+
+  factory AppNotification.fromJson(Map<String, dynamic> j) {
+    DateTime? instant(String key) => j[key] == null ? null : AppClock.inZone(DateTime.parse(j[key] as String));
+    return AppNotification(
+      id: j['id'] as String,
+      kind: j['kind'] as String,
+      createdAt: instant('created_at')!,
+      readAt: instant('read_at'),
+      actorName: j['actor_name'] as String?,
+      groupId: j['group_id'] as String?,
+      groupName: j['group_name'] as String?,
+      invitationStatus: j['invitation_status'] as String?,
+      entryId: j['entry_id'] as String?,
+      entryTitle: j['entry_title'] as String?,
+      entryAllDay: j['entry_all_day'] as bool? ?? false,
+      entryDate: j['entry_date'] == null ? null : DateTime.parse(j['entry_date'] as String),
+      entryStartAt: instant('entry_start_at'),
+      entryEndAt: instant('entry_end_at'),
+      clashCount: j['clash_count'] as int? ?? 0,
+    );
+  }
+
+  final String id;
+
+  /// `group_invitation`, `added_to_entry` or `schedule_clash`.
+  final String kind;
+  final DateTime createdAt;
+  final DateTime? readAt;
+
+  /// Null when the person who did it deleted their account.
+  final String? actorName;
+  final String? groupId;
+  final String? groupName;
+
+  /// `pending`, `accepted` or `declined` for invitations.
+  final String? invitationStatus;
+  final String? entryId;
+  final String? entryTitle;
+  final bool entryAllDay;
+  final DateTime? entryDate;
+  final DateTime? entryStartAt;
+  final DateTime? entryEndAt;
+
+  /// How many of the user's plans this one clashed with.
+  final int clashCount;
+
+  bool get unread => readAt == null;
+  bool get isInvitation => kind == 'group_invitation';
+  bool get isAboutPlan => kind == 'added_to_entry' || kind == 'schedule_clash';
 }

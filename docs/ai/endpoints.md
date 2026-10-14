@@ -5,7 +5,7 @@ Every backend call the app makes, plus the RPCs the database exposes but the app
 **Conventions**
 - "Who" is enforced by the database (RLS, grants or the RPC body), not by the app.
 - `P0001 "<msg>"` means the RPC raises that message; the app shows it via `friendlyError`.
-- Dart methods are in `app/lib/data/groups_repository.dart` (G), `activities_repository.dart` (A), `schedule_repository.dart` (S), `profile_repository.dart` (P) and `auth_repository.dart` (Au); `friendlyError` is in `groups_repository.dart`.
+- Dart methods are in `app/lib/data/groups_repository.dart` (G), `activities_repository.dart` (A), `schedule_repository.dart` (S), `profile_repository.dart` (P), `auth_repository.dart` (Au) and `notifications_repository.dart` (N); `friendlyError` is in `groups_repository.dart`.
 - `<Profile.columns>` is `id, username, display_name, avatar_path` (`data/models.dart`); embedded profiles use it.
 - Each repository file ends with its Riverpod providers (`FutureProvider` / `.family`, keyed by id) and invalidation helpers (`invalidateActivity`, `invalidateLabels`, `invalidateSchedule`). Providers are named after the method, e.g. `myGroupsProvider`, `membersProvider(groupId)`, `scheduleProvider(query)`; only ones that differ are listed below.
 
@@ -187,6 +187,13 @@ Returns `{status:'clash', clashes:[...]}` (nothing saved) or `{status:'created',
 ### `find_clashes`
 `find_clashes(p_user_ids uuid[], p_all_day boolean, p_date date, p_start_at timestamptz, p_end_at timestamptz, p_exclude_entry uuid = null) → table(...)` — only for the caller and users sharing a group with them.
 
+## Notifications
+
+| Dart | Call | Who | Notes |
+|---|---|---|---|
+| N `list({limit = 50})` | `rpc list_notifications(p_limit int = 50) → [{id, kind, created_at, read_at, actor_id, actor_name, group_id, group_name, invitation_status, entry_id, entry_title, entry_all_day, entry_date, entry_start_at, entry_end_at, clash_count}]` | self | Newest first; limit clamped to 1–200. `actor_name` is display name or username (null for deleted users). Plan fields are null unless you're still in the plan or its group; `group_name` null unless you're a member or the invitee. `clash_count` = plans it clashed with. |
+| N `unreadCount()` | REST `HEAD notifications?select=id&user_id=eq.<me>&read_at=is.null` (`count=exact`) | self | `unreadCountProvider`, the nav badge. |
+| N `markAllRead()` | REST `PATCH notifications?user_id=eq.<me>&read_at=is.null {read_at: now}` | self | Only `read_at` is writable (column grant); RLS limits it to your rows. |
+
 ### Not yet used by the app
-- `GET/PATCH notifications {read_at}` — own (for the notifications branch).
 - `find_clashes` directly (the RPCs above call it).
