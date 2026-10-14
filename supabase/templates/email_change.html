@@ -1,0 +1,16 @@
+<!--
+  Supabase "Change email address" template (subject: "Confirm your EasyPlan email change").
+  With secure email change on, Supabase sends this to BOTH the current and the new address,
+  so the wording must make sense in either inbox. Used locally via supabase/config.toml;
+  the cloud project needs the same text pasted into Authentication → Emails → Templates.
+-->
+<div style="font-family: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif; font-size: 16px; line-height: 1.5; color: #1b1b1f; max-width: 560px;">
+  <h2 style="margin: 0 0 16px;">Confirm your email change</h2>
+  <p>You asked to change the email on your EasyPlan account from <strong>{{ .Email }}</strong> to <strong>{{ .NewEmail }}</strong>.</p>
+  <p>
+    <a href="{{ .ConfirmationURL }}" style="display: inline-block; padding: 10px 20px; background: #3b6fe0; color: #ffffff; text-decoration: none; border-radius: 20px;">Confirm the change</a>
+  </p>
+  <p><strong>We've sent a link like this to both addresses. Your email only changes after both links have been opened.</strong>
+  Until then, keep signing in with {{ .Email }}.</p>
+  <p style="color: #5b5d67; font-size: 14px;">Didn't ask for this? Don't open the link; your email can't change without it. Consider changing your EasyPlan password.</p>
+</div>

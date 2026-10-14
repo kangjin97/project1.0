@@ -43,7 +43,9 @@ The cloud database is separate from the local one: local accounts and test data 
      - Redirect URLs: add `https://easyplan-hehe.netlify.app/**`. Password-reset links return here.
    - **Sign In / Providers → Email**: keep **Confirm email** and **Secure email change** on. The app tells people to open the links sent to both their old and new address; with secure email change off that message would be wrong.
    - **Emails → SMTP Settings**: connect a real email provider, e.g. Resend, Postmark or SendGrid. The built-in sender is limited to a few emails an hour and is only for testing.
-   - Optionally customise the email templates (confirm signup, reset password, change email) with the EasyPlan name.
+   - **Emails → Templates**: templates kept in the repo live in `supabase/templates/` (the local stack uses them through `supabase/config.toml`). The cloud copy is set by hand: open the template, set the subject from `config.toml`, paste the file's contents into the body (the HTML comment at the top can stay), and save. Re-paste whenever the file changes.
+     - **Change email address** → `supabase/templates/email_change.html`, subject "Confirm your EasyPlan email change". Sent to both the old and new address; says both links are needed.
+     - Confirm signup and Reset password still use Supabase's defaults.
 4. **(you)** Copy **Project URL** and the **Publishable key** (Project Settings → API keys) into `app/env/prod.json`.
 5. Plan: the free plan pauses a project after a week without activity and has small storage limits. Fine for a trial with friends; move to Pro before a public launch. Turn on backups (Pro includes daily backups).
 
@@ -173,6 +175,6 @@ If any are missing, the deploy job fails with a message naming them, and nothing
 - [x] `app/env/prod.json` filled in; web deployed to https://easyplan-hehe.netlify.app
 - [ ] Smoke test passed on a phone
 - [x] Privacy policy filled in and published (update it when #4 adds an email provider)
-- [ ] Email templates mention EasyPlan
+- [ ] Email templates mention EasyPlan (change email done; confirm signup and reset password still default)
 - [ ] (Stores) upload key backed up; data safety / App Privacy answered; reviewer demo account ready
 - [ ] (Optional) replace the placeholder icon (`app/assets/icon/`, then `dart run flutter_launcher_icons`)
