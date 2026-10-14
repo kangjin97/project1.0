@@ -131,7 +131,9 @@ Dart: `app/lib/data/profile_repository.dart` (P). `Profile.columns` = `id, usern
 | P `avatarUrl(path)` | `storage.from('avatars').createSignedUrl(path, 3600)` | signed in | Cached per path by `avatarUrlProvider`. |
 | P `sharedGroups(userId)` | `rpc shared_groups(p_user uuid) → [{group_id, group_name, member_count}]` | signed in | Groups both you and they are in (all yours when `p_user` = you). |
 | P `myStats()` | `rpc my_profile_stats() → [{groups, activities, upcoming_plans}]` | self | Upcoming = participant in an entry ending in the future (all-day: today or later in your time zone). |
-| P `changeEmail(email)` | `auth.updateUser(email)` | self | Sends a confirmation link; `currentUser.newEmail` is set until confirmed. |
+| P `changeEmail(email)` | `auth.updateUser(email)` | self | Secure email change: links go to the current and the new address; `newEmail` is set until both are opened. |
+| P `account()` | `auth.refreshSession()` → `user` | self | The user as the server has it now (the session's copy dates from sign-in). `accountProvider`; the profile's email tile re-reads it on app resume. |
+| P `cancelEmailChange()` | `rpc cancel_email_change()`, then `auth.refreshSession()` | self | Clears the pending change and its tokens; the links already sent stop working. |
 | P `deleteAccount()` | `rpc my_storage_files() → [{bucket, path}]`, `storage.remove` per bucket, `rpc delete_my_account()`, `auth.signOut(local)` | self | See F12 for what is deleted or handed over. |
 | `AuthPage._forgotPassword` | `auth.resetPasswordForEmail(email, redirectTo: <APP_URL>/reset-password)` | anyone | Same message whether or not the email exists. |
 | `ResetPasswordPage` | `auth.updateUser(password)` | recovery session | Opened from the email link (PKCE `?code=`). |
