@@ -16,7 +16,7 @@ Order: **1 → 2 → 3** gets friends using it on their phones via the browser. 
 
 | Piece | Status |
 |---|---|
-| Web app | **Live at https://easyplan-hehe.netlify.app** (Netlify project `easyplan-hehe`; `easyplan` was taken). Last deployed 2026-10-15 from `main` at `5fb615c` (group history #8, live updates #7). `main` is ahead: past plans on phones (#11), invite management (#9), deleting groups / handing over ownership (#10), the link/photo filters (#53), logging re-pointed merge rules (#52), drag to reschedule (#12), and the fix for notifications losing their unread highlight (#58) go live with the next deploy |
+| Web app | **Live at https://easyplan-hehe.netlify.app** (Netlify project `easyplan-hehe`; `easyplan` was taken). Last deployed 2026-10-15 from `main` at `e2534a6` (second on-request deploy, run 38697471184): everything on `main` is live, including past plans (#11), invite management (#9), deleting groups / handing over ownership (#10), the link/photo filters (#53), logging re-pointed merge rules (#52), drag to reschedule (#12) and the #58 notification fix |
 | Supabase cloud project | Created; linked from the Mac and the Windows PC; schema pushed with `supabase db push` (link once per computer: [`setup-windows.md`](setup-windows.md#deploying-from-windows)). **Up to date** with every migration in the repo, through `20261015064456_log_type_merge_updates.sql` (checked 2026-10-15); nothing waiting for `supabase db push`. Check any time with `supabase migration list --linked` |
 | Supabase Auth URLs | Site URL `https://easyplan-hehe.netlify.app`; redirect `https://easyplan-hehe.netlify.app/**` |
 | `app/env/prod.json` | Filled in on the owner's Mac (git-ignored) |
