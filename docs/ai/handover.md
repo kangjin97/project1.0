@@ -33,8 +33,8 @@ Settings that exist only in dashboards, and how to redo them, are in [`deploymen
 ## Current state (2026-10-15)
 
 **Where things are**
-- **Live site:** deployed 2026-10-15 from `main` at `5fb615c` (the first on-request deploy), with everything up to group history (#8) and live updates (#7).
-- **On `main` but not live yet:** past plans on phones (#11), invite management (#9), deleting groups / handing over ownership (#10), the link/photo filters (#53), logging re-pointed merge rules (#52), drag to reschedule (#12), and the fix for notifications losing their unread highlight (#58). Their migrations are already in the cloud, so the next deploy needs no `supabase db push`.
+- **Live site:** deployed 2026-10-15 from `main` at `e2534a6` (the second on-request deploy; the first was `5fb615c`). Everything on `main` is live.
+- **On `main` but not live yet:** nothing (as of the `e2534a6` deploy). Check with `git log --oneline e2534a6..origin/main`.
 - **Cloud database** (checked 2026-10-15): up to date with every migration in the repo, through `20261015064456_log_type_merge_updates.sql`. Check with `supabase migration list --linked` (both computers are linked).
 - **In flight** (2026-10-15): nothing; no open PRs. Always check `gh pr list` and the board's In Progress column.
 - **Deploys are on request only** (since 2026-10-15, #45): merging to `main` doesn't deploy. See "Working agreements" below.
@@ -55,7 +55,7 @@ Settings that exist only in dashboards, and how to redo them, are in [`deploymen
 **Not built yet** (`gh issue list`): store apps (#13, #14), app icon (#15), server-side search (#16), recurring plans (#17), push notifications (#18).
 
 **Next priorities**
-1. **Deploy** when the owner asks (no `db push` needed now), then `priority:high` #5 phone smoke test together with #49 (live updates on two phones, step by step), covering everything above that just went live.
+1. `priority:high`: #5 phone smoke test together with #49 (live updates on two phones, step by step) on the live site, covering everything deployed on 2026-10-15 (#7–#12, #52, #53, the #58 fix).
 2. The backlog: #15 the app icon (needs the owner's direction), then the store apps (#13, #14) or v2 items (#16 server-side search, #17 recurring plans, #18 push).
 
 **Computers**
