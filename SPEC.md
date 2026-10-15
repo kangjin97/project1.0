@@ -30,6 +30,8 @@ A web and mobile app for friends to plan things to do together: collect activity
   - **Direct invite** — search users by username or email; invitee accepts or declines.
 - Any member can see the group's active invite links (who made them, expiry, how many joined) and revoke one, and see pending invitations and cancel one. Revoking can't be undone; a cancelled invitation shows as cancelled to the invitee. Both are logged.
 - Any member can leave a group. The owner can rename the group and remove members.
+- The owner can **hand ownership to another member** (immediate; they become a regular member; the new owner is notified).
+- The owner can **delete the group** after typing its name. Its plans, types and invites go with it; activities stay with their owners. Members and anyone in its plans are notified.
 
 ### 2.2 Activities
 - Fields: `name` (required), `description`, `location`, `price_min`, `price_max`, `currency`, `url`, photos, and the owner's **label** (optional, see §2.3).
@@ -131,7 +133,7 @@ Notes:
 
 ### 4.1 Groups
 - Members can read the group, its members, types, activities, and schedule entries.
-- Any member can invite others, see and revoke invite links, cancel pending invitations, and manage activity types. Only the owner can rename the group or remove members.
+- Any member can invite others, see and revoke invite links, cancel pending invitations, and manage activity types. Only the owner can rename or delete the group, remove members, or hand ownership to another member.
 
 ### 4.2 Activities
 - **Read / edit:** the owner, plus members of any group the activity is shared into.

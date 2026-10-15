@@ -11,6 +11,7 @@ import '../../config.dart';
 import '../../data/app_clock.dart';
 import '../../data/groups_repository.dart';
 import '../../data/models.dart';
+import '../../data/schedule_repository.dart';
 import '../../widgets/async_body.dart';
 import '../../widgets/dialogs.dart';
 import '../../widgets/user_avatar.dart';
@@ -52,9 +53,40 @@ class GroupPage extends ConsumerWidget {
     }
   }
 
+  Future<void> _delete(BuildContext context, WidgetRef ref, Group group) async {
+    final deleted = await showDialog<bool>(
+      context: context,
+      useRootNavigator: true,
+      builder: (_) => _DeleteGroupDialog(group: group),
+    );
+    if (deleted != true || !context.mounted) return;
+    // Leave first: this page's providers would fail on the missing group.
+    context.go('/groups');
+    ref.invalidate(myGroupsProvider);
+    invalidateSchedule(ref);
+    showMessage(context, 'Deleted ${group.name}');
+  }
+
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final group = ref.watch(groupProvider(groupId));
+    final me = Supabase.instance.client.auth.currentUser!.id;
+    final iAmOwner = ref.watch(membersProvider(groupId)).value?.any((m) => m.profile.id == me && m.isOwner) ?? false;
+    // Deleted by its owner (or we were removed) while this page was open.
+    if (group.error case PostgrestException(code: 'PGRST116')) {
+      return Scaffold(
+        appBar: AppBar(),
+        body: Column(
+          children: [
+            const EmptyState(
+              icon: Icons.group_off_outlined,
+              message: 'This group no longer exists, or you’re not in it any more.',
+            ),
+            FilledButton(onPressed: () => context.go('/groups'), child: const Text('Back to groups')),
+          ],
+        ),
+      );
+    }
     return DefaultTabController(
       length: 4,
       child: Scaffold(
@@ -66,12 +98,14 @@ class GroupPage extends ConsumerWidget {
                 onSelected: (v) => switch (v) {
                   'rename' => _rename(context, ref, g),
                   'history' => context.push('/groups/$groupId/history'),
+                  'delete' => _delete(context, ref, g),
                   _ => _leave(context, ref, g),
                 },
-                itemBuilder: (_) => const [
-                  PopupMenuItem(value: 'rename', child: Text('Rename group')),
-                  PopupMenuItem(value: 'history', child: Text('History')),
-                  PopupMenuItem(value: 'leave', child: Text('Leave group')),
+                itemBuilder: (_) => [
+                  if (iAmOwner) const PopupMenuItem(value: 'rename', child: Text('Rename group')),
+                  const PopupMenuItem(value: 'history', child: Text('History')),
+                  const PopupMenuItem(value: 'leave', child: Text('Leave group')),
+                  if (iAmOwner) const PopupMenuItem(value: 'delete', child: Text('Delete group')),
                 ],
               ),
           ],
@@ -157,22 +191,13 @@ class _MembersTab extends ConsumerWidget {
                 trailing: m.isOwner
                     ? const Chip(label: Text('Owner'))
                     : iAmOwner
-                        ? IconButton(
-                            tooltip: 'Remove from group',
-                            icon: const Icon(Icons.person_remove_outlined),
-                            onPressed: () async {
-                              final ok = await confirm(context,
-                                  title: 'Remove ${m.profile.label}?',
-                                  message: 'They can rejoin with a new invite.',
-                                  action: 'Remove');
-                              if (!ok) return;
-                              try {
-                                await ref.read(groupsRepositoryProvider).removeMember(groupId, m.profile.id);
-                                ref.invalidate(membersProvider(groupId));
-                              } catch (e) {
-                                if (context.mounted) showError(context, e);
-                              }
-                            },
+                        ? PopupMenuButton<String>(
+                            tooltip: 'Member options',
+                            onSelected: (v) => v == 'owner' ? _makeOwner(context, ref, m) : _remove(context, ref, m),
+                            itemBuilder: (_) => const [
+                              PopupMenuItem(value: 'owner', child: Text('Make owner')),
+                              PopupMenuItem(value: 'remove', child: Text('Remove from group')),
+                            ],
                           )
                         : null,
               ),
@@ -180,6 +205,36 @@ class _MembersTab extends ConsumerWidget {
         );
       },
     );
+  }
+
+  Future<void> _remove(BuildContext context, WidgetRef ref, Member m) async {
+    final ok = await confirm(context,
+        title: 'Remove ${m.profile.label}?', message: 'They can rejoin with a new invite.', action: 'Remove');
+    if (!ok) return;
+    try {
+      await ref.read(groupsRepositoryProvider).removeMember(groupId, m.profile.id);
+      ref.invalidate(membersProvider(groupId));
+      ref.invalidate(groupHistoryProvider(groupId));
+    } catch (e) {
+      if (context.mounted) showError(context, e);
+    }
+  }
+
+  Future<void> _makeOwner(BuildContext context, WidgetRef ref, Member m) async {
+    final ok = await confirm(context,
+        title: 'Make ${m.profile.label} the owner?',
+        message: 'They’ll be able to rename and delete the group and remove members. '
+            'You’ll become a regular member and can’t undo this yourself.',
+        action: 'Make owner');
+    if (!ok) return;
+    try {
+      await ref.read(groupsRepositoryProvider).transferOwnership(groupId, m.profile.id);
+      ref.invalidate(membersProvider(groupId));
+      ref.invalidate(groupHistoryProvider(groupId));
+      if (context.mounted) showMessage(context, '${m.profile.label} is now the owner');
+    } catch (e) {
+      if (context.mounted) showError(context, e);
+    }
   }
 
   Future<void> _shareLink(BuildContext context, WidgetRef ref) async {
@@ -463,4 +518,103 @@ class _InviteSheetState extends ConsumerState<_InviteSheet> {
       ),
     );
   }
+}
+
+/// Deleting a group: says what goes with it and asks for the group's name.
+class _DeleteGroupDialog extends ConsumerStatefulWidget {
+  const _DeleteGroupDialog({required this.group});
+
+  final Group group;
+
+  @override
+  ConsumerState<_DeleteGroupDialog> createState() => _DeleteGroupDialogState();
+}
+
+class _DeleteGroupDialogState extends ConsumerState<_DeleteGroupDialog> {
+  final _confirm = TextEditingController();
+  late final Future<GroupDeletionSummary> _summary;
+  bool _busy = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _summary = ref.read(groupsRepositoryProvider).deletionSummary(widget.group.id);
+  }
+
+  @override
+  void dispose() {
+    _confirm.dispose();
+    super.dispose();
+  }
+
+  Future<void> _delete() async {
+    setState(() => _busy = true);
+    try {
+      await ref.read(groupsRepositoryProvider).deleteGroup(widget.group.id, _confirm.text);
+      if (mounted) Navigator.pop(context, true);
+    } catch (e) {
+      if (mounted) {
+        setState(() => _busy = false);
+        showError(context, e);
+      }
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final name = widget.group.name;
+    final matches = _confirm.text.trim().toLowerCase() == name.trim().toLowerCase();
+    return AlertDialog(
+      icon: const Icon(Icons.warning_amber_rounded),
+      title: Text('Delete $name?'),
+      content: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text('This can’t be undone.'),
+          const SizedBox(height: 8),
+          FutureBuilder(
+            future: _summary,
+            builder: (_, snap) => Text(deletionWarning(snap.data).join('\n')),
+          ),
+          const SizedBox(height: 16),
+          TextField(
+            controller: _confirm,
+            autocorrect: false,
+            onChanged: (_) => setState(() {}),
+            decoration: InputDecoration(labelText: 'Type $name to confirm', border: const OutlineInputBorder()),
+          ),
+        ],
+      ),
+      actions: [
+        TextButton(onPressed: _busy ? null : () => Navigator.pop(context, false), child: const Text('Cancel')),
+        FilledButton(
+          style: FilledButton.styleFrom(backgroundColor: Theme.of(context).colorScheme.error),
+          onPressed: _busy || !matches ? null : _delete,
+          child: _busy
+              ? const SizedBox.square(dimension: 18, child: CircularProgressIndicator(strokeWidth: 2))
+              : const Text('Delete group'),
+        ),
+      ],
+    );
+  }
+}
+
+/// The lines of the delete warning; general wording until the counts load.
+List<String> deletionWarning(GroupDeletionSummary? s) {
+  String count(int n, String what) => n == 1 ? '1 $what' : '$n ${what}s';
+  final others = s == null ? 0 : s.members - 1;
+  return [
+    if (s != null && s.upcomingPlans > 0)
+      '• ${count(s.upcomingPlans, 'upcoming plan')} will be removed from everyone’s schedules.'
+    else
+      '• Its plans will be removed from everyone’s schedules.',
+    if (s != null && s.ideas > 0) '• ${count(s.ideas, 'idea')} with no date yet will be deleted.',
+    '• Its types and invite links are deleted.',
+    '• Activities aren’t deleted; they stay with the people who added them.',
+    if (others > 0)
+      '• The other ${count(others, 'member')} and anyone in its plans will be notified.'
+    else
+      '• Anyone in its plans will be notified.',
+  ];
 }

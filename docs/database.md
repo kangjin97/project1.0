@@ -18,6 +18,7 @@ Source of truth: `supabase/migrations/`. Test coverage: `supabase/tests/database
 | `20261014203717_list_group_history.sql` | `list_group_history` |
 | `20261014210549_realtime_broadcasts.sql` | `broadcast_change` triggers; who may listen on `realtime.messages` |
 | `20261014220820_invite_management.sql` | One-way link revoke (`guard_invite_link_revoke`), invitation status `cancelled` + `cancel_invitation`, change log for links and invitations, `list_group_history` and `broadcast_change` extended for them |
+| `20261015053917_delete_group_transfer_ownership.sql` | `delete_group`, `group_deletion_summary`, `transfer_ownership`; no delete policy on `groups`; `revert_entries_to_events` skips deleted groups; `list_notifications` keeps a deleted group's name |
 
 ## Tables
 
@@ -40,7 +41,7 @@ Access: any signed-in user can read; users update their own row (`username`, `di
 - `group_members`: primary key `(group_id, user_id)`, `role` `owner|member`.
 
 Access:
-- **Groups:** any signed-in user can create one (as `created_by`). Members can read, and so can the group's creator. Invitees with a pending invitation can read the group too, to see its name. Only owners can rename or delete.
+- **Groups:** any signed-in user can create one (as `created_by`). Members can read, and so can the group's creator. Invitees with a pending invitation can read the group too, to see its name. Only owners can rename (policy) or delete (only through `delete_group`; there's no delete policy, so members are always notified).
 - **Members:** members can read the member list. You can remove yourself (leave), and the owner can remove anyone. Joining only happens through `respond_to_invitation` or `join_group_via_link`. If the owner leaves, ownership passes to the longest-standing member.
 
 ### `group_invite_links`, `group_invitations`
@@ -153,6 +154,8 @@ The group History page reads it through `list_group_history` instead, which appl
 | `group_invitation` | `{invitation_id, group_id, invited_by}` |
 | `added_to_entry` | `{entry_id, group_id, by, clashes}` |
 | `schedule_clash` | `{entry_id, group_id, by, clashes}` |
+| `group_deleted` | `{group_name, by}` (the group row is gone, so its name is kept here) |
+| `ownership_transferred` | `{group_id, by}` |
 
 ## RPCs (callable by signed-in users)
 
@@ -165,6 +168,9 @@ See [`ai/endpoints.md`](ai/endpoints.md) for parameters, return shapes and error
 | `join_group_via_link(token)` / `preview_invite_link(token)` | Invite links |
 | `respond_to_invitation(id, accept)` | Accept or decline |
 | `cancel_invitation(id)` | Any member cancels a pending invitation from their group |
+| `group_deletion_summary(group)` | Owner only: members, upcoming plans, undated ideas, for the delete confirmation |
+| `delete_group(group, confirm_name)` | Owner only; the name must match. Notifies members and plan participants (`group_deleted`), then deletes the group (cascades: members, invites, types, group activities, plans and participants; activities stay) |
+| `transfer_ownership(group, new_owner)` | Owner only, to another current member. Swaps roles, logs it (`group_member` `updated`), notifies the new owner |
 | `delete_activity(id)` | Owner soft delete; removes the activity from groups, entries revert to events |
 | `preview_group_type(group, name)` | Where a label would be filed |
 | `merge_types(group, source_ids[], target_id?, target_name?)` | Merge types |
@@ -218,7 +224,7 @@ Not executable by clients (`function_privileges.test.sql` checks all of this):
 | `activities` | `activities_refile` | Label change → re-resolve type in every group (label removed → only `source_type_name` is cleared; types stay) |
 | `personal_types` | `personal_types_refile` | Rename → re-resolve type for activities with that label |
 | `group_activities` | `group_activities_defaults` | Records `source_type_name`; fills `type_id` from the label |
-| `group_activities` | `group_activities_revert` | On unshare, the group's entries become events titled with the activity name |
+| `group_activities` | `group_activities_revert` | On unshare, the group's entries become events titled with the activity name; skipped when the whole group is being deleted |
 | `schedule_entries` | `schedule_entries_touch` | Sets `updated_at` / `updated_by` |
 | many | `log_*` | Writes `change_log` |
 | many | `broadcast_*` | Sends a Realtime "changed" message to the group and/or user topics (see Realtime) |

@@ -457,7 +457,8 @@ class AppNotification {
 
   final String id;
 
-  /// `group_invitation`, `added_to_entry` or `schedule_clash`.
+  /// `group_invitation`, `added_to_entry`, `schedule_clash`, `group_deleted`
+  /// or `ownership_transferred`.
   final String kind;
   final DateTime createdAt;
   final DateTime? readAt;
@@ -482,4 +483,7 @@ class AppNotification {
   bool get unread => readAt == null;
   bool get isInvitation => kind == 'group_invitation';
   bool get isAboutPlan => kind == 'added_to_entry' || kind == 'schedule_clash';
+
+  /// Opens a group page when tapped (the group still exists and is visible).
+  bool get opensGroup => kind == 'ownership_transferred' && groupId != null;
 }

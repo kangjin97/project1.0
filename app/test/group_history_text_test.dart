@@ -110,6 +110,10 @@ void main() {
         'created the group');
     expect(describeGroupChange(change('group_member', 'deleted', entityId: ben, person: 'ben')),
         'removed @ben from the group');
+    expect(
+        describeGroupChange(change('group_member', 'updated', entityId: ben, person: 'ben',
+            before: {'role': 'member'}, after: {'role': 'owner'})),
+        'made @ben the owner');
   });
 
   test('invite links and invitations', () {

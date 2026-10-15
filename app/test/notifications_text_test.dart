@@ -60,6 +60,16 @@ void main() {
     expect(planWhen(note('added_to_entry')), 'No date yet');
   });
 
+  test('group deletion and ownership hand-over', () {
+    final deleted = describeNotification(note('group_deleted', actor: 'ben', group: 'Crew', entryId: null, title: null));
+    expect(deleted.title, 'ben deleted Crew');
+    expect(deleted.detail, 'Its plans were removed from your schedule');
+    expect(describeNotification(note('ownership_transferred', entryId: null, title: null)).title,
+        'alice made you the owner of Hikers');
+    expect(describeNotification(note('ownership_transferred', group: null, entryId: null)).title,
+        'alice made you the owner of a group');
+  });
+
   test('time ago', () {
     final now = DateTime(2026, 10, 14, 12);
     expect(timeAgo(now.subtract(const Duration(seconds: 20)), now), 'Just now');

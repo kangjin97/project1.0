@@ -33,10 +33,13 @@ Every backend call the app makes, plus the RPCs the database exposes but the app
 | G `myGroups()` | REST `GET group_members?select=group_id&user_id=eq.<me>` then `GET groups?select=id,name,group_members(count)&id=in.(...)&order=created_at.asc` | members | |
 | G `group(id)` | REST `GET groups?select=id,name,group_members(count)&id=eq.<id>` (single) | members or pending invitee | |
 | G `createGroup(name)` | REST `POST groups {name}` → `id` | signed in | Trigger: creator → owner; seeds types Food/Outdoors/Entertainment/Other. |
-| G `renameGroup(id, name)` | REST `PATCH groups?id=eq {name}` | owner | 42501 otherwise. |
+| G `renameGroup(id, name)` | REST `PATCH groups?id=eq {name}` | owner | 42501 otherwise. Hidden in the menu for other members. |
 | G `leaveGroup(id)` | REST `DELETE group_members?group_id&user_id=<me>` | self | If you were the owner, the longest-standing member becomes owner; an empty group is deleted. |
 | G `members(groupId)` | REST `GET group_members?select=role,profiles(<Profile.columns>)&group_id=eq&order=joined_at.asc` | members | |
 | G `removeMember(groupId, userId)` | REST `DELETE group_members?...` | owner | |
+| G `deletionSummary(groupId)` | `rpc group_deletion_summary(p_group uuid) → [{members, upcoming_plans, ideas}]` | owner | 42501 otherwise. Upcoming = ends after now, or all-day from today in the caller's zone; ideas = no date. |
+| G `deleteGroup(groupId, typedName)` | `rpc delete_group(p_group uuid, p_confirm_name text)` | owner | 42501 otherwise; P0001 "type the group's name to confirm" unless the name matches (case and outer spaces ignored). Notifies members and people in its plans (`group_deleted`), then deletes the group with its plans, types, invites. Activities stay. Clients can't `DELETE groups` directly. |
+| G `transferOwnership(groupId, userId)` | `rpc transfer_ownership(p_group uuid, p_new_owner uuid)` | owner | 42501 otherwise; P0001 "you already own this group" / "they're not a member of this group". Swaps roles, logs `group_member` `updated` `{role: owner}` in the change log, notifies the new owner (`ownership_transferred`). |
 | G `createInviteLink` → `AppConfig.inviteLink(token)` | — | — | Shared link is `<APP_URL>/join/<token>`. |
 
 ## Invites

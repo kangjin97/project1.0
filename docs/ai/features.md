@@ -16,12 +16,14 @@ Status legend: **Done** = DB + UI + tests. **DB only** = schema/RPCs/tests exist
 
 ## F2. Groups and membership — Done
 - Create (creator = owner, starter types seeded), rename (owner), leave (anyone), remove member (owner).
+- **Delete a group** (owner; ⋮ → Delete group): the dialog says what goes (upcoming plans and undated ideas, types, invite links; counts from `group_deletion_summary`), that activities stay with their owners and who'll be told; the owner types the group's name to confirm (checked again in the database). Members and anyone in its plans get a "Bob deleted Hikers" notification. Someone viewing the group when it's deleted sees "This group no longer exists" live.
+- **Make another member the owner** (owner; Members tab → ⋮ next to a member → Make owner): immediate; the old owner becomes a member. The new owner is notified ("Ann made you the owner of Hikers", taps through to the group) and group history says "made @bob the owner".
+- Owner-only actions (Rename, Delete, per-member menu) are hidden from other members; the database refuses them anyway.
 - When the owner leaves (or deletes their account), ownership passes to the longest-standing member; a group left with no members is deleted (`hand_over_ownership` trigger).
-- UI: `features/groups/groups_page.dart` (list, create, pending invitations), `group_page.dart` (tabs, rename/leave menu, Members tab).
-- Data: G `myGroups`, `group`, `createGroup`, `renameGroup`, `leaveGroup`, `members`, `removeMember`; providers `myGroupsProvider`, `groupProvider(id)`, `membersProvider(id)`.
-- DB: `groups`, `group_members`, `handle_new_group`, `hand_over_ownership`.
-- Tests: `core_rules.test.sql`, `delete_account.test.sql` (hand-over).
-- Not built yet: deleting a group and handing ownership to a chosen member (#10).
+- UI: `features/groups/groups_page.dart` (list, create, pending invitations), `group_page.dart` (tabs; ⋮ rename/history/leave/delete; `_DeleteGroupDialog`, `deletionWarning`; Members tab with Make owner / Remove; "no longer exists" state).
+- Data: G `myGroups`, `group`, `createGroup`, `renameGroup`, `leaveGroup`, `members`, `removeMember`, `deletionSummary`, `deleteGroup`, `transferOwnership`; providers `myGroupsProvider`, `groupProvider(id)`, `membersProvider(id)`.
+- DB: `groups`, `group_members`, `handle_new_group`, `hand_over_ownership`, `group_deletion_summary`, `delete_group`, `transfer_ownership`. Groups can only be deleted through `delete_group` (no delete policy).
+- Tests: `core_rules.test.sql`, `delete_account.test.sql` (hand-over), `group_admin.test.sql` (summary, hand-over rules and history, delete rules and typed name, what's deleted and kept, who's notified, the last member leaving a group with planned activities); `app/test/group_delete_text_test.dart`, `group_history_text_test.dart`, `notifications_text_test.dart`.
 
 ## F3. Invites — Done
 - Direct: search by username prefix or exact email → invitation → invitee accepts/declines on Groups page.
@@ -124,7 +126,7 @@ Status legend: **Done** = DB + UI + tests. **DB only** = schema/RPCs/tests exist
 - Not done yet: store builds (#13 Android, #14 iOS) and a designed icon (#15). iOS Associated Domains must be added in Xcode; `.well-known` files need the Play signing SHA-256 and Apple Team ID; store listings are manual.
 
 ## F9. Notifications — Done (screen, live badge; push #18 to come)
-- Kinds written by the database: `group_invitation` (on invite), `added_to_entry` and `schedule_clash` (when a planner adds you; clash when you were busy).
+- Kinds written by the database: `group_invitation` (on invite), `added_to_entry` and `schedule_clash` (when a planner adds you; clash when you were busy), `group_deleted` (to members and people in its plans) and `ownership_transferred` (to the new owner; taps through to the group).
 - **Alerts tab** (`/notifications`, 4th of five tabs; the page is titled "Notifications"): newest first, unread highlighted with a dot. Text per kind: "alice invited you to Hikers" (+ pending/joined/declined/cancelled; tapping a cancelled one says so instead of opening Groups), "alice added you to Dinner" (group · when), "Dinner clashes with 1 of your plans" (who added you anyway · when). Deleted users read as "Someone"; plans or groups you can no longer see read as "a plan" / "a group".
 - Tap: invitation → Groups (respond there); plan → its detail sheet (Keep both / Leave for clashes), opened on a schedule window around the plan; "You're no longer in this plan" if it's hidden.
 - Opening the page marks everything read and clears the badge; the loaded list keeps its highlights for that visit. Pull to refresh.
@@ -184,7 +186,6 @@ Open at the time of writing:
 | Issue | Feature | Label |
 |---|---|---|
 | #5 Smoke-test the live web app on a phone | F12 | chore, priority:high |
-| #10 Delete a group and transfer ownership manually | F2 | feature |
 | #12 Drag to reschedule in the week view | F8 | feature |
 | #13 Android: toolchain + Play internal test build | F12 | chore |
 | #14 iOS: toolchain + TestFlight build | F12 | chore |

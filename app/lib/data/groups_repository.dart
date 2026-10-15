@@ -6,6 +6,8 @@ import 'models.dart';
 SupabaseClient get _db => Supabase.instance.client;
 String get _me => _db.auth.currentUser!.id;
 
+typedef GroupDeletionSummary = ({int members, int upcomingPlans, int ideas});
+
 class GroupsRepository {
   Future<List<Group>> myGroups() async {
     final memberships = await _db.from('group_members').select('group_id').eq('user_id', _me);
@@ -46,6 +48,22 @@ class GroupsRepository {
 
   Future<void> removeMember(String groupId, String userId) =>
       _db.from('group_members').delete().eq('group_id', groupId).eq('user_id', userId);
+
+  /// What deleting the group would remove, for the confirmation. Owner only.
+  Future<GroupDeletionSummary> deletionSummary(String groupId) async {
+    final rows = await _db.rpc('group_deletion_summary', params: {'p_group': groupId}) as List;
+    final r = rows.single as Map<String, dynamic>;
+    return (members: r['members'] as int, upcomingPlans: r['upcoming_plans'] as int, ideas: r['ideas'] as int);
+  }
+
+  /// Owner only, and [typedName] must match the group's name. Members and
+  /// people in its plans are notified; activities stay with their owners.
+  Future<void> deleteGroup(String groupId, String typedName) =>
+      _db.rpc('delete_group', params: {'p_group': groupId, 'p_confirm_name': typedName});
+
+  /// Makes [userId] the owner straight away; the caller becomes a member.
+  Future<void> transferOwnership(String groupId, String userId) =>
+      _db.rpc('transfer_ownership', params: {'p_group': groupId, 'p_new_owner': userId});
 
   // ---- Invites -------------------------------------------------------------
 
