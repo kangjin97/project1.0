@@ -51,6 +51,8 @@ class _EntryDetail extends ConsumerWidget {
   }
 
   Future<void> _addPeople(BuildContext context, WidgetRef ref, ScheduleEntry e) async {
+    final scope = await chooseScope(context, e, 'Add people');
+    if (scope == null || !context.mounted) return;
     final members = await ref.read(membersProvider(e.groupId).future);
     final inEntry = {for (final p in e.participants) p.userId};
     final candidates = members.where((m) => !inEntry.contains(m.profile.id)).toList();
@@ -67,11 +69,11 @@ class _EntryDetail extends ConsumerWidget {
 
     final repo = ref.read(scheduleRepositoryProvider);
     try {
-      var result = await repo.addParticipants(e.id, picked.toList());
+      var result = await repo.addParticipants(e.id, picked.toList(), scope: scope);
       if (!result.saved) {
         if (!context.mounted) return;
         if (!await confirmClashes(context, result.clashes)) return;
-        result = await repo.addParticipants(e.id, picked.toList(), force: true);
+        result = await repo.addParticipants(e.id, picked.toList(), force: true, scope: scope);
       }
       invalidateSchedule(ref);
     } catch (err) {
@@ -105,8 +107,43 @@ class _EntryDetail extends ConsumerWidget {
       ),
     );
     if (picked == null || !context.mounted) return;
-    await _run(context, ref, () => ref.read(scheduleRepositoryProvider).setActivity(e.id, picked),
+    final scope = await chooseScope(context, e, e.isEvent ? 'Replace the event' : 'Swap the activity');
+    if (scope == null || !context.mounted) return;
+    await _run(context, ref, () => ref.read(scheduleRepositoryProvider).setActivity(e.id, picked, scope: scope),
         done: e.isEvent ? 'Event replaced' : 'Activity swapped');
+  }
+
+  /// Adds dates to the end of a repeating plan, up to a year from today.
+  Future<void> _extend(BuildContext context, WidgetRef ref, ScheduleEntry e) async {
+    final today = AppClock.today();
+    final latest = DateTime(today.year + 1, today.month, today.day);
+    final first = addDays(e.seriesUntil!, 1);
+    if (first.isAfter(latest)) {
+      showMessage(context, 'It already repeats as far ahead as it can (a year from today).');
+      return;
+    }
+    final suggested = DateTime(e.seriesUntil!.year, e.seriesUntil!.month + 3, e.seriesUntil!.day);
+    final picked = await showDatePicker(
+      context: context,
+      helpText: 'Repeat until',
+      initialDate: suggested.isAfter(latest) ? latest : suggested,
+      firstDate: first,
+      lastDate: latest,
+    );
+    if (picked == null || !context.mounted) return;
+    final repo = ref.read(scheduleRepositoryProvider);
+    try {
+      var result = await repo.extendSeries(e.id, picked);
+      if (!result.saved) {
+        if (!context.mounted) return;
+        if (!await confirmClashes(context, result.clashes)) return;
+        result = await repo.extendSeries(e.id, picked, force: true);
+      }
+      invalidateSchedule(ref);
+      if (context.mounted) showMessage(context, 'Now repeats until ${DateFormat('d MMM y').format(picked)}');
+    } catch (err) {
+      if (context.mounted) showError(context, err);
+    }
   }
 
   @override
@@ -145,6 +182,18 @@ class _EntryDetail extends ConsumerWidget {
             Expanded(child: Text(whenLabel(e), style: theme.textTheme.bodyLarge)),
           ],
         ),
+        if (e.isRepeating && e.seriesFreq != null && e.seriesUntil != null)
+          Row(
+            children: [
+              const Icon(Icons.repeat, size: 20),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(repeatLabel(e.seriesFreq!, e.seriesUntil!, thisYear: AppClock.today().year),
+                    style: theme.textTheme.bodyMedium),
+              ),
+              TextButton(onPressed: () => _extend(context, ref, e), child: const Text('Extend')),
+            ],
+          ),
         if (e.iHaveClash) ...[
           const SizedBox(height: 12),
           Card(
@@ -181,7 +230,10 @@ class _EntryDetail extends ConsumerWidget {
           runSpacing: 8,
           children: [
             FilledButton.tonalIcon(
-              onPressed: () => showRescheduleEditor(context, e),
+              onPressed: () async {
+                final scope = await chooseScope(context, e, 'Change time');
+                if (scope != null && context.mounted) await showRescheduleEditor(context, e, scope: scope);
+              },
               icon: const Icon(Icons.edit_calendar_outlined),
               label: const Text('Change time'),
             ),
@@ -201,7 +253,9 @@ class _EntryDetail extends ConsumerWidget {
                   final name = await promptText(context,
                       title: 'Rename event', label: 'Event name', action: 'Save', initial: e.title ?? '');
                   if (name == null || name.trim().isEmpty || !context.mounted) return;
-                  await _run(context, ref, () => repo.rename(e.id, name));
+                  final scope = await chooseScope(context, e, 'Rename');
+                  if (scope == null || !context.mounted) return;
+                  await _run(context, ref, () => repo.rename(e.id, name, scope: scope));
                 },
                 icon: const Icon(Icons.edit_outlined),
                 label: const Text('Rename'),
@@ -251,23 +305,31 @@ class _EntryDetail extends ConsumerWidget {
             if (e.iAmIn)
               OutlinedButton(
                 onPressed: () async {
+                  final scope = await chooseScope(context, e, 'Leave');
+                  if (scope == null || !context.mounted) return;
                   final ok = await confirm(context,
-                      title: 'Leave this plan?',
+                      title: scope == EditScope.following ? 'Leave this and later dates?' : 'Leave this plan?',
                       message: 'It comes off your schedule. Others keep it.',
                       action: 'Leave');
-                  if (ok && context.mounted) await _run(context, ref, () => repo.leave(e.id), done: 'You left this plan');
+                  if (ok && context.mounted) {
+                    await _run(context, ref, () => repo.leave(e.id, scope: scope), done: 'You left this plan');
+                  }
                 },
                 child: const Text('Leave'),
               ),
             TextButton(
               style: TextButton.styleFrom(foregroundColor: theme.colorScheme.error),
               onPressed: () async {
+                final scope = await chooseScope(context, e, 'Remove for everyone');
+                if (scope == null || !context.mounted) return;
                 final ok = await confirm(context,
-                    title: 'Remove from the schedule?',
+                    title: scope == EditScope.following
+                        ? 'Remove this and later dates?'
+                        : 'Remove from the schedule?',
                     message: 'It’s removed for everyone in ${e.groupName}.',
                     action: 'Remove');
                 if (!ok || !context.mounted) return;
-                await _run(context, ref, () => repo.delete(e.id), done: 'Removed from the schedule');
+                await _run(context, ref, () => repo.delete(e.id, scope: scope), done: 'Removed from the schedule');
                 if (context.mounted) Navigator.pop(context);
               },
               child: const Text('Remove for everyone'),

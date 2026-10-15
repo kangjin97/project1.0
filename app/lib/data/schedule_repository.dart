@@ -59,9 +59,44 @@ class ScheduleRepository {
     return ScheduleResult.fromJson(result as Map<String, dynamic>);
   }
 
+  /// Creates a repeating plan: one plan per date from [timing]'s date up to
+  /// [until]. Every date is checked for clashes; nothing is saved without
+  /// [force] if anyone is busy on any of them.
+  Future<ScheduleResult> createSeries({
+    required String groupId,
+    String? activityId,
+    String? title,
+    required EntryTiming timing,
+    required List<String> participantIds,
+    required RepeatFreq freq,
+    required DateTime until,
+    bool force = false,
+  }) async {
+    final result = await _db.rpc('create_schedule_series', params: {
+      'p_group_id': groupId,
+      'p_activity_id': activityId,
+      'p_title': title,
+      ..._timingParams(timing),
+      'p_participant_ids': participantIds,
+      'p_freq': freq.db,
+      'p_until': isoDate(until),
+      'p_force': force,
+    });
+    return ScheduleResult.fromJson(result as Map<String, dynamic>);
+  }
+
+  /// Adds dates after a series' last one, up to [until] (copying the last plan).
+  Future<ScheduleResult> extendSeries(String entryId, DateTime until, {bool force = false}) async {
+    final result = await _db.rpc('extend_series',
+        params: {'p_entry': entryId, 'p_until': isoDate(until), 'p_force': force});
+    return ScheduleResult.fromJson(result as Map<String, dynamic>);
+  }
+
   /// Moves an entry; re-checks every participant for clashes.
-  Future<ScheduleResult> reschedule(String entryId, EntryTiming timing, {bool force = false}) async {
-    final result = await _db.rpc('reschedule_entry', params: {
+  /// [scope] following also shifts the series' later dates by the same amount.
+  Future<ScheduleResult> reschedule(String entryId, EntryTiming timing,
+      {bool force = false, EditScope scope = EditScope.one}) async {
+    final result = await _db.rpc(scope == EditScope.following ? 'reschedule_following' : 'reschedule_entry', params: {
       'p_entry': entryId,
       ..._timingParams(timing),
       'p_force': force,
@@ -70,8 +105,9 @@ class ScheduleRepository {
   }
 
   /// Adds group members to an entry; checks only the new people for clashes.
-  Future<ScheduleResult> addParticipants(String entryId, List<String> userIds, {bool force = false}) async {
-    final result = await _db.rpc('add_entry_participants', params: {
+  Future<ScheduleResult> addParticipants(String entryId, List<String> userIds,
+      {bool force = false, EditScope scope = EditScope.one}) async {
+    final result = await _db.rpc(scope == EditScope.following ? 'add_participants_following' : 'add_entry_participants', params: {
       'p_entry': entryId,
       'p_user_ids': userIds,
       'p_force': force,
@@ -80,18 +116,26 @@ class ScheduleRepository {
   }
 
   /// Puts an activity on the entry: replaces an event, or swaps the activity.
-  Future<void> setActivity(String entryId, String activityId) =>
-      _db.from('schedule_entries').update({'activity_id': activityId}).eq('id', entryId);
+  /// [scope] following applies the change to the series' later dates too.
+  Future<void> setActivity(String entryId, String activityId, {EditScope scope = EditScope.one}) =>
+      scope == EditScope.following
+          ? _db.rpc('set_activity_following', params: {'p_entry': entryId, 'p_activity_id': activityId})
+          : _db.from('schedule_entries').update({'activity_id': activityId}).eq('id', entryId);
 
-  Future<void> rename(String entryId, String title) =>
-      _db.from('schedule_entries').update({'title': title.trim()}).eq('id', entryId);
+  Future<void> rename(String entryId, String title, {EditScope scope = EditScope.one}) =>
+      scope == EditScope.following
+          ? _db.rpc('rename_following', params: {'p_entry': entryId, 'p_title': title.trim()})
+          : _db.from('schedule_entries').update({'title': title.trim()}).eq('id', entryId);
 
   /// Removes the entry from the group schedule (and everyone's schedule).
-  Future<void> delete(String entryId) => _db.from('schedule_entries').delete().eq('id', entryId);
+  Future<void> delete(String entryId, {EditScope scope = EditScope.one}) => scope == EditScope.following
+      ? _db.rpc('delete_following', params: {'p_entry': entryId})
+      : _db.from('schedule_entries').delete().eq('id', entryId);
 
   /// Takes the current user off the entry.
-  Future<void> leave(String entryId) =>
-      _db.from('schedule_participants').delete().eq('entry_id', entryId).eq('user_id', _me);
+  Future<void> leave(String entryId, {EditScope scope = EditScope.one}) => scope == EditScope.following
+      ? _db.rpc('leave_following', params: {'p_entry': entryId})
+      : _db.from('schedule_participants').delete().eq('entry_id', entryId).eq('user_id', _me);
 
   /// The current user keeps the entry despite an overlap.
   Future<void> acknowledgeClash(String entryId) => _db

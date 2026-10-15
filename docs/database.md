@@ -20,6 +20,8 @@ Source of truth: `supabase/migrations/`. Test coverage: `supabase/tests/database
 | `20261014220820_invite_management.sql` | One-way link revoke (`guard_invite_link_revoke`), invitation status `cancelled` + `cancel_invitation`, change log for links and invitations, `list_group_history` and `broadcast_change` extended for them |
 | `20261015053917_delete_group_transfer_ownership.sql` | `delete_group`, `group_deletion_summary`, `transfer_ownership`; no delete policy on `groups`; `revert_entries_to_events` skips deleted groups; `list_notifications` keeps a deleted group's name |
 | `20261015064456_log_type_merge_updates.sql` | `log_type_merges` also logs updates (re-pointed merge rules) |
+| `20261015083758_recurring_plans.sql` | Repeating plans (#17): `schedule_series`, `schedule_entries.series_id`; `create_schedule_series`, `extend_series` and the `*_following` RPCs; helpers `series_dates`, `entry_key`, `series_targets`, `notify_series`; `apply_participants` gains `p_notify`; series fields in `list_schedule` and `list_notifications` |
+| `20261015083759_recurring_history.sql` | `list_group_history` folds one action across a series into one row (`repeat_count`) |
 
 ## Tables
 
@@ -104,12 +106,13 @@ A user's private labels. Names are 1–40 characters and unique per owner, ignor
     2. timed: `start_at < end_at`, no `date`
     3. unscheduled: no date or times, events only
 - **Participant:** `(entry_id, user_id)`, `status` `added|clash`.
+- **Series** (`schedule_series`, #17): `group_id`, `freq` (`weekly|biweekly|monthly`), `until` (date), `tz` (the planner's zone; dates repeat at the same wall-clock time there), `created_by`. Each date of a repeating plan is an ordinary entry with `series_id` (composite FK `(series_id, group_id)`, `on delete set null`). Members can read series; only `create_schedule_series` and `extend_series` write them. No `broadcast_change` trigger: every series change also writes entries, which broadcast.
 
 Access:
 - Group members can read entries; participants can also read entries in groups they've left.
 - Entries are created only through `create_schedule_entry`.
 - Members can update `activity_id` and `title` (swapping in an activity, or replacing an event) and delete entries.
-- Times change only through `reschedule_entry`.
+- Times change only through `reschedule_entry` and `reschedule_following`.
 - Participants are added only through the RPCs. A participant can remove themselves, or set their own `status` to `added` to acknowledge a clash.
 
 ### What deletes take with them
@@ -154,7 +157,8 @@ The group History page reads it through `list_group_history` instead, which appl
 |---|---|
 | `group_invitation` | `{invitation_id, group_id, invited_by}` |
 | `added_to_entry` | `{entry_id, group_id, by, clashes}` |
-| `schedule_clash` | `{entry_id, group_id, by, clashes}` |
+| `schedule_clash` | `{entry_id, group_id, by, clashes}` (plus `series_id` when sent for moving later dates) |
+| `added_to_series` | `{series_id, entry_id (first date), group_id, by, clashes}` |
 | `group_deleted` | `{group_name, by}` (the group row is gone, so its name is kept here) |
 | `ownership_transferred` | `{group_id, by}` |
 
@@ -178,13 +182,15 @@ See [`ai/endpoints.md`](ai/endpoints.md) for parameters, return shapes and error
 | `remove_type_merge(rule_id)` | Undo one merge rule |
 | `create_schedule_entry(...)`, `reschedule_entry(...)`, `add_entry_participants(...)` | Scheduling with clash checks |
 | `find_clashes(...)` | Overlapping entries per user |
-| `list_schedule(from, to, tz, group?, include_unscheduled?)` | Entries in a date window with group/activity/participant names; personal or group view |
+| `create_schedule_series(...)`, `extend_series(...)` | Repeating plans: create (every date clash-checked, one notification per person) and extend the end date |
+| `reschedule_following`, `add_participants_following`, `rename_following`, `set_activity_following`, `delete_following`, `leave_following` | The same edits for a date and every later date of its series |
+| `list_schedule(from, to, tz, group?, include_unscheduled?)` | Entries in a date window with group/activity/participant names and series details; personal or group view |
 | `shared_groups(user)` | Groups the caller shares with a user |
 | `my_profile_stats()` | Caller's counts: groups, activities, upcoming plans |
 | `delete_my_account()` | Deletes the caller's activities (plans become events) and auth user (cascades; groups handed over) |
 | `my_storage_files()` | Caller's avatar and activity photo paths, to remove before deletion |
 | `list_notifications(limit = 50)` | Caller's notifications, newest first, with actor name, group name, invitation status, plan title and timing, clash count. Plan details only while the caller is in the plan or its group; group name only for members or the invitee |
-| `list_group_history(group, before = null, limit = 50)` | A group's change log for its History page, newest first, paged by id, with actor, activity/plan/type names, the member or participant, and old/new type names. Members only. Includes activity edits made while the activity was shared in the group (decided from the log's share and removal rows, so they stay after it leaves); strips the owner's label; leaves out bookkeeping rows; plans come with their id and timing while they exist |
+| `list_group_history(group, before = null, limit = 50)` | A group's change log for its History page, newest first, paged by id, with actor, activity/plan/type names, the member or participant, and old/new type names. Members only. Includes activity edits made while the activity was shared in the group (decided from the log's share and removal rows, so they stay after it leaves); strips the owner's label; leaves out bookkeeping rows; plans come with their id and timing while they exist; one action across a repeating plan's dates is one row with `repeat_count` |
 | `cancel_email_change()` | Clears the caller's pending email change in `auth.users` (address and both tokens), so the links already sent stop working. Supabase Auth has no API for this. |
 | `list_timezones()` | Zones for the picker: name, region, readable city, current offset in minutes (sorted by offset) |
 
@@ -204,7 +210,7 @@ Used by RLS policies and RPCs. Signed-in users can call the read-only access hel
 | `try_uuid(text)` | The text as a uuid, or null (used on storage paths) |
 
 Not executable by clients (`function_privileges.test.sql` checks all of this):
-- Internal helpers `resolve_group_type`, `apply_participants`, `entry_range` (only called inside `security definer` RPCs).
+- Internal helpers `resolve_group_type`, `apply_participants`, `entry_range`, `series_dates`, `entry_key`, `series_targets`, `notify_series` (only called inside `security definer` RPCs).
 - Every trigger function: `handle_new_user`, `handle_new_group`, `log_change`, `notify_invitee`, `revert_entries_to_events`, `touch_updated`, `group_activity_defaults`, `guard_personal_type`, `refile_activity`, `refile_renamed_label`, `guard_timezone`, `hand_over_ownership`, `broadcast_change`, `guard_invite_link_revoke`. Postgres doesn't check `execute` when firing a trigger.
 - Still callable by signed-in users because policies or invoker triggers use them: `try_uuid` (storage policies), `is_valid_timezone` (`guard_timezone`); and `list_timezones` (the picker).
 - Signed-out (`anon`) callers can execute only `username_available`.

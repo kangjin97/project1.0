@@ -127,7 +127,7 @@ Rendered by `describeChange()` in `activity_detail_page.dart`.
 
 | Dart | Call | Who | Notes |
 |---|---|---|---|
-| G `history(groupId, {beforeId, limit = 50})` → `groupHistoryProvider(groupId)` (first page) | `rpc list_group_history(p_group uuid, p_before bigint = null, p_limit int = 50) → [{id, created_at, entity_type, entity_id, action, before, after, actor_id, actor_username, subject_name, person_username, from_type_name, to_type_name, event_title, entry_id, entry_all_day, entry_date, entry_start_at, entry_end_at}]` | group members | Newest first (by `id`); limit clamped to 1–200; next page: `p_before` = smallest `id` so far. Empty for non-members. Rows: everything logged with this `group_id`, plus `activity`/`activity_photo` rows made while the activity was shared in the group (the latest `group_activity` `created` row for this group before the edit has no `deleted` row between them, by log `id`; so they stay after it leaves the group). `entry_*` = the plan's id and current timing while it exists (null once removed), so the app can open it. `personal_type_id` is stripped from activity snapshots and `token` from invite-link snapshots. These are left out: label-only edits, `group_activity` `updated` rows, participants marked `clash`, invite-link updates other than revoking (use counts), and accepted invitations (the join is listed). `subject_name` = activity name (only while the caller can access it), plan name, type name or merged label; `person_username` = the member, participant or invitee; `from_type_name`/`to_type_name` = types in this group (null once deleted); `event_title` = the plan's own title. Rendered by `describeGroupChange()` in `group_history_page.dart`. |
+| G `history(groupId, {beforeId, limit = 50})` → `groupHistoryProvider(groupId)` (first page) | `rpc list_group_history(p_group uuid, p_before bigint = null, p_limit int = 50) → [{id, created_at, entity_type, entity_id, action, before, after, actor_id, actor_username, subject_name, person_username, from_type_name, to_type_name, event_title, entry_id, entry_all_day, entry_date, entry_start_at, entry_end_at, repeat_count}]` | group members | Newest first (by `id`); limit clamped to 1–200; next page: `p_before` = smallest `id` so far. Empty for non-members. Rows: everything logged with this `group_id`, plus `activity`/`activity_photo` rows made while the activity was shared in the group (the latest `group_activity` `created` row for this group before the edit has no `deleted` row between them, by log `id`; so they stay after it leaves the group). `entry_*` = the plan's id and current timing while it exists (null once removed), so the app can open it. `personal_type_id` is stripped from activity snapshots and `token` from invite-link snapshots. These are left out: label-only edits, `group_activity` `updated` rows, participants marked `clash`, invite-link updates other than revoking (use counts), and accepted invitations (the join is listed). `subject_name` = activity name (only while the caller can access it), plan name, type name or merged label; `person_username` = the member, participant or invitee; `from_type_name`/`to_type_name` = types in this group (null once deleted); `event_title` = the plan's own title. The same action by the same person at the same moment on several dates of one repeating plan (same series, kind, action and person) is one row; `repeat_count` says how many dates (1 otherwise), and the row is the first of them. Rendered by `describeGroupChange()` in `group_history_page.dart`. |
 
 ## Profiles
 
@@ -157,14 +157,16 @@ Dart: `app/lib/data/schedule_repository.dart` (S). Times are sent as UTC ISO str
 
 | Dart | Call | Who | Notes |
 |---|---|---|---|
-| S `list(query)` | `rpc list_schedule(p_from date, p_to date, p_tz text = 'UTC', p_group uuid = null, p_include_unscheduled bool = false)` | signed in | No group → caller's own entries; with group → whole group (members only), plus "no date yet" events when asked. Returns rows `{id, group_id, group_name, activity_id, activity_name, title, all_day, date, start_at, end_at, created_by, my_status, participants:[{user_id, username, display_name, avatar_path, status}]}`. `p_tz` is the app's display zone (the profile zone); dates are inclusive days in that zone. |
+| S `list(query)` | `rpc list_schedule(p_from date, p_to date, p_tz text = 'UTC', p_group uuid = null, p_include_unscheduled bool = false)` | signed in | No group → caller's own entries; with group → whole group (members only), plus "no date yet" events when asked. Returns rows `{id, group_id, group_name, activity_id, activity_name, title, all_day, date, start_at, end_at, created_by, my_status, participants:[{user_id, username, display_name, avatar_path, status}], series_id, series_freq, series_until}` (series fields null for plans that don't repeat). `p_tz` is the app's display zone (the profile zone); dates are inclusive days in that zone. |
 | S `create(...)` | `rpc create_schedule_entry` (below) | members | First call without force; on `{status:'clash'}` the UI asks, then retries with `p_force: true`. |
-| S `reschedule(id, timing)` | `rpc reschedule_entry` | members | Same clash flow. |
-| S `addParticipants(id, userIds)` | `rpc add_entry_participants` | members | Same clash flow. |
-| S `setActivity(id, activityId)` | REST `PATCH schedule_entries?id=eq {activity_id}` | members | Replace event / swap activity; activity must be shared in the group (FK). |
-| S `rename(id, title)` | REST `PATCH schedule_entries?id=eq {title}` | members | |
-| S `delete(id)` | REST `DELETE schedule_entries?id=eq` | members | Removes for everyone. |
-| S `leave(id)` | REST `DELETE schedule_participants?entry_id&user_id=<me>` | self | |
+| S `createSeries(...)` | `rpc create_schedule_series` (below) | members | A repeating plan. Same clash flow. |
+| S `extendSeries(id, until, {force})` | `rpc extend_series` (below) | members | Same clash flow. |
+| S `reschedule(id, timing, {scope})` | `rpc reschedule_entry`; `scope: following` → `rpc reschedule_following` | members | Same clash flow. |
+| S `addParticipants(id, userIds, {scope})` | `rpc add_entry_participants`; following → `rpc add_participants_following` | members | Same clash flow. |
+| S `setActivity(id, activityId, {scope})` | REST `PATCH schedule_entries?id=eq {activity_id}`; following → `rpc set_activity_following(p_entry, p_activity_id) → int` | members | Replace event / swap activity; activity must be shared in the group (FK). |
+| S `rename(id, title, {scope})` | REST `PATCH schedule_entries?id=eq {title}`; following → `rpc rename_following(p_entry, p_title) → int` | members | |
+| S `delete(id, {scope})` | REST `DELETE schedule_entries?id=eq`; following → `rpc delete_following(p_entry) → int` | members | Removes for everyone. |
+| S `leave(id, {scope})` | REST `DELETE schedule_participants?entry_id&user_id=<me>`; following → `rpc leave_following(p_entry) → int` | self | `leave_following`: P0001 "you're not in this plan". |
 | S `acknowledgeClash(id)` | REST `PATCH schedule_participants?entry_id&user_id=<me> {status:'added'}` | self | |
 | S `history(id)` → `entryHistoryProvider(id)` | REST `GET change_log?select=entity_type,action,actor_id,before,after,created_at&entity_id=eq&entity_type=in.(schedule_entry,schedule_participant)&order=created_at.desc&limit=50` + profiles | group members | Rendered by `describeEntryChange()`. |
 | P `myTimezone()`, called by `TimezoneController` on sign-in / restored session | REST `GET profiles?select=timezone&id=eq.<me>` (single) | self | Sets the display zone (`timezoneProvider`). |
@@ -194,6 +196,29 @@ Returns `{status:'clash', clashes:[...]}` (nothing saved) or `{status:'created',
 ### `add_entry_participants`
 `add_entry_participants(p_entry uuid, p_user_ids uuid[], p_force boolean = false) → jsonb` — checks only the new people; status `'updated'`.
 
+### Repeating plans (#17)
+"Following" means the given date and every later date of its series (by local start in the series' zone); for a plan that doesn't repeat it's just that plan. The `*_following` functions that return `int` return how many plans they changed. All of them raise P0001 "not a member of this group" for non-members.
+
+```
+create_schedule_series(
+  p_group_id uuid, p_activity_id uuid, p_title text, p_all_day boolean, p_date date,
+  p_start_at timestamptz, p_end_at timestamptz,    -- the first date
+  p_participant_ids uuid[],
+  p_freq text,                                     -- 'weekly' | 'biweekly' | 'monthly'
+  p_until date,                                    -- last possible date, <= first date + 1 year
+  p_force boolean = false
+) → jsonb
+```
+Returns `{status:'clash', clashes}` (nothing saved; clashes from every date) or `{status:'created', entry_id (first date), series_id, count, clashes}`. Dates repeat at the same wall-clock time in the caller's profile zone; monthly on the 29th–31st falls back to a shorter month's last day. Errors (P0001): "not a member of this group", "choose how often it repeats", "a repeating plan needs a date", "repeats can end at most a year after the first date", "a repeating plan needs at least two dates before it ends", "all participants must be members of the group". Effects: participants per date (`clash` only on the dates that clash), one `added_to_series` notification per person, `clash_override` logs when forced.
+
+`extend_series(p_entry uuid, p_until date, p_force boolean = false) → jsonb` — moves the series' end to `p_until` (later than now, at most today + 1 year; P0001 "choose a later end date", "repeats can end at most a year from today") and adds dates copying the last one (title, activity, length, participants). Returns `{status:'clash', clashes}` or `{status:'updated', entry_id (first new date), count, clashes}`; notifies the participants once (`added_to_series`).
+
+`reschedule_following(p_entry, p_all_day, p_date, p_start_at, p_end_at, p_force = false) → jsonb` — the given date gets the new timing; each later date moves by the same wall-clock shift and gets the new length. Clashes with the series' own dates are ignored. Returns `{status:'clash', clashes}` or `{status:'updated', entry_id, count, clashes}`; at most one `schedule_clash` notification per person.
+
+`add_participants_following(p_entry, p_user_ids uuid[], p_force = false) → jsonb` — adds people to this and later dates (skipping dates they're already on); clash-checks only the new people; one `added_to_series` notification per person.
+
+`rename_following(p_entry, p_title)`, `set_activity_following(p_entry, p_activity_id)`, `delete_following(p_entry)`, `leave_following(p_entry)` → `int`.
+
 ### `find_clashes`
 `find_clashes(p_user_ids uuid[], p_all_day boolean, p_date date, p_start_at timestamptz, p_end_at timestamptz, p_exclude_entry uuid = null) → table(...)` — only for the caller and users sharing a group with them.
 
@@ -201,7 +226,7 @@ Returns `{status:'clash', clashes:[...]}` (nothing saved) or `{status:'created',
 
 | Dart | Call | Who | Notes |
 |---|---|---|---|
-| N `list({limit = 50})` → `notificationsProvider` | `rpc list_notifications(p_limit int = 50) → [{id, kind, created_at, read_at, actor_id, actor_name, group_id, group_name, invitation_status, entry_id, entry_title, entry_all_day, entry_date, entry_start_at, entry_end_at, clash_count}]` | self | Newest first; limit clamped to 1–200. `actor_name` is display name or username (null for deleted users). Plan fields are null unless you're still in the plan or its group; `group_name` null unless you're a member or the invitee. `clash_count` = plans it clashed with. |
+| N `list({limit = 50})` → `notificationsProvider` | `rpc list_notifications(p_limit int = 50) → [{id, kind, created_at, read_at, actor_id, actor_name, group_id, group_name, invitation_status, entry_id, entry_title, entry_all_day, entry_date, entry_start_at, entry_end_at, clash_count, series_freq, series_until}]` | self | Newest first; limit clamped to 1–200. `actor_name` is display name or username (null for deleted users). Plan fields are null unless you're still in the plan or its group; `group_name` null unless you're a member or the invitee. `clash_count` = plans it clashed with. `series_freq`/`series_until` are set for notifications about a repeating plan (while its plan fields are visible). |
 | N `unreadCount()` | REST `GET notifications?select=id&user_id=eq.<me>&read_at=is.null` with `Prefer: count=exact` (`.count()`; the ids come back too) | self | `unreadCountProvider`, the nav badge. |
 | N `markAllRead()` | REST `PATCH notifications?user_id=eq.<me>&read_at=is.null {read_at: now}` | self | Only `read_at` is writable (column grant); RLS limits it to your rows. |
 

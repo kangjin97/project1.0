@@ -26,16 +26,17 @@ Future<String?> showEntryEditor(BuildContext context, {String? groupId, String? 
 }
 
 /// Opens the editor to change when an existing entry happens. Returns true when saved.
-Future<bool> showRescheduleEditor(BuildContext context, ScheduleEntry entry) async {
+/// [scope] following also moves the series' later dates by the same amount.
+Future<bool> showRescheduleEditor(BuildContext context, ScheduleEntry entry, {EditScope scope = EditScope.one}) async {
   final saved = await Navigator.of(context, rootNavigator: true).push<String>(MaterialPageRoute(
     fullscreenDialog: true,
-    builder: (_) => EntryEditorPage(existing: entry),
+    builder: (_) => EntryEditorPage(existing: entry, scope: scope),
   ));
   return saved != null;
 }
 
 class EntryEditorPage extends ConsumerStatefulWidget {
-  const EntryEditorPage({super.key, this.groupId, this.activityId, this.day, this.existing});
+  const EntryEditorPage({super.key, this.groupId, this.activityId, this.day, this.existing, this.scope = EditScope.one});
 
   final String? groupId;
   final String? activityId;
@@ -43,6 +44,9 @@ class EntryEditorPage extends ConsumerStatefulWidget {
 
   /// When set, only the timing is edited (reschedule).
   final ScheduleEntry? existing;
+
+  /// For a repeating plan being rescheduled: this date, or this and following.
+  final EditScope scope;
 
   @override
   ConsumerState<EntryEditorPage> createState() => _EntryEditorPageState();
@@ -65,6 +69,13 @@ class _EntryEditorPageState extends ConsumerState<EntryEditorPage> {
   late TimeOfDay _end;
   late final Set<String> _people = {_me};
   bool _saving = false;
+
+  /// New plans only: repeat, and until when (default three months on).
+  RepeatFreq? _repeat;
+  DateTime? _until;
+
+  DateTime get _untilOrDefault => _until ?? DateTime(_date.year, _date.month + 3, _date.day);
+  DateTime get _latestUntil => DateTime(_date.year + 1, _date.month, _date.day);
 
   bool get _rescheduling => widget.existing != null;
 
@@ -114,6 +125,11 @@ class _EntryEditorPageState extends ConsumerState<EntryEditorPage> {
     if (_what == _What.activity && _activityId == null) return 'Choose an activity';
     if (_what == _What.event && _title.text.trim().isEmpty) return 'Name the event';
     if (_people.isEmpty) return 'Choose who’s going';
+    if (_repeat != null) {
+      if (_when == _When.unscheduled) return 'A repeating plan needs a date';
+      if (!_untilOrDefault.isAfter(_date)) return 'Choose an end date after the first date';
+      if (_untilOrDefault.isAfter(_latestUntil)) return 'Repeats can end at most a year after the first date';
+    }
     return null;
   }
 
@@ -127,8 +143,19 @@ class _EntryEditorPageState extends ConsumerState<EntryEditorPage> {
     final repo = ref.read(scheduleRepositoryProvider);
     try {
       Future<ScheduleResult> attempt(bool force) => _rescheduling
-          ? repo.reschedule(widget.existing!.id, _timing, force: force)
-          : repo.create(
+          ? repo.reschedule(widget.existing!.id, _timing, force: force, scope: widget.scope)
+          : _repeat != null
+              ? repo.createSeries(
+                  groupId: _groupId!,
+                  activityId: _what == _What.activity ? _activityId : null,
+                  title: _what == _What.event ? _title.text : null,
+                  timing: _timing,
+                  participantIds: _people.toList(),
+                  freq: _repeat!,
+                  until: _untilOrDefault,
+                  force: force,
+                )
+              : repo.create(
               groupId: _groupId!,
               activityId: _what == _What.activity ? _activityId : null,
               title: _what == _What.event ? _title.text : null,
@@ -188,6 +215,19 @@ class _EntryEditorPageState extends ConsumerState<EntryEditorPage> {
                   if (_rescheduling) ...[
                     Text(widget.existing!.displayTitle, style: theme.textTheme.titleLarge),
                     Text(widget.existing!.groupName, style: theme.textTheme.bodyMedium),
+                    if (widget.scope == EditScope.following) ...[
+                      const SizedBox(height: 8),
+                      Row(
+                        children: [
+                          Icon(Icons.event_repeat_outlined, size: 18, color: theme.colorScheme.primary),
+                          const SizedBox(width: 6),
+                          Expanded(
+                            child: Text('This and later dates move by the same amount',
+                                style: theme.textTheme.bodyMedium?.copyWith(color: theme.colorScheme.primary)),
+                          ),
+                        ],
+                      ),
+                    ],
                     gap,
                   ] else ...[
                     if (widget.groupId == null) ...[_groupPicker(), gap],
@@ -299,7 +339,10 @@ class _EntryEditorPageState extends ConsumerState<EntryEditorPage> {
           if (isEvent) const ButtonSegment(value: _When.unscheduled, label: Text('No date yet')),
         ],
         selected: {_when},
-        onSelectionChanged: (s) => setState(() => _when = s.first),
+        onSelectionChanged: (s) => setState(() {
+          _when = s.first;
+          if (_when == _When.unscheduled) _repeat = null;
+        }),
       ),
       const SizedBox(height: 12),
       if (_when != _When.unscheduled)
@@ -337,7 +380,58 @@ class _EntryEditorPageState extends ConsumerState<EntryEditorPage> {
           child: Text('An all-day plan counts as a clash with anything else that day.',
               style: Theme.of(context).textTheme.bodySmall),
         ),
+      if (!_rescheduling && _when != _When.unscheduled) ...[
+        const SizedBox(height: 16),
+        _repeatPicker(),
+      ],
     ]);
+  }
+
+  Widget _repeatPicker() {
+    final until = _untilOrDefault;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        DropdownButtonFormField<RepeatFreq?>(
+          initialValue: _repeat,
+          decoration: const InputDecoration(border: OutlineInputBorder(), labelText: 'Repeat', prefixIcon: Icon(Icons.repeat)),
+          items: [
+            const DropdownMenuItem(value: null, child: Text('Doesn’t repeat')),
+            for (final f in RepeatFreq.values) DropdownMenuItem(value: f, child: Text(f.label)),
+          ],
+          onChanged: (v) => setState(() => _repeat = v),
+        ),
+        if (_repeat != null) ...[
+          const SizedBox(height: 8),
+          OutlinedButton.icon(
+            onPressed: () async {
+              final picked = await showDatePicker(
+                context: context,
+                helpText: 'Repeat until',
+                initialDate: until.isAfter(_latestUntil) ? _latestUntil : until,
+                firstDate: addDays(_date, 1),
+                lastDate: _latestUntil,
+              );
+              if (picked != null) setState(() => _until = dateOnly(picked));
+            },
+            icon: const Icon(Icons.event_repeat_outlined),
+            label: Align(
+              alignment: Alignment.centerLeft,
+              child: Text('Until ${DateFormat('EEE, d MMM y').format(until)}'),
+            ),
+          ),
+          Padding(
+            padding: const EdgeInsets.only(top: 4),
+            child: Text(
+              _repeat == RepeatFreq.monthly
+                  ? 'On the same date each month (the last day in shorter months), up to a year ahead. Every date is checked for clashes.'
+                  : 'Up to a year ahead. Every date is checked for clashes.',
+              style: Theme.of(context).textTheme.bodySmall,
+            ),
+          ),
+        ],
+      ],
+    );
   }
 
   Widget _timeButton(String label, TimeOfDay value, ValueChanged<TimeOfDay> set) => OutlinedButton(

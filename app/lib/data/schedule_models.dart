@@ -1,4 +1,35 @@
+import 'package:intl/intl.dart';
+
 import 'app_clock.dart';
+
+/// How often a repeating plan repeats (`schedule_series.freq`).
+enum RepeatFreq {
+  weekly('weekly', 'Weekly'),
+  biweekly('biweekly', 'Every 2 weeks'),
+  monthly('monthly', 'Monthly');
+
+  const RepeatFreq(this.db, this.label);
+
+  final String db;
+  final String label;
+
+  static RepeatFreq? fromDb(String? v) => values.where((f) => f.db == v).firstOrNull;
+}
+
+/// Which plans of a series an edit applies to.
+enum EditScope { one, following }
+
+/// e.g. "Repeats weekly until 6 Nov", "Repeats every 2 weeks until 31 Jan 2027".
+/// The year shows when it isn't [thisYear].
+String repeatLabel(RepeatFreq freq, DateTime until, {required int thisYear}) {
+  final how = switch (freq) {
+    RepeatFreq.weekly => 'weekly',
+    RepeatFreq.biweekly => 'every 2 weeks',
+    RepeatFreq.monthly => 'monthly',
+  };
+  final end = DateFormat(until.year == thisYear ? 'd MMM' : 'd MMM y').format(until);
+  return 'Repeats $how until $end';
+}
 
 /// Someone taking part in a schedule entry.
 class ScheduleParticipant {
@@ -40,6 +71,9 @@ class ScheduleEntry {
     this.createdBy,
     this.myStatus,
     this.participants = const [],
+    this.seriesId,
+    this.seriesFreq,
+    this.seriesUntil,
   });
 
   /// From the `list_schedule` RPC.
@@ -60,6 +94,9 @@ class ScheduleEntry {
           for (final p in (j['participants'] as List? ?? const []))
             ScheduleParticipant.fromJson(p as Map<String, dynamic>),
         ],
+        seriesId: j['series_id'] as String?,
+        seriesFreq: RepeatFreq.fromDb(j['series_freq'] as String?),
+        seriesUntil: j['series_until'] == null ? null : DateTime.parse(j['series_until'] as String),
       );
 
   final String id;
@@ -85,6 +122,12 @@ class ScheduleEntry {
   final String? myStatus;
   final List<ScheduleParticipant> participants;
 
+  /// Set when this plan is one occurrence of a repeating plan.
+  final String? seriesId;
+  final RepeatFreq? seriesFreq;
+  final DateTime? seriesUntil;
+
+  bool get isRepeating => seriesId != null;
   bool get isEvent => activityId == null;
   bool get isUnscheduled => !allDay && startAt == null;
   bool get iAmIn => myStatus != null;
