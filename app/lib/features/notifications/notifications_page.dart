@@ -72,13 +72,23 @@ class NotificationsPage extends ConsumerStatefulWidget {
 }
 
 class _NotificationsPageState extends ConsumerState<NotificationsPage> {
+  /// Notifications that were unread when this visit saw them. They stay
+  /// highlighted until the page closes, even though marking them read makes
+  /// the list refetch (live updates) with `read_at` set.
+  final _seenUnread = <String>{};
+
   @override
   void initState() {
     super.initState();
-    // Opening the list marks everything read. The loaded list keeps its unread
-    // highlights for this visit; the badge clears straight away.
+    // Opening the list marks everything read and the badge clears straight away.
+    // New ones arriving while the page is open are treated the same way.
     ref.listenManual(notificationsProvider, (_, next) {
-      if (next.value?.any((n) => n.unread) ?? false) _markRead();
+      // While refetching, `value` is still the previous (unread) list.
+      if (next.isLoading) return;
+      final unread = [for (final n in next.value ?? const <AppNotification>[]) if (n.unread) n.id];
+      if (unread.isEmpty) return;
+      _seenUnread.addAll(unread);
+      _markRead();
     }, fireImmediately: true);
   }
 
@@ -136,7 +146,11 @@ class _NotificationsPageState extends ConsumerState<NotificationsPage> {
                   padding: const EdgeInsets.only(bottom: 32),
                   itemCount: list.length,
                   separatorBuilder: (_, _) => const Divider(height: 1),
-                  itemBuilder: (_, i) => _NotificationTile(n: list[i], onTap: () => _open(list[i])),
+                  itemBuilder: (_, i) => _NotificationTile(
+                    n: list[i],
+                    highlight: list[i].unread || _seenUnread.contains(list[i].id),
+                    onTap: () => _open(list[i]),
+                  ),
                 ),
         ),
       ),
@@ -145,9 +159,12 @@ class _NotificationsPageState extends ConsumerState<NotificationsPage> {
 }
 
 class _NotificationTile extends StatelessWidget {
-  const _NotificationTile({required this.n, required this.onTap});
+  const _NotificationTile({required this.n, required this.highlight, required this.onTap});
 
   final AppNotification n;
+
+  /// Shown as new: unread now, or unread when this visit started.
+  final bool highlight;
   final VoidCallback onTap;
 
   @override
@@ -162,12 +179,13 @@ class _NotificationTile extends StatelessWidget {
       _ => (Icons.event_available_outlined, theme.colorScheme.primary),
     };
     return ListTile(
-      tileColor: n.unread ? theme.colorScheme.primaryContainer.withValues(alpha: 0.35) : null,
+      tileColor: highlight ? theme.colorScheme.primaryContainer.withValues(alpha: 0.35) : null,
       leading: Icon(icon, color: color),
-      title: Text(text.title, style: n.unread ? const TextStyle(fontWeight: FontWeight.w600) : null),
+      title: Text(text.title, style: highlight ? const TextStyle(fontWeight: FontWeight.w600) : null),
       subtitle: Text([?text.detail, timeAgo(n.createdAt, AppClock.now())].where((s) => s.isNotEmpty).join(' · ')),
-      trailing: n.unread
+      trailing: highlight
           ? Container(
+              key: const ValueKey('unread-dot'),
               width: 10,
               height: 10,
               decoration: BoxDecoration(color: theme.colorScheme.primary, shape: BoxShape.circle),
