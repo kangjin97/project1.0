@@ -88,6 +88,7 @@ The Supabase CLI may be at `~/.local/bin/supabase` rather than on `PATH`. The ow
 - Seed accounts: `alice@dev.test` / `dev_alice`, `bob@dev.test` / `dev_bob`; the password is in `supabase/seed.sql`. Don't print it in chat.
 - The local DB may hold the owner's own data. Check before any destructive change:
   `docker exec supabase_db_group-planner psql -U postgres -tAc "select username from profiles"`
+- Each computer's local data is different and changes all the time. **Don't describe it in the docs** (no lists of test groups or accounts beyond the seed); query it when you need to know.
 
 ## Conventions
 
