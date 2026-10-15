@@ -56,8 +56,10 @@ Settings that exist only in dashboards, and how to redo them, are in [`deploymen
 2. Then the backlog, e.g. #10 (delete a group / hand over ownership), which completes group housekeeping.
 
 **Computers**
-- Both the Mac and the Windows 11 PC are set up. The Windows PC got Flutter 3.47.6, Supabase CLI 2.119.0, WSL 2 and Docker on 2026-10-15.
-- The Windows PC's local database holds the seed accounts plus demo groups built while testing: "Weekend crew", "Board games", "Karaoke night" and "Movie club" (`dev_alice`, `dev_bob`). It's test data and safe to change.
+- Both the Mac and the Windows 11 PC are set up ([`setup-mac.md`](../setup-mac.md), [`setup-windows.md`](../setup-windows.md)).
+- Each has its own local database. The only data you can count on is the seed accounts from `supabase/seed.sql` (`dev_alice`, `dev_bob`); anything else is test data made by hand on that computer, and it differs between computers and from day to day. Check what's there rather than assuming:
+  - accounts and groups: `docker exec supabase_db_group-planner psql -U postgres -tA -c "select 'account: ' || username from profiles order by 1" -c "select 'group: ' || name from groups order by 1"`
+  - migrations: `supabase migration list --local`. A computer's database can lag behind `main` when work was merged from the other computer; `supabase migration up` catches it up and keeps the data.
 
 **Docs**
 - Audited against the code on 2026-10-14. The code-level gaps it found became issues and are fixed: #19 (function grants and `search_path`, now guarded by `function_privileges.test.sql`) and #38 (all Supabase calls go through repositories).
@@ -85,6 +87,7 @@ These come from the owner's instructions and from how sessions have gone. They a
 - **Verify before claiming.** Run the checks, test in the browser where possible, and say plainly what wasn't tested (often "on the phone, after deploy").
 - **Fix gaps; don't just list them.** If a feature has a gap you can close in reach of the same PR, close it there. Don't ship it as a "known gap". If it's genuinely out of scope or needs a product decision, ask the owner first, and raise an issue if they want it later. (The owner pushed back on #8's first PR listing fixable gaps.)
 - **Ask product questions before building.** When a choice changes what gets built (e.g. what a group may see, where a screen lives), ask with a recommended option at the start, not halfway through.
+- **Don't record local database contents in the docs** (which groups, plans or test accounts exist on a computer). It changes every session and differs per computer, so it's wrong as soon as it's written. Document how to check instead. Production state (what's deployed, which migrations are pushed) is fine to record, with the date and a way to check it.
 - **Keep docs current in the same PR** as the change: `features.md`, `endpoints.md`, `database.md`, `SPEC.md`, `decisions.md`, `deployment.md` as relevant.
 
 ## Pitfalls that already happened
