@@ -27,9 +27,11 @@ class _GroupActivitiesTabState extends ConsumerState<GroupActivitiesTab> {
   final Set<String> _types = {};
   double? _maxBudget;
   String? _addedBy;
+  bool _withLink = false;
+  bool _withPhotos = false;
   _Sort _sort = _Sort.newest;
 
-  bool get _filtering => _types.isNotEmpty || _maxBudget != null || _addedBy != null;
+  bool get _filtering => _types.isNotEmpty || _maxBudget != null || _addedBy != null || _withLink || _withPhotos;
 
   List<GroupActivity> _apply(List<GroupActivity> all) {
     final q = _query.trim().toLowerCase();
@@ -42,6 +44,8 @@ class _GroupActivitiesTabState extends ConsumerState<GroupActivitiesTab> {
       if (_types.isNotEmpty && !_types.contains(ga.typeId)) return false;
       if (_addedBy != null && ga.sharedById != _addedBy) return false;
       if (_maxBudget != null && !a.fitsBudget(max: _maxBudget)) return false;
+      if (_withLink && !a.hasLink) return false;
+      if (_withPhotos && !a.hasPhotos) return false;
       return true;
     }).toList();
 
@@ -136,6 +140,20 @@ class _GroupActivitiesTabState extends ConsumerState<GroupActivitiesTab> {
                       onSelected: (_) => _setBudget(),
                     ),
                     const SizedBox(width: 8),
+                    FilterChip(
+                      avatar: const Icon(Icons.link, size: 16),
+                      label: const Text('Has link'),
+                      selected: _withLink,
+                      onSelected: (on) => setState(() => _withLink = on),
+                    ),
+                    const SizedBox(width: 8),
+                    FilterChip(
+                      avatar: const Icon(Icons.photo_outlined, size: 16),
+                      label: const Text('Has photos'),
+                      selected: _withPhotos,
+                      onSelected: (on) => setState(() => _withPhotos = on),
+                    ),
+                    const SizedBox(width: 8),
                     PopupMenuButton<String?>(
                       tooltip: 'Added by',
                       onSelected: (id) => setState(() => _addedBy = id),
@@ -165,6 +183,8 @@ class _GroupActivitiesTabState extends ConsumerState<GroupActivitiesTab> {
                           _types.clear();
                           _maxBudget = null;
                           _addedBy = null;
+                          _withLink = false;
+                          _withPhotos = false;
                         }),
                         child: const Text('Clear'),
                       ),

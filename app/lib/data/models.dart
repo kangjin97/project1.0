@@ -209,6 +209,11 @@ class Activity {
   final String? personalTypeId;
   final String? personalTypeName;
 
+  /// Has a link to open; a blank one doesn't count.
+  bool get hasLink => url?.trim().isNotEmpty ?? false;
+
+  bool get hasPhotos => photos.isNotEmpty;
+
   /// e.g. "SGD 80–150", "Up to SGD 30", "Free"; null when no price is set.
   String? get priceLabel {
     String fmt(double v) => v == v.roundToDouble() ? v.toStringAsFixed(0) : v.toStringAsFixed(2);

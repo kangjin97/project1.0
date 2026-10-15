@@ -26,9 +26,12 @@ class _ActivitiesPageState extends ConsumerState<ActivitiesPage> {
   final Set<String> _labels = {};
   _Sharing _sharing = _Sharing.all;
   double? _maxBudget;
+  bool _withLink = false;
+  bool _withPhotos = false;
   _Sort _sort = _Sort.newest;
 
-  bool get _filtering => _labels.isNotEmpty || _sharing != _Sharing.all || _maxBudget != null;
+  bool get _filtering =>
+      _labels.isNotEmpty || _sharing != _Sharing.all || _maxBudget != null || _withLink || _withPhotos;
 
   Future<void> _create() async {
     final id = await showActivityForm(context);
@@ -57,6 +60,8 @@ class _ActivitiesPageState extends ConsumerState<ActivitiesPage> {
       if (_sharing == _Sharing.private && shared) return false;
       if (_sharing == _Sharing.shared && !shared) return false;
       if (_maxBudget != null && !a.fitsBudget(max: _maxBudget)) return false;
+      if (_withLink && !a.hasLink) return false;
+      if (_withPhotos && !a.hasPhotos) return false;
       return true;
     }).toList();
 
@@ -179,6 +184,20 @@ class _ActivitiesPageState extends ConsumerState<ActivitiesPage> {
                         selected: _maxBudget != null,
                         onSelected: (_) => _setBudget(),
                       ),
+                      const SizedBox(width: 8),
+                      FilterChip(
+                        avatar: const Icon(Icons.link, size: 16),
+                        label: const Text('Has link'),
+                        selected: _withLink,
+                        onSelected: (on) => setState(() => _withLink = on),
+                      ),
+                      const SizedBox(width: 8),
+                      FilterChip(
+                        avatar: const Icon(Icons.photo_outlined, size: 16),
+                        label: const Text('Has photos'),
+                        selected: _withPhotos,
+                        onSelected: (on) => setState(() => _withPhotos = on),
+                      ),
                       for (final l in labels) ...[
                         const SizedBox(width: 8),
                         FilterChip(
@@ -195,6 +214,8 @@ class _ActivitiesPageState extends ConsumerState<ActivitiesPage> {
                             _labels.clear();
                             _sharing = _Sharing.all;
                             _maxBudget = null;
+                            _withLink = false;
+                            _withPhotos = false;
                           }),
                           child: const Text('Clear'),
                         ),
