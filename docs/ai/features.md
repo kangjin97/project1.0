@@ -161,7 +161,7 @@ Status legend: **Done** = DB + UI + tests. **DB only** = schema/RPCs/tests exist
 - Shown on the activity detail page, the schedule entry sheet, and the group's **History** page.
 - **Group history** (`/groups/:id/history`, group page ⋮ → History): who did what in the group, newest first, under day headings ("Today", "Yesterday", dates), 50 at a time with **Show older**; pull to refresh. Lists:
   - shares, removals and type changes;
-  - types added, renamed and deleted; merges and undone merges;
+  - types added, renamed and deleted; merges (including existing rules re-pointed by a later merge, #52) and undone merges;
   - plans planned, retimed, renamed, removed or swapped; events replaced (named as they were) or turned back into events; people added to or leaving plans; clash overrides and clashes cleared;
   - members joining (or creating the group), leaving or being removed;
   - invite links created and revoked; people invited, invitations declined or cancelled (accepting shows as "joined"; link codes are never shown);
@@ -173,7 +173,7 @@ Status legend: **Done** = DB + UI + tests. **DB only** = schema/RPCs/tests exist
 - UI: `features/groups/group_history_page.dart` (`GroupHistoryPage`, `describeGroupChange`, `historyDayHeading`); menu item in `group_page.dart`; route in `router.dart`. Plans open through `queryAroundEntry` (`schedule_repository.dart`), shared with the notifications page.
 - Data: G `history(groupId, {beforeId, limit})`, `historyPageSize`; provider `groupHistoryProvider(groupId)` (first page; later pages are kept by the page). `ChangeEntry.fromGroupHistory` in `models.dart`.
 - DB: `list_group_history`.
-- Tests: `group_history.test.sql` (whole history for members incl. before joining, names, edits only while shared, including out-and-back-in and after removal, label never shown, merges, plan id and timing, paging, outsiders and former members see nothing, deleted activity names hidden); `app/test/group_history_text_test.dart` (wording).
+- Tests: `type_merge_history.test.sql` (a re-pointed merge rule is logged with old and new target and shows as "merged X into Y"; a no-op re-merge logs nothing); `group_history.test.sql` (whole history for members incl. before joining, names, edits only while shared, including out-and-back-in and after removal, label never shown, merges, plan id and timing, paging, outsiders and former members see nothing, deleted activity names hidden); `app/test/group_history_text_test.dart` (wording).
 - Note: plan lines use the plan's current name (like the rest of the app), except "planned the event" and "replaced the event", which name the event as it was.
 
 ---
@@ -195,4 +195,3 @@ Open at the time of writing:
 | #17 Recurring plans | F8 | feature (v2) |
 | #18 Push notifications on phones | F9 | feature (v2) |
 | #49 Test live updates on two phones against the live site | F13 | chore |
-| #52 Log updates to type merge rules in the change log | F10 | chore |
