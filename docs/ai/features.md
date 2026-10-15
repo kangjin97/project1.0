@@ -26,11 +26,16 @@ Status legend: **Done** = DB + UI + tests. **DB only** = schema/RPCs/tests exist
 ## F3. Invites — Done
 - Direct: search by username prefix or exact email → invitation → invitee accepts/declines on Groups page.
 - Link: 7-day invite code/link (`<APP_URL>/join/<token>`, built by `AppConfig.inviteLink`); "Join with code" accepts the bare code or a pasted link; preview shows group name and member count; joining is idempotent. On Android the link opens the installed app once App Links are verified (see `docs/deployment.md`).
-- UI: `group_page.dart` (`_InviteSheet`, invite link dialog), `groups_page.dart` (invitations, "Join with code"), `join_page.dart`.
-- Data: G `searchUsers`, `invite`, `pendingInvitations`, `respond`, `createInviteLink`, `previewLink`, `joinViaLink`; provider `invitationsProvider`.
-- DB: `group_invitations`, `group_invite_links`, `find_user_by_email`, `respond_to_invitation`, `preview_invite_link`, `join_group_via_link`, trigger `notify_invitee`.
-- Tests: `core_rules.test.sql`.
-- Gaps: no UI to revoke links or see sent invitations.
+- **Managing invites** (Members tab, any member; owner's choices):
+  - **Active invite links** lists links that still work (not expired, used up or revoked): code, who made it, expiry, "N joined". Tap a link to copy it again.
+  - **Revoke** asks for confirmation. Revoking is one-way: the database sets the time and refuses to undo it. People who already joined stay.
+  - **Waiting for an answer** lists pending invitations sent from the group: who, invited by whom, when.
+  - **Cancel** asks "Keep it / Cancel invitation". The invitee's card disappears, and their alert reads "Cancelled"; tapping it says the invitation was cancelled.
+  - Both lists update live, and every create, revoke, invite and cancel shows in group history with who did it (F10).
+- UI: `group_page.dart` (`_InviteSheet`, `_showInviteLinkDialog`, `_InviteLinksSection`, `_SentInvitationsSection`), `groups_page.dart` (invitations, "Join with code"), `join_page.dart`.
+- Data: G `searchUsers`, `invite`, `pendingInvitations`, `respond`, `createInviteLink`, `previewLink`, `joinViaLink`, `inviteLinks`, `revokeInviteLink`, `sentInvitations`, `cancelInvitation`; providers `invitationsProvider`, `inviteLinksProvider(groupId)`, `sentInvitationsProvider(groupId)`; models `InviteLink` (`isActiveAt`), `SentInvitation`.
+- DB: `group_invitations` (status `pending|accepted|declined|cancelled`), `group_invite_links`, `find_user_by_email`, `respond_to_invitation`, `cancel_invitation`, `preview_invite_link`, `join_group_via_link`, triggers `notify_invitee`, `group_invite_links_guard_revoke`.
+- Tests: `core_rules.test.sql`; `invite_management.test.sql` (any member revokes, non-members can't, server sets the time, no un-revoking, revoked links refuse joins, any member cancels, invitee can't, only pending ones, cancelled can't be accepted, alert shows "cancelled", history lines without codes, live broadcasts).
 
 ## F4. Activities — Done
 - Fields: name (required), description, location, price min/max + currency (max ≥ min; 0/0 shows "Free"), link (https:// added if missing), photos, personal label.
@@ -118,7 +123,7 @@ Status legend: **Done** = DB + UI + tests. **DB only** = schema/RPCs/tests exist
 
 ## F9. Notifications — Done (screen, live badge; push #18 to come)
 - Kinds written by the database: `group_invitation` (on invite), `added_to_entry` and `schedule_clash` (when a planner adds you; clash when you were busy).
-- **Alerts tab** (`/notifications`, 4th of five tabs; the page is titled "Notifications"): newest first, unread highlighted with a dot. Text per kind: "alice invited you to Hikers" (+ pending/joined/declined), "alice added you to Dinner" (group · when), "Dinner clashes with 1 of your plans" (who added you anyway · when). Deleted users read as "Someone"; plans or groups you can no longer see read as "a plan" / "a group".
+- **Alerts tab** (`/notifications`, 4th of five tabs; the page is titled "Notifications"): newest first, unread highlighted with a dot. Text per kind: "alice invited you to Hikers" (+ pending/joined/declined/cancelled; tapping a cancelled one says so instead of opening Groups), "alice added you to Dinner" (group · when), "Dinner clashes with 1 of your plans" (who added you anyway · when). Deleted users read as "Someone"; plans or groups you can no longer see read as "a plan" / "a group".
 - Tap: invitation → Groups (respond there); plan → its detail sheet (Keep both / Leave for clashes), opened on a schedule window around the plan; "You're no longer in this plan" if it's hidden.
 - Opening the page marks everything read and clears the badge; the loaded list keeps its highlights for that visit. Pull to refresh.
 - **Badge** on the Alerts tab (bottom bar and rail): unread count, "99+" cap. Live: goes up within a second or two of a new notification (F13); nothing pops up (owner's choice). Also re-counted on every navigation, when the app returns to the foreground, and on refresh, as a safety net.
@@ -142,7 +147,7 @@ Status legend: **Done** = DB + UI + tests. **DB only** = schema/RPCs/tests exist
 - Plan changes also go to each participant's own topic, so someone who left the group but is still on one of its plans keeps getting updates about it.
 - Your own changes come back as messages too, and cause one extra re-fetch. That's on purpose: skipping them would stop your other devices and tabs from updating.
 - Data: `data/realtime_repository.dart` (`RealtimeRepository.listen`, `liveUpdatesProvider`, `providersAffectedBy` maps topic + table to providers, `liveUpdateDelay`).
-- DB: `broadcast_change` trigger on `groups`, `group_members`, `group_invitations`, `group_activities`, `activities`, `activity_photos`, `activity_types`, `type_merges`, `schedule_entries`, `schedule_participants`, `notifications`; policy `easyplan_listen` on `realtime.messages`.
+- DB: `broadcast_change` trigger on `groups`, `group_members`, `group_invitations`, `group_invite_links`, `group_activities`, `activities`, `activity_photos`, `activity_types`, `type_merges`, `schedule_entries`, `schedule_participants`, `notifications`; policy `easyplan_listen` on `realtime.messages`.
 - Tests: `realtime.test.sql` (who gets which message, payload has no row data, one message per transaction, members/self only can listen, nobody can send, anon and former members can't listen); `app/test/realtime_refresh_test.dart` (which providers refresh).
 - **When adding a table a screen shows:** add a `broadcast_change` trigger for it and a case in `providersAffectedBy`, or that screen won't update live.
 
@@ -154,6 +159,7 @@ Status legend: **Done** = DB + UI + tests. **DB only** = schema/RPCs/tests exist
   - types added, renamed and deleted; merges and undone merges;
   - plans planned, retimed, renamed, removed or swapped; events replaced (named as they were); people added to or leaving plans; clash overrides;
   - members joining (or creating the group), leaving or being removed;
+  - invite links created and revoked; people invited, invitations declined or cancelled (accepting shows as "joined"; link codes are never shown);
   - edits and photo changes to an activity **made while it was shared in the group**, worked out from the log's own share and removal lines, so they stay listed after the activity leaves the group. Edits from before it was shared (or while it was out of the group) stay private, and the owner's label never shows.
 - **Tap a line** to open what it's about (chevron shown): activity lines open the activity while you can still see it; plan and participant lines open the plan's detail sheet while the plan exists; member lines open the person's profile. Type and merge lines don't open anything.
 - Members see the group's whole history, including from before they joined. Former members and outsiders see nothing.
@@ -176,7 +182,6 @@ Open at the time of writing:
 | Issue | Feature | Label |
 |---|---|---|
 | #5 Smoke-test the live web app on a phone | F12 | chore, priority:high |
-| #9 Manage invite links and sent invitations | F3 | feature |
 | #10 Delete a group and transfer ownership manually | F2 | feature |
 | #12 Drag to reschedule in the week view | F8 | feature |
 | #13 Android: toolchain + Play internal test build | F12 | chore |

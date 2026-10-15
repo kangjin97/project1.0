@@ -34,6 +34,7 @@ void main() {
     expect(t.title, 'alice invited you to Hikers');
     expect(t.detail, 'Tap to accept or decline');
     expect(describeNotification(note('group_invitation', status: 'accepted')).detail, 'You joined');
+    expect(describeNotification(note('group_invitation', status: 'cancelled')).detail, 'Cancelled');
   });
 
   test('being added to a plan shows the group and when', () {

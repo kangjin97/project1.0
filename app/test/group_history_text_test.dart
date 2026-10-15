@@ -112,6 +112,21 @@ void main() {
         'removed @ben from the group');
   });
 
+  test('invite links and invitations', () {
+    expect(describeGroupChange(change('invite_link', 'created', subject: null)), 'created an invite link');
+    expect(describeGroupChange(change('invite_link', 'updated', subject: null, after: {'revoked_at': 'x'})),
+        'revoked an invite link');
+    expect(describeGroupChange(change('invitation', 'created', subject: null, person: 'dan')), 'invited @dan');
+    expect(
+      describeGroupChange(change('invitation', 'updated', subject: null, person: 'dan', after: {'status': 'cancelled'})),
+      'cancelled the invitation for @dan',
+    );
+    expect(
+      describeGroupChange(change('invitation', 'updated', subject: null, person: 'dan', after: {'status': 'declined'})),
+      'declined the invitation',
+    );
+  });
+
   test('deleted accounts still read correctly', () {
     // The profile is gone, but the ids in the log still match.
     expect(describeGroupChange(change('group_member', 'deleted', entityId: ben, actorId: ben)), 'left the group');

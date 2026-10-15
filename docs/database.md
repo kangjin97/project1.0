@@ -17,6 +17,7 @@ Source of truth: `supabase/migrations/`. Test coverage: `supabase/tests/database
 | `20261014085422_list_notifications.sql` | `list_notifications` |
 | `20261014203717_list_group_history.sql` | `list_group_history` |
 | `20261014210549_realtime_broadcasts.sql` | `broadcast_change` triggers; who may listen on `realtime.messages` |
+| `20261014220820_invite_management.sql` | One-way link revoke (`guard_invite_link_revoke`), invitation status `cancelled` + `cancel_invitation`, change log for links and invitations, `list_group_history` and `broadcast_change` extended for them |
 
 ## Tables
 
@@ -43,8 +44,14 @@ Access:
 - **Members:** members can read the member list. You can remove yourself (leave), and the owner can remove anyone. Joining only happens through `respond_to_invitation` or `join_group_via_link`. If the owner leaves, ownership passes to the longest-standing member.
 
 ### `group_invite_links`, `group_invitations`
-- **Links:** a random 64-hex `token`, optional `expires_at` and `max_uses`, plus `use_count` and `revoked_at`. Members create and read them; only `revoked_at` can be updated.
-- **Invitations:** `invitee_id`, `invited_by`, `status` `pending|accepted|declined`. At most one pending invitation per (group, invitee). Members can invite non-members. The `on_invitation_created` trigger sends the invitee a `group_invitation` notification.
+- **Links:** a random 64-hex `token`, optional `expires_at` and `max_uses`, plus `use_count` and `revoked_at`. Members create and read them.
+  - Only `revoked_at` can be updated, by any member, and only once: the `group_invite_links_guard_revoke` trigger sets it to `now()` and refuses to change or clear it afterwards (P0001).
+  - Logged (`invite_link`) and broadcast to the group.
+- **Invitations:** `invitee_id`, `invited_by`, `status` `pending|accepted|declined|cancelled`, `responded_at`.
+  - At most one pending invitation per (group, invitee). Members can invite non-members.
+  - The `on_invitation_created` trigger sends the invitee a `group_invitation` notification.
+  - Accept or decline goes through `respond_to_invitation` (invitee); cancel goes through `cancel_invitation` (any member, pending only).
+  - Logged (`invitation`) and broadcast to the invitee and the group.
 
 ### `activities`
 
@@ -118,6 +125,8 @@ The group History page reads it through `list_group_history` instead, which appl
 | `activity_type` | type id | created, updated, deleted |
 | `group_activity` | activity id | created (shared), deleted (unshared), updated, type_changed |
 | `group_member` | user id | created (joined), deleted (left or removed) |
+| `invite_link` | link id | created, updated (revoked; also use-count bumps, which group history hides) |
+| `invitation` | invitation id | created (invited), updated (accepted, declined, cancelled) |
 | `schedule_entry` | entry id | created, updated, deleted, event_replaced, activity_swapped, reverted_to_event, clash_override |
 | `schedule_participant` | entry id | created, updated, deleted |
 | `type_merge` | rule id | created, deleted |
@@ -141,6 +150,7 @@ See [`ai/endpoints.md`](ai/endpoints.md) for parameters, return shapes and error
 | `find_user_by_email(text)` | Exact email → profile |
 | `join_group_via_link(token)` / `preview_invite_link(token)` | Invite links |
 | `respond_to_invitation(id, accept)` | Accept or decline |
+| `cancel_invitation(id)` | Any member cancels a pending invitation from their group |
 | `delete_activity(id)` | Owner soft delete; removes the activity from groups, entries revert to events |
 | `preview_group_type(group, name)` | Where a label would be filed |
 | `merge_types(group, source_ids[], target_id?, target_name?)` | Merge types |
@@ -174,7 +184,7 @@ Used by RLS policies and RPCs. Clients can call the read-only access helpers, bu
 
 Not executable by clients (`function_privileges.test.sql` checks all of this):
 - Internal helpers `resolve_group_type`, `apply_participants`, `entry_range` (only called inside `security definer` RPCs).
-- Every trigger function: `handle_new_user`, `handle_new_group`, `log_change`, `notify_invitee`, `revert_entries_to_events`, `touch_updated`, `group_activity_defaults`, `guard_personal_type`, `refile_activity`, `refile_renamed_label`, `guard_timezone`, `hand_over_ownership`, `broadcast_change`. Postgres doesn't check `execute` when firing a trigger.
+- Every trigger function: `handle_new_user`, `handle_new_group`, `log_change`, `notify_invitee`, `revert_entries_to_events`, `touch_updated`, `group_activity_defaults`, `guard_personal_type`, `refile_activity`, `refile_renamed_label`, `guard_timezone`, `hand_over_ownership`, `broadcast_change`, `guard_invite_link_revoke`. Postgres doesn't check `execute` when firing a trigger.
 - Still callable by signed-in users because policies or invoker triggers use them: `try_uuid` (storage policies), `is_valid_timezone` (`guard_timezone`); and `list_timezones` (the picker).
 - Signed-out (`anon`) callers can execute only `username_available`.
 - Every function in `public` sets `search_path` (`= ''` and fully qualified names).
@@ -188,6 +198,7 @@ Not executable by clients (`function_privileges.test.sql` checks all of this):
 | `groups` | `on_group_created` | Owner membership and starter types |
 | `group_members` | `group_members_hand_over` | When the last owner leaves (or is deleted), the longest-standing member becomes owner; an empty group is deleted |
 | `group_invitations` | `on_invitation_created` | Notifies the invitee |
+| `group_invite_links` | `group_invite_links_guard_revoke` | Revoking is one-way; sets `revoked_at` to `now()` |
 | `activities` | `activities_touch` | Sets `updated_at` / `updated_by` |
 | `activities` | `activities_guard_personal_type` | Only the owner may change the label (42501) |
 | `activities` | `activities_refile` | Label change → re-resolve type in every group (label removed → only `source_type_name` is cleared; types stay) |
@@ -207,8 +218,8 @@ Not executable by clients (`function_privileges.test.sql` checks all of this):
 
 Live updates use **Broadcast from the database** on private channels:
 - **Sending:** the `broadcast_change` trigger (after insert/update/delete) calls `realtime.send({table}, 'changed', <topic>, private => true)`.
-  - Topics: `group:<group_id>` and/or `user:<user_id>`, depending on the table. Activities go to their owner and every group they're shared in. Plans go to their group and each participant (who may have left the group). Plan participants go to the person and the plan's group. Invitations go to the invitee.
-  - Tables: `groups`, `group_members`, `group_invitations`, `group_activities`, `activities`, `activity_photos`, `activity_types`, `type_merges`, `schedule_entries`, `schedule_participants`, `notifications`.
+  - Topics: `group:<group_id>` and/or `user:<user_id>`, depending on the table. Activities go to their owner and every group they're shared in. Plans go to their group and each participant (who may have left the group). Plan participants go to the person and the plan's group. Invitations go to the invitee and the group. Invite links go to the group.
+  - Tables: `groups`, `group_members`, `group_invitations`, `group_invite_links`, `group_activities`, `activities`, `activity_photos`, `activity_types`, `type_merges`, `schedule_entries`, `schedule_participants`, `notifications`.
   - Messages carry only the table name, never row data. At most one is sent per topic and table per transaction (tracked in the `easyplan.broadcasts_sent` setting).
   - `realtime.send` swallows its own errors, so a failed broadcast never blocks a write.
 - **Listening:** the `easyplan_listen` select policy on `realtime.messages` lets an authenticated user join a private channel when `realtime.topic()` is `user:<their id>`, or `group:<id>` of a group they're a member of. There's no insert or update policy, so clients can't send. Signed-out users can't listen.
