@@ -34,9 +34,9 @@ Settings that exist only in dashboards, and how to redo them, are in [`deploymen
 
 **Where things are**
 - **Live site:** deployed 2026-10-15 from `main` at `5fb615c` (the first on-request deploy), with everything up to group history (#8) and live updates (#7).
-- **On `main` but not live yet:** past plans on phones (#11), invite management (#9), and deleting groups / handing over ownership (#10, once its PR merges). The next deploy needs `supabase db push` first, for `20261014220820_invite_management.sql` (#9) and `20261015053917_delete_group_transfer_ownership.sql` (#10). #11 needs no migration.
-- **Cloud database:** up to date through `20261014210549_realtime_broadcasts.sql`; `20261014220820_invite_management.sql` and `20261015053917_delete_group_transfer_ownership.sql` are not pushed yet. Check with `supabase migration list --linked` (both computers are linked).
-- **In flight:** nothing; no open PRs. Always check `gh pr list` and the board's In Progress column.
+- **On `main` but not live yet:** past plans on phones (#11), invite management (#9), and deleting groups / handing over ownership (#10). The next deploy needs `supabase db push` first, for `20261014220820_invite_management.sql` (#9) and `20261015053917_delete_group_transfer_ownership.sql` (#10). #11 needs no migration.
+- **Cloud database** (checked 2026-10-15): up to date through `20261014210549_realtime_broadcasts.sql`; `20261014220820_invite_management.sql` and `20261015053917_delete_group_transfer_ownership.sql` are not pushed yet. Check with `supabase migration list --linked` (both computers are linked).
+- **In flight** (2026-10-15): #60, the fix for #58 (notifications lost their unread highlight right after opening; a regression from live updates), waiting for the owner to merge. No migration. Always check `gh pr list` and the board's In Progress column.
 - **Deploys are on request only** (since 2026-10-15, #45): merging to `main` doesn't deploy. See "Working agreements" below.
 
 **What's built** (details per feature in [`features.md`](features.md))
@@ -53,8 +53,8 @@ Settings that exist only in dashboards, and how to redo them, are in [`deploymen
 **Not built yet** (`gh issue list`): drag to reschedule (#12), store apps (#13, #14), app icon (#15), server-side search (#16), recurring plans (#17), push notifications (#18), "has a link / has photos" filters (#53), logging merge-rule updates (#52).
 
 **Next priorities**
-1. `priority:high`: #5 phone smoke test, together with #49 (live updates on two phones, step by step). Both can run on the live site now. Re-check #9 and #11 after the next deploy.
-2. #58 (notifications lose their unread highlight; a regression from live updates). Then the backlog, e.g. #12 drag to reschedule or #53 filters.
+1. `priority:high`: #5 phone smoke test, together with #49 (live updates on two phones, step by step). Both can run on the live site now. Re-check #9, #10 and #11 after the next deploy.
+2. The backlog, e.g. #12 drag to reschedule, #53 "has a link / has photos" filters, or #52 logging merge-rule updates.
 
 **Computers**
 - Both the Mac and the Windows 11 PC are set up ([`setup-mac.md`](../setup-mac.md), [`setup-windows.md`](../setup-windows.md)).
@@ -68,6 +68,7 @@ Settings that exist only in dashboards, and how to redo them, are in [`deploymen
   - every reference doc checked line by line against the code, migrations and tests;
   - status checked against the open issues, PRs, migrations and the cloud;
   - every documented path and section link checked.
+- Status sections re-checked on 2026-10-15 after #57, #10 and #58 (#61): deploy state, cloud migrations (`supabase migration list --linked`), open issues and PRs.
 
 ## How to resume work
 
