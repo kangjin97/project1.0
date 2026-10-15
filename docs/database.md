@@ -19,6 +19,7 @@ Source of truth: `supabase/migrations/`. Test coverage: `supabase/tests/database
 | `20261014210549_realtime_broadcasts.sql` | `broadcast_change` triggers; who may listen on `realtime.messages` |
 | `20261014220820_invite_management.sql` | One-way link revoke (`guard_invite_link_revoke`), invitation status `cancelled` + `cancel_invitation`, change log for links and invitations, `list_group_history` and `broadcast_change` extended for them |
 | `20261015053917_delete_group_transfer_ownership.sql` | `delete_group`, `group_deletion_summary`, `transfer_ownership`; no delete policy on `groups`; `revert_entries_to_events` skips deleted groups; `list_notifications` keeps a deleted group's name |
+| `20261015064456_log_type_merge_updates.sql` | `log_type_merges` also logs updates (re-pointed merge rules) |
 
 ## Tables
 
@@ -144,7 +145,7 @@ The group History page reads it through `list_group_history` instead, which appl
 | `invitation` | invitation id | created (invited), updated (accepted, declined, cancelled) |
 | `schedule_entry` | entry id | created, updated, deleted, event_replaced, activity_swapped, reverted_to_event, clash_override |
 | `schedule_participant` | entry id | created, updated, deleted |
-| `type_merge` | rule id | created, deleted. Updates (`merge_types` re-pointing a rule to a new target) are not logged yet (#52) |
+| `type_merge` | rule id | created, updated (`merge_types` re-pointing a rule to a new target; only `target_type_id` changes), deleted |
 
 ### `notifications`
 `user_id`, `kind`, `payload` jsonb, `read_at`. You read your own and can set `read_at`. The app reads them through `list_notifications`, which resolves the payload's ids. Kinds written so far:
