@@ -13,7 +13,7 @@ EasyPlan (repo: group-planner) is a web and mobile app for friends to plan thing
 | Area | State |
 |---|---|
 | Sign up / sign in (email + password, unique username) | Done |
-| Groups: create, rename, leave, members, remove member | Done |
+| Groups: create, rename, leave, members, remove member, delete group, hand over ownership | Done |
 | Invites: by username/email search, by invite link or code; members can see and revoke links and cancel pending invitations | Done |
 | Activities: create/edit/delete, price range, link, photos, history | Done |
 | Sharing activities into groups, per-group activity types | Done |

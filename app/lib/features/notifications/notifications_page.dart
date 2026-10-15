@@ -37,6 +37,10 @@ import '../schedule/schedule_widgets.dart';
         title: '${n.entryTitle ?? 'A plan'} clashes with $clashes',
         detail: ['$who added you anyway', ?when].join(' · '),
       );
+    case 'group_deleted':
+      return (title: '$who deleted ${n.groupName ?? 'a group'}', detail: 'Its plans were removed from your schedule');
+    case 'ownership_transferred':
+      return (title: '$who made you the owner of ${n.groupName ?? 'a group'}', detail: null);
     default:
       return (title: 'Notification', detail: null);
   }
@@ -104,6 +108,8 @@ class _NotificationsPageState extends ConsumerState<NotificationsPage> {
           context,
           queryAroundEntry(groupId: n.groupId, date: n.entryDate, start: n.entryStartAt, end: n.entryEndAt),
           id);
+    } else if (n.opensGroup) {
+      context.go('/groups/${n.groupId}');
     }
   }
 
@@ -151,6 +157,8 @@ class _NotificationTile extends StatelessWidget {
     final (icon, color) = switch (n.kind) {
       'group_invitation' => (Icons.group_add_outlined, theme.colorScheme.primary),
       'schedule_clash' => (Icons.warning_amber_rounded, theme.colorScheme.error),
+      'group_deleted' => (Icons.group_off_outlined, theme.colorScheme.error),
+      'ownership_transferred' => (Icons.workspace_premium_outlined, theme.colorScheme.primary),
       _ => (Icons.event_available_outlined, theme.colorScheme.primary),
     };
     return ListTile(
@@ -165,7 +173,7 @@ class _NotificationTile extends StatelessWidget {
               decoration: BoxDecoration(color: theme.colorScheme.primary, shape: BoxShape.circle),
             )
           : null,
-      onTap: n.isInvitation || n.isAboutPlan ? onTap : null,
+      onTap: n.isInvitation || n.isAboutPlan || n.opensGroup ? onTap : null,
     );
   }
 }

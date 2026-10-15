@@ -289,6 +289,9 @@ String describeGroupChange(ChangeEntry e) {
       return self ? 'joined the group' : 'added $person to the group';
     case ('group_member', 'deleted'):
       return self ? 'left the group' : 'removed $person from the group';
+    // Logged by transfer_ownership.
+    case ('group_member', 'updated') when e.after?['role'] == 'owner':
+      return 'made $person the owner';
 
     default:
       return '${e.action.replaceAll('_', ' ')} (${e.entityType.replaceAll('_', ' ')})';
