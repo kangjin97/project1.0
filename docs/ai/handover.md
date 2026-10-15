@@ -35,8 +35,8 @@ Settings that exist only in dashboards, and how to redo them, are in [`deploymen
 **Where things are**
 - **Live site:** deployed 2026-10-15 from `main` at `e2534a6` (the second on-request deploy; the first was `5fb615c`). Everything on `main` is live.
 - **On `main` but not live yet:** nothing (as of the `e2534a6` deploy). Check with `git log --oneline e2534a6..origin/main`.
-- **Cloud database** (checked 2026-10-15): up to date with every migration in the repo, through `20261015064456_log_type_merge_updates.sql`. Check with `supabase migration list --linked` (both computers are linked).
-- **In flight** (2026-10-15): nothing; no open PRs. Always check `gh pr list` and the board's In Progress column.
+- **Cloud database** (checked 2026-10-15): up to date with every migration on `main`, through `20261015064456_log_type_merge_updates.sql`. Recurring plans (#17) add `20261015083758_recurring_plans.sql` and `20261015083759_recurring_history.sql`: once merged, the owner runs `supabase db push` **before** the next deploy. Check with `supabase migration list --linked` (both computers are linked).
+- **In flight** (2026-10-15): the recurring plans PR (#17). Always check `gh pr list` and the board's In Progress column.
 - **Deploys are on request only** (since 2026-10-15, #45): merging to `main` doesn't deploy. See "Working agreements" below.
 
 **What's built** (details per feature in [`features.md`](features.md))
@@ -48,15 +48,16 @@ Settings that exist only in dashboards, and how to redo them, are in [`deploymen
   - **Delete a group and hand over ownership** (#10): group ⋮ → Delete group (warning with counts, type the name; members notified); Members → ⋮ → Make owner (immediate, notified, in history). F2.
   - **Drag to reschedule** (#12) in the week view on wide screens: 15-minute snapping, same clash dialog, Undo. F8.
   - **"Has link" / "Has photos" filters** (#53) on My activities and the group Activities tab. F7.
+  - **Repeating plans** (#17): weekly, every 2 weeks or monthly until a date (at most a year); "this date only" or "this and later dates" for every edit; Extend; one notification per series; one history line per series action. F8.
   - **Invite management** (#9): the Members tab lists active links (Revoke) and pending invitations (Cancel). Any member can do both; it's logged in group history and updates live. F3.
 - **Auth emails** go through Resend, with EasyPlan templates from `supabase/templates/` (*Confirm signup*, *Reset password*, *Change email address*). The cloud copies are pasted by hand; if the dashboard and the files ever disagree, the files are the intended version.
 - **Privacy policy:** live at `/privacy.html`.
 
-**Not built yet** (`gh issue list`): store apps (#13, #14), app icon (#15), server-side search (#16), recurring plans (#17), push notifications (#18).
+**Not built yet** (`gh issue list`): store apps (#13, #14), app icon (#15), server-side search (#16), push notifications (#18).
 
 **Next priorities**
 1. `priority:high`: #5 phone smoke test together with #49 (live updates on two phones, step by step) on the live site, covering everything deployed on 2026-10-15 (#7–#12, #52, #53, the #58 fix).
-2. The backlog: #15 the app icon (needs the owner's direction), then the store apps (#13, #14) or v2 items (#16 server-side search, #17 recurring plans, #18 push).
+2. The backlog: #15 the app icon (needs the owner's direction), then the store apps (#13, #14) or v2 items (#16 server-side search, #18 push).
 
 **Computers**
 - Both the Mac and the Windows 11 PC are set up ([`setup-mac.md`](../setup-mac.md), [`setup-windows.md`](../setup-windows.md)).

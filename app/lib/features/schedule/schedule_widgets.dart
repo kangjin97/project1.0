@@ -103,6 +103,11 @@ class EntryTile extends StatelessWidget {
                             child: Text(e.displayTitle,
                                 style: theme.textTheme.titleMedium, maxLines: 1, overflow: TextOverflow.ellipsis),
                           ),
+                          if (e.isRepeating)
+                            Tooltip(
+                              message: 'Repeats',
+                              child: Icon(Icons.repeat, size: 16, color: scheme.onSurfaceVariant),
+                            ),
                         ],
                       ),
                       const SizedBox(height: 2),
@@ -254,4 +259,36 @@ Future<bool> confirmClashes(BuildContext context, List<ScheduleClash> clashes) a
     ),
   );
   return ok ?? false;
+}
+
+/// For a repeating plan, asks whether [action] is for this date only or for
+/// this and the later dates (earlier ones never change). Plain plans don't
+/// ask. Null when cancelled.
+Future<EditScope?> chooseScope(BuildContext context, ScheduleEntry e, String action) async {
+  if (!e.isRepeating) return EditScope.one;
+  return showDialog<EditScope>(
+    context: context,
+    builder: (context) => SimpleDialog(
+      title: Text(action),
+      children: [
+        SimpleDialogOption(
+          onPressed: () => Navigator.pop(context, EditScope.one),
+          child: const ListTile(
+            contentPadding: EdgeInsets.zero,
+            leading: Icon(Icons.event_outlined),
+            title: Text('This date only'),
+          ),
+        ),
+        SimpleDialogOption(
+          onPressed: () => Navigator.pop(context, EditScope.following),
+          child: const ListTile(
+            contentPadding: EdgeInsets.zero,
+            leading: Icon(Icons.event_repeat_outlined),
+            title: Text('This and later dates'),
+            subtitle: Text('Earlier dates stay as they are'),
+          ),
+        ),
+      ],
+    ),
+  );
 }

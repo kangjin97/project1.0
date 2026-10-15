@@ -74,24 +74,28 @@ class _MySchedulePageState extends ConsumerState<MySchedulePage> {
   /// Drag to reschedule in the week view: keeps the plan's length, asks about
   /// clashes like Change time does, and offers Undo.
   Future<void> _move(ScheduleEntry e, DateTime newStart) async {
+    final scope = await chooseScope(context, e, 'Move');
+    if (scope == null || !mounted) return;
     final from = TimedTiming(e.startAt!, e.endAt!);
     final to = TimedTiming(newStart, newStart.add(e.endAt!.difference(e.startAt!)));
-    if (!await _reschedule(e.id, to) || !mounted) return;
+    if (!await _reschedule(e.id, to, scope) || !mounted) return;
+    final later = scope == EditScope.following ? ' and later dates' : '';
     ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-      content: Text('Moved “${e.displayTitle}” to ${formatShortDay(to.start)}, ${formatTime(to.start)}'),
-      action: SnackBarAction(label: 'Undo', onPressed: () => _reschedule(e.id, from)),
+      content: Text('Moved “${e.displayTitle}”$later to ${formatShortDay(to.start)}, ${formatTime(to.start)}'),
+      // Moving the same plan back by the same amount undoes it, for later dates too.
+      action: SnackBarAction(label: 'Undo', onPressed: () => _reschedule(e.id, from, scope)),
     ));
   }
 
   /// True when saved. On clashes the planner chooses; declining saves nothing.
-  Future<bool> _reschedule(String entryId, TimedTiming timing) async {
+  Future<bool> _reschedule(String entryId, TimedTiming timing, EditScope scope) async {
     final repo = ref.read(scheduleRepositoryProvider);
     try {
-      var result = await repo.reschedule(entryId, timing);
+      var result = await repo.reschedule(entryId, timing, scope: scope);
       if (!result.saved) {
         if (!mounted) return false;
         if (!await confirmClashes(context, result.clashes)) return false;
-        result = await repo.reschedule(entryId, timing, force: true);
+        result = await repo.reschedule(entryId, timing, force: true, scope: scope);
       }
       invalidateSchedule(ref);
       return true;

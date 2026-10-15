@@ -188,6 +188,12 @@ String historyDayHeading(DateTime day) {
 /// Names that are gone (deleted, or no longer visible) read as "an activity",
 /// "a plan", "a deleted user" and so on.
 String describeGroupChange(ChangeEntry e) {
+  final text = _describe(e);
+  // One action across a repeating plan is one line for all its dates.
+  return e.repeatCount > 1 ? '$text · on ${e.repeatCount} dates' : text;
+}
+
+String _describe(ChangeEntry e) {
   String q(String s) => '“$s”';
   final activity = e.subjectName == null ? 'an activity' : q(e.subjectName!);
   final plan = e.subjectName == null ? 'a plan' : q(e.subjectName!);

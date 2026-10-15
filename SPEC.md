@@ -194,6 +194,6 @@ Details and backlog: [`docs/ai/features.md`](docs/ai/features.md).
 
 - Decisions made so far (including assumptions awaiting confirmation) are logged in [`docs/ai/decisions.md`](docs/ai/decisions.md).
 - Assumed, awaiting the owner's confirmation (see `decisions.md`): any member can unshare an activity (logged); labels match by exact name only (no fuzzy "similar" matching).
-- Recurring entries (e.g. weekly game night): out of scope for v1; tracked as #17.
+- Recurring entries (e.g. weekly game night): built (#17). Weekly, every 2 weeks or monthly, ending on a date at most a year ahead; edits apply to one date or that date and later ones; one notification per series.
 - Push notifications on phones: in-app only for v1; tracked as #18.
 - Time zones: stored in UTC (`timestamptz`), shown in each user's **profile** time zone (not the device's).

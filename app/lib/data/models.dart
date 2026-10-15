@@ -1,4 +1,5 @@
 import 'app_clock.dart';
+import 'schedule_models.dart';
 
 class Profile {
   Profile({required this.id, required this.username, this.displayName, this.avatarPath, this.bio, this.timezone});
@@ -314,6 +315,7 @@ class ChangeEntry {
     this.entryDate,
     this.entryStartAt,
     this.entryEndAt,
+    this.repeatCount = 1,
   });
 
   /// A row from `list_group_history`, which also names what it's about.
@@ -339,6 +341,7 @@ class ChangeEntry {
       entryDate: j['entry_date'] == null ? null : DateTime.parse(j['entry_date'] as String),
       entryStartAt: instant('entry_start_at'),
       entryEndAt: instant('entry_end_at'),
+      repeatCount: (j['repeat_count'] as num?)?.toInt() ?? 1,
     );
   }
 
@@ -373,6 +376,10 @@ class ChangeEntry {
   final DateTime? entryDate;
   final DateTime? entryStartAt;
   final DateTime? entryEndAt;
+
+  /// How many dates of a repeating plan this one action covered (group history
+  /// shows one line for them); 1 otherwise.
+  final int repeatCount;
 }
 
 /// One of the user's own activity labels.
@@ -437,6 +444,8 @@ class AppNotification {
     this.entryStartAt,
     this.entryEndAt,
     this.clashCount = 0,
+    this.seriesFreq,
+    this.seriesUntil,
   });
 
   factory AppNotification.fromJson(Map<String, dynamic> j) {
@@ -457,13 +466,15 @@ class AppNotification {
       entryStartAt: instant('entry_start_at'),
       entryEndAt: instant('entry_end_at'),
       clashCount: j['clash_count'] as int? ?? 0,
+      seriesFreq: RepeatFreq.fromDb(j['series_freq'] as String?),
+      seriesUntil: j['series_until'] == null ? null : DateTime.parse(j['series_until'] as String),
     );
   }
 
   final String id;
 
-  /// `group_invitation`, `added_to_entry`, `schedule_clash`, `group_deleted`
-  /// or `ownership_transferred`.
+  /// `group_invitation`, `added_to_entry`, `added_to_series`, `schedule_clash`,
+  /// `group_deleted` or `ownership_transferred`.
   final String kind;
   final DateTime createdAt;
   final DateTime? readAt;
@@ -485,9 +496,13 @@ class AppNotification {
   /// How many of the user's plans this one clashed with.
   final int clashCount;
 
+  /// For a repeating plan (`added_to_series`, or a clash from moving one).
+  final RepeatFreq? seriesFreq;
+  final DateTime? seriesUntil;
+
   bool get unread => readAt == null;
   bool get isInvitation => kind == 'group_invitation';
-  bool get isAboutPlan => kind == 'added_to_entry' || kind == 'schedule_clash';
+  bool get isAboutPlan => kind == 'added_to_entry' || kind == 'schedule_clash' || kind == 'added_to_series';
 
   /// Opens a group page when tapped (the group still exists and is visible).
   bool get opensGroup => kind == 'ownership_transferred' && groupId != null;

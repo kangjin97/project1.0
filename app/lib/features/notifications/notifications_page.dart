@@ -6,6 +6,7 @@ import 'package:intl/intl.dart';
 import '../../data/app_clock.dart';
 import '../../data/models.dart';
 import '../../data/notifications_repository.dart';
+import '../../data/schedule_models.dart';
 import '../../data/schedule_repository.dart';
 import '../../widgets/async_body.dart';
 import '../../widgets/dialogs.dart';
@@ -37,6 +38,12 @@ import '../schedule/schedule_widgets.dart';
         title: '${n.entryTitle ?? 'A plan'} clashes with $clashes',
         detail: ['$who added you anyway', ?when].join(' · '),
       );
+    case 'added_to_series':
+      final repeats = n.seriesFreq == null || n.seriesUntil == null
+          ? null
+          : repeatLabel(n.seriesFreq!, n.seriesUntil!, thisYear: AppClock.today().year);
+      final clashes = n.clashCount == 0 ? null : n.clashCount == 1 ? 'clashes once' : 'clashes ${n.clashCount} times';
+      return (title: '$who added you to $plan', detail: [?repeats, ?n.groupName, ?clashes].join(' · '));
     case 'group_deleted':
       return (title: '$who deleted ${n.groupName ?? 'a group'}', detail: 'Its plans were removed from your schedule');
     case 'ownership_transferred':
@@ -174,6 +181,7 @@ class _NotificationTile extends StatelessWidget {
     final (icon, color) = switch (n.kind) {
       'group_invitation' => (Icons.group_add_outlined, theme.colorScheme.primary),
       'schedule_clash' => (Icons.warning_amber_rounded, theme.colorScheme.error),
+      'added_to_series' => (Icons.event_repeat_outlined, theme.colorScheme.primary),
       'group_deleted' => (Icons.group_off_outlined, theme.colorScheme.error),
       'ownership_transferred' => (Icons.workspace_premium_outlined, theme.colorScheme.primary),
       _ => (Icons.event_available_outlined, theme.colorScheme.primary),
