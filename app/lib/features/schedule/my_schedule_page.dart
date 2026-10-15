@@ -7,6 +7,7 @@ import '../../data/app_clock.dart';
 import '../../data/schedule_models.dart';
 import '../../data/schedule_repository.dart';
 import '../../widgets/async_body.dart';
+import '../../widgets/dialogs.dart';
 import 'calendar_views.dart';
 import 'entry_detail_sheet.dart';
 import 'entry_editor.dart';
@@ -68,6 +69,36 @@ class _MySchedulePageState extends ConsumerState<MySchedulePage> {
 
   Future<void> _add([DateTime? day]) async {
     await showEntryEditor(context, day: day);
+  }
+
+  /// Drag to reschedule in the week view: keeps the plan's length, asks about
+  /// clashes like Change time does, and offers Undo.
+  Future<void> _move(ScheduleEntry e, DateTime newStart) async {
+    final from = TimedTiming(e.startAt!, e.endAt!);
+    final to = TimedTiming(newStart, newStart.add(e.endAt!.difference(e.startAt!)));
+    if (!await _reschedule(e.id, to) || !mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+      content: Text('Moved “${e.displayTitle}” to ${formatShortDay(to.start)}, ${formatTime(to.start)}'),
+      action: SnackBarAction(label: 'Undo', onPressed: () => _reschedule(e.id, from)),
+    ));
+  }
+
+  /// True when saved. On clashes the planner chooses; declining saves nothing.
+  Future<bool> _reschedule(String entryId, TimedTiming timing) async {
+    final repo = ref.read(scheduleRepositoryProvider);
+    try {
+      var result = await repo.reschedule(entryId, timing);
+      if (!result.saved) {
+        if (!mounted) return false;
+        if (!await confirmClashes(context, result.clashes)) return false;
+        result = await repo.reschedule(entryId, timing, force: true);
+      }
+      invalidateSchedule(ref);
+      return true;
+    } catch (err) {
+      if (mounted) showError(context, err);
+      return false;
+    }
   }
 
   void _openDay(ScheduleQuery query, List<ScheduleEntry> entries, DateTime day) {
@@ -250,6 +281,7 @@ class _MySchedulePageState extends ConsumerState<MySchedulePage> {
           entries: entries,
           onTap: (e) => showEntryDetail(context, query, e.id),
           onTapDay: (d) => _openDay(query, entries, d),
+          onMove: _move,
         ),
         _Mode.month => MonthView(month: _anchor, entries: entries, onTapDay: (d) => _openDay(query, entries, d)),
       },

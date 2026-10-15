@@ -63,6 +63,7 @@ A web and mobile app for friends to plan things to do together: collect activity
 - Entries are created **within a group**: pick an activity (or create an event), a date/time, and which group members take part (defaults to the creator).
 - Selected members are **added automatically** — no accept step — subject to the clash check (§2.6).
 - Any participant can remove themselves from an entry. Any group member can remove an entry from the group schedule.
+- On wide screens, a timed plan can be dragged to another time or day in the week view (same clash check; Undo afterwards).
 
 ### 2.6 Clash detection
 - Before saving an entry (or changing its time or participants), check every selected member's schedule for overlaps.
