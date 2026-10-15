@@ -34,7 +34,7 @@ Settings that exist only in dashboards, and how to redo them, are in [`deploymen
 
 **Where things are**
 - **Live site:** deployed 2026-10-15 from `main` at `5fb615c` (the first on-request deploy), with everything up to group history (#8) and live updates (#7).
-- **On `main` but not live yet:** past plans on phones (#11), invite management (#9), deleting groups / handing over ownership (#10), the link/photo filters (#53) and logging re-pointed merge rules (#52). The next deploy needs `supabase db push` first, for `20261014220820_invite_management.sql` (#9), `20261015053917_delete_group_transfer_ownership.sql` (#10) and `20261015064456_log_type_merge_updates.sql` (#52). #11 and #53 need no migration.
+- **On `main` but not live yet:** past plans on phones (#11), invite management (#9), deleting groups / handing over ownership (#10), the link/photo filters (#53), logging re-pointed merge rules (#52) and drag to reschedule (#12). The next deploy needs `supabase db push` first, for `20261014220820_invite_management.sql` (#9), `20261015053917_delete_group_transfer_ownership.sql` (#10) and `20261015064456_log_type_merge_updates.sql` (#52). #11, #53 and #12 need no migration.
 - **Cloud database** (checked 2026-10-15): up to date through `20261014210549_realtime_broadcasts.sql`; `20261014220820_invite_management.sql`, `20261015053917_delete_group_transfer_ownership.sql` and `20261015064456_log_type_merge_updates.sql` are not pushed yet. Check with `supabase migration list --linked` (both computers are linked).
 - **In flight** (2026-10-15): #60, the fix for #58 (notifications lost their unread highlight right after opening; a regression from live updates), waiting for the owner to merge. No migration. Always check `gh pr list` and the board's In Progress column.
 - **Deploys are on request only** (since 2026-10-15, #45): merging to `main` doesn't deploy. See "Working agreements" below.
@@ -46,16 +46,17 @@ Settings that exist only in dashboards, and how to redo them, are in [`deploymen
   - **Live updates** (#7): other people's changes appear on open screens silently, and the Alerts badge is live. It uses database broadcasts to private Realtime channels. F13. When adding a table that a screen shows, add a `broadcast_change` trigger and a `providersAffectedBy` case (CLAUDE.md rule 6).
   - **Past plans on phones** (#11): "Show earlier" on schedule lists, and plans that are over are muted. F8.
   - **Delete a group and hand over ownership** (#10): group ⋮ → Delete group (warning with counts, type the name; members notified); Members → ⋮ → Make owner (immediate, notified, in history). F2.
+  - **Drag to reschedule** (#12) in the week view on wide screens: 15-minute snapping, same clash dialog, Undo. F8.
   - **"Has link" / "Has photos" filters** (#53) on My activities and the group Activities tab. F7.
   - **Invite management** (#9): the Members tab lists active links (Revoke) and pending invitations (Cancel). Any member can do both; it's logged in group history and updates live. F3.
 - **Auth emails** go through Resend, with EasyPlan templates from `supabase/templates/` (*Confirm signup*, *Reset password*, *Change email address*). The cloud copies are pasted by hand; if the dashboard and the files ever disagree, the files are the intended version.
 - **Privacy policy:** live at `/privacy.html`.
 
-**Not built yet** (`gh issue list`): drag to reschedule (#12), store apps (#13, #14), app icon (#15), server-side search (#16), recurring plans (#17), push notifications (#18).
+**Not built yet** (`gh issue list`): store apps (#13, #14), app icon (#15), server-side search (#16), recurring plans (#17), push notifications (#18).
 
 **Next priorities**
 1. `priority:high`: #5 phone smoke test, together with #49 (live updates on two phones, step by step). Both can run on the live site now. Re-check #9, #10 and #11 after the next deploy.
-2. The backlog, e.g. #12 drag to reschedule (wide screens), or #15 the app icon (needs the owner's direction).
+2. The backlog: #15 the app icon (needs the owner's direction), then the store apps (#13, #14) or v2 items (#16 server-side search, #17 recurring plans, #18 push).
 
 **Computers**
 - Both the Mac and the Windows 11 PC are set up ([`setup-mac.md`](../setup-mac.md), [`setup-windows.md`](../setup-windows.md)).
@@ -111,6 +112,7 @@ These come from the owner's instructions and from how sessions have gone. They a
   - To simulate a dropped connection: `docker stop supabase_realtime_group-planner`, make a change, then `docker start` it. The open app should catch up once its channels rejoin.
   - You can also play the other person from the database, acting as them through RLS (`set role authenticated` + `set_config('request.jwt.claims', …)` in `psql` via `docker exec -i supabase_db_group-planner psql -U postgres`).
   - Either way, screens should change within about 2 s without a reload. In pgTAP, call `set_config('easyplan.broadcasts_sent', '', true)` between steps, because the whole test is one transaction and the trigger sends once per topic and table per transaction.
+- **Dragging in the Claude preview pane** (e.g. testing #12's week view): the browser tool's drag is a single jump, which Flutter doesn't treat as a drag, and its clicks can miss small buttons when the viewport is scaled. Send pointer events from JavaScript instead, as a pointerdown, ~30 pointermoves 16 ms apart and a pointerup, on `document.querySelector('flutter-view')`. Multiply CSS coordinates by `devicePixelRatio`, since Flutter reads synthetic events in device pixels. Emulate a wide viewport no bigger than the pane (e.g. 900×650); larger ones get scaled down. Check the result in the database, not just the screen.
 - **Rows in one transaction share `now()`**, so `created_at` can't order them (pgTAP tests run in one transaction). Order change-log rows by `change_log.id`, as `list_group_history` does.
 
 ## Open questions for the owner

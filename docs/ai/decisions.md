@@ -69,6 +69,7 @@ Product and technical decisions, with the reason. Newest last. When a decision c
 | 2026-10-15 | Deleting a group removes its plans from everyone's schedules, after a warning with counts and typing the group's name; activities stay with their owners. Members and anyone in its plans are notified. (Owner's choice.) | Owner chose "delete, warn first" over blocking deletes while plans are upcoming, and to notify members. |
 | 2026-10-15 | Handing over ownership is immediate; the new owner doesn't have to accept. The old owner becomes a member. (Owner's choice.) | Simple; an offer/accept flow would need pending offers, cancel and expiry. |
 | 2026-10-15 | Owner-only actions (Rename, Delete, Make owner, Remove) are hidden from other members. | They'd only get a permission error. |
+| 2026-10-15 | Drag to reschedule (#12) works on wide screens only (≥720 px, where the side rail shows); phones keep tap → Change time. Plans snap to 15 minutes and keep their length; only timed plans drag. A move offers Undo in the snackbar. | The issue scoped it to wide screens; drag on a phone fights scrolling. 15 minutes is fine enough for plans without fiddly aiming. |
 
 ## Technical
 

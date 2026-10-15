@@ -9,14 +9,35 @@ import 'schedule_widgets.dart';
 
 const _hourHeight = 48.0;
 
+/// Dragged plans snap to this many minutes.
+const dragSnapMinutes = 15;
+
+/// Where a plan dropped with its top edge [dy] pixels into a day column
+/// starts: snapped to [dragSnapMinutes] and kept within that day.
+DateTime dropStart(DateTime dayStart, double dy) {
+  final minutes = (dy / _hourHeight * 60 / dragSnapMinutes).round() * dragSnapMinutes;
+  return dayStart.add(Duration(minutes: minutes.clamp(0, 24 * 60 - dragSnapMinutes)));
+}
+
 /// Seven-day grid: all-day row on top, timed entries placed by hour below.
 class WeekView extends StatefulWidget {
-  const WeekView({super.key, required this.weekStart, required this.entries, required this.onTap, required this.onTapDay});
+  const WeekView({
+    super.key,
+    required this.weekStart,
+    required this.entries,
+    required this.onTap,
+    required this.onTapDay,
+    this.onMove,
+  });
 
   final DateTime weekStart;
   final List<ScheduleEntry> entries;
   final ValueChanged<ScheduleEntry> onTap;
   final ValueChanged<DateTime> onTapDay;
+
+  /// Drag to reschedule (wide screens only): called with the plan's new start;
+  /// the plan keeps its length.
+  final void Function(ScheduleEntry entry, DateTime newStart)? onMove;
 
   @override
   State<WeekView> createState() => _WeekViewState();
@@ -37,6 +58,8 @@ class _WeekViewState extends State<WeekView> {
     final theme = Theme.of(context);
     // Phones get a slimmer hour gutter so the seven columns keep usable width.
     final narrow = MediaQuery.sizeOf(context).width < 600;
+    // Dragging needs a pointer and room to aim; phones keep tap → Change time.
+    final onMove = MediaQuery.sizeOf(context).width >= 720 ? widget.onMove : null;
     final gutter = narrow ? 36.0 : 56.0;
     final days = [for (var i = 0; i < 7; i++) addDays(widget.weekStart, i)];
     final today = AppClock.today();
@@ -130,7 +153,7 @@ class _WeekViewState extends State<WeekView> {
                     ),
                   ),
                   for (final d in days)
-                    Expanded(child: _DayColumn(day: d, entries: widget.entries, onTap: widget.onTap)),
+                    Expanded(child: _DayColumn(day: d, entries: widget.entries, onTap: widget.onTap, onMove: onMove)),
                 ],
               ),
             ),
@@ -143,11 +166,12 @@ class _WeekViewState extends State<WeekView> {
 
 /// One day's timed entries, side by side where they overlap.
 class _DayColumn extends StatelessWidget {
-  const _DayColumn({required this.day, required this.entries, required this.onTap});
+  const _DayColumn({required this.day, required this.entries, required this.onTap, this.onMove});
 
   final DateTime day;
   final List<ScheduleEntry> entries;
   final ValueChanged<ScheduleEntry> onTap;
+  final void Function(ScheduleEntry entry, DateTime newStart)? onMove;
 
   @override
   Widget build(BuildContext context) {
@@ -184,21 +208,59 @@ class _DayColumn extends StatelessWidget {
       builder: (context, constraints) {
         final width = constraints.maxWidth / columns;
         double y(DateTime t) => (t.difference(dayStart).inMinutes) * _hourHeight / 60;
-        return Container(
-          decoration: BoxDecoration(border: Border(left: BorderSide(color: lineColor))),
-          child: Stack(
-            children: [
-              for (var h = 1; h < 24; h++)
-                Positioned(top: h * _hourHeight, left: 0, right: 0, child: Divider(height: 1, color: lineColor)),
-              for (var i = 0; i < segments.length; i++)
-                Positioned(
-                  top: y(segments[i].start),
-                  height: math.max(22, y(segments[i].end) - y(segments[i].start)),
-                  left: columnOf[i] * width,
-                  width: width,
-                  child: _Block(entry: segments[i].e, onTap: () => onTap(segments[i].e)),
-                ),
-            ],
+        final move = onMove;
+
+        Widget block(int i) {
+          final s = segments[i];
+          final height = math.max(22.0, y(s.end) - y(s.start));
+          final child = _Block(entry: s.e, onTap: () => onTap(s.e));
+          // Only a plan's first segment moves it; a continuation from the day
+          // before would move the start to the wrong day.
+          if (move == null || s.start != s.e.startAt) return child;
+          return MouseRegion(
+            cursor: SystemMouseCursors.grab,
+            child: Draggable<ScheduleEntry>(
+              data: s.e,
+              feedback: SizedBox(
+                width: width,
+                height: height,
+                child: Material(elevation: 6, borderRadius: BorderRadius.circular(6), child: child),
+              ),
+              childWhenDragging: Opacity(opacity: 0.35, child: child),
+              child: child,
+            ),
+          );
+        }
+
+        final grid = Stack(
+          children: [
+            for (var h = 1; h < 24; h++)
+              Positioned(top: h * _hourHeight, left: 0, right: 0, child: Divider(height: 1, color: lineColor)),
+            for (var i = 0; i < segments.length; i++)
+              Positioned(
+                top: y(segments[i].start),
+                height: math.max(22, y(segments[i].end) - y(segments[i].start)),
+                left: columnOf[i] * width,
+                width: width,
+                child: block(i),
+              ),
+          ],
+        );
+        final decoration = BoxDecoration(border: Border(left: BorderSide(color: lineColor)));
+        if (move == null) return Container(decoration: decoration, child: grid);
+        return DragTarget<ScheduleEntry>(
+          onAcceptWithDetails: (details) {
+            // details.offset is the dragged block's top-left, so its top edge
+            // lands where the plan will start.
+            final box = context.findRenderObject() as RenderBox;
+            final start = dropStart(dayStart, box.globalToLocal(details.offset).dy);
+            if (!start.isAtSameMomentAs(details.data.startAt!)) move(details.data, start);
+          },
+          builder: (context, candidates, _) => Container(
+            decoration: decoration.copyWith(
+              color: candidates.isEmpty ? null : Theme.of(context).colorScheme.primary.withValues(alpha: 0.06),
+            ),
+            child: grid,
           ),
         );
       },
