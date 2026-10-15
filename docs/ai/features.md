@@ -9,7 +9,7 @@ Status legend: **Done** = DB + UI + tests. **DB only** = schema/RPCs/tests exist
 ## F1. Accounts and auth — Done
 - Email + password via Supabase Auth. Sign-up requires a unique username `^[a-z0-9_]{3,30}$` (checked with `username_available`, enforced by unique constraint). Optional display name.
 - Signed-out users are redirected to `/auth?next=<original>`; after sign-in they return there (keeps invite links working).
-- Auth emails whose links return to the site root (`/?code=` sign-up confirmation, `/?message=` first step of a secure email change, `/?error_description=` expired link) go to My schedule (or sign-in), and the note is shown as a snackbar (`authLinkNotice`, `rootMessengerKey` in `router.dart`). Tests: `app/test/router_test.dart`.
+- Auth emails whose links return to the site root (`/?code=` sign-up confirmation, `/?message=` first step of a secure email change, `/?error_description=` expired link) go to My schedule (or sign-in); a `?message=` or `?error_description=` note is shown as a snackbar (`?code=` has none) (`authLinkNotice`, `rootMessengerKey` in `router.dart`). Tests: `app/test/router_test.dart`.
 - UI: `app/lib/features/auth/auth_page.dart`; redirect in `app/lib/router.dart`. Data: `data/auth_repository.dart` (`signUp`, `signIn`, `sendPasswordReset`, `setNewPassword`; `authRepositoryProvider`).
 - DB: `profiles`, trigger `handle_new_user`, `username_available`.
 - Tests: `core_rules.test.sql` (profile creation).
@@ -21,7 +21,7 @@ Status legend: **Done** = DB + UI + tests. **DB only** = schema/RPCs/tests exist
 - Data: G `myGroups`, `group`, `createGroup`, `renameGroup`, `leaveGroup`, `members`, `removeMember`; providers `myGroupsProvider`, `groupProvider(id)`, `membersProvider(id)`.
 - DB: `groups`, `group_members`, `handle_new_group`, `hand_over_ownership`.
 - Tests: `core_rules.test.sql`, `delete_account.test.sql` (hand-over).
-- Gaps: no delete-group UI; no manual "make someone else owner" action.
+- Not built yet: deleting a group and handing ownership to a chosen member (#10).
 
 ## F3. Invites — Done
 - Direct: search by username prefix or exact email → invitation → invitee accepts/declines on Groups page.
@@ -55,6 +55,7 @@ Status legend: **Done** = DB + UI + tests. **DB only** = schema/RPCs/tests exist
 - UI: `features/activities/share_activity_sheet.dart` (`showShareActivitySheet`), `features/groups/group_activities_tab.dart`, `features/groups/group_types_tab.dart`.
 - Data: A `groupActivities`, `sharedIn`, `share`, `changeType`, `unshare`; G `types`, `addType`, `renameType`, `deleteType`; providers `groupActivitiesProvider(groupId)`, `sharedInProvider(activityId)`, `typesProvider(groupId)`.
 - DB: `group_activities`, `activity_types`, triggers `group_activity_defaults`, `revert_entries_to_events`.
+- Tests: `core_rules.test.sql` (sharing, member type changes, unshare turns plans into events), `labels_and_merges.test.sql` (filing by label).
 
 ## F6. Personal labels and type merging — Done
 - Labels are private per user; one label per activity; only the owner sets it.
@@ -71,8 +72,9 @@ Status legend: **Done** = DB + UI + tests. **DB only** = schema/RPCs/tests exist
 - My activities: text search over name, description, location, label; filters label (multi), sharing (all/private/shared), max budget; sort newest/name/cheapest.
 - Group activities: text search over name, description, location, group type; filters type (multi), max budget, added by; same sorts.
 - Budget filter keeps activities whose range overlaps `[0, max]` or that have no price (`Activity.fitsBudget`).
-- Runs in memory on the loaded list. If groups grow large, move to server-side filtering (PostgREST filters or an RPC).
+- Runs in memory on the loaded list. If groups grow large, move to server-side filtering (#16). Not built yet: "has a link" / "has photos" filters (#53).
 - UI: `activities_page.dart` (`_apply`), `group_activities_tab.dart` (`_apply`).
+- Tests: none automated (pure client-side filtering); checked by hand.
 
 ## F8. Schedules, clash detection, events — Done
 - Entries belong to a group; either an activity or an event (title only). Timing: timed (may run past midnight), all-day, or "no date yet" (events only).
@@ -119,7 +121,7 @@ Status legend: **Done** = DB + UI + tests. **DB only** = schema/RPCs/tests exist
 - UI: `features/auth/auth_page.dart` (`_forgotPassword`, privacy link), `features/auth/reset_password_page.dart`, `features/profile/profile_page.dart` (`_DeleteAccountDialog`, privacy link). Data: `ProfileRepository.deleteAccount`.
 - Tests: `delete_account.test.sql` (hand-over on leave, deletion cascade, events kept, others untouched, history kept). Forgot-password and deletion were exercised end to end in the browser with a throwaway local account.
 - **Deployed:** the web app is live at https://easyplan-hehe.netlify.app against the Supabase cloud project. Merging to `main` doesn't deploy; the owner asks for a deploy, which runs CI manually on `main` (`deploy-web` job; `docs/deployment.md` → Deploying the web app).
-- Gaps: iOS Associated Domains must be added in Xcode; `.well-known` files need the Play signing SHA-256 and Apple Team ID; store listings are manual.
+- Not done yet: store builds (#13 Android, #14 iOS) and a designed icon (#15). iOS Associated Domains must be added in Xcode; `.well-known` files need the Play signing SHA-256 and Apple Team ID; store listings are manual.
 
 ## F9. Notifications — Done (screen, live badge; push #18 to come)
 - Kinds written by the database: `group_invitation` (on invite), `added_to_entry` and `schedule_clash` (when a planner adds you; clash when you were busy).
@@ -157,11 +159,11 @@ Status legend: **Done** = DB + UI + tests. **DB only** = schema/RPCs/tests exist
 - **Group history** (`/groups/:id/history`, group page ⋮ → History): who did what in the group, newest first, under day headings ("Today", "Yesterday", dates), 50 at a time with **Show older**; pull to refresh. Lists:
   - shares, removals and type changes;
   - types added, renamed and deleted; merges and undone merges;
-  - plans planned, retimed, renamed, removed or swapped; events replaced (named as they were); people added to or leaving plans; clash overrides;
+  - plans planned, retimed, renamed, removed or swapped; events replaced (named as they were) or turned back into events; people added to or leaving plans; clash overrides and clashes cleared;
   - members joining (or creating the group), leaving or being removed;
   - invite links created and revoked; people invited, invitations declined or cancelled (accepting shows as "joined"; link codes are never shown);
   - edits and photo changes to an activity **made while it was shared in the group**, worked out from the log's own share and removal lines, so they stay listed after the activity leaves the group. Edits from before it was shared (or while it was out of the group) stay private, and the owner's label never shows.
-- **Tap a line** to open what it's about (chevron shown): activity lines open the activity while you can still see it; plan and participant lines open the plan's detail sheet while the plan exists; member lines open the person's profile. Type and merge lines don't open anything.
+- **Tap a line** to open what it's about (chevron shown): activity lines open the activity while you can still see it; plan and participant lines open the plan's detail sheet while the plan exists; member lines open the person's profile. Type, merge, invite-link and invitation lines don't open anything.
 - Members see the group's whole history, including from before they joined. Former members and outsiders see nothing.
 - Names follow visibility: a deleted activity reads "an activity", a plan with no name left reads "a plan", a deleted account reads "a deleted user". Joining or leaving by yourself vs. being added or removed is told apart by id, so it still reads right after an account is deleted.
 - Left out on purpose (bookkeeping, not a person's action): edits that only changed the owner's label, a label being cleared from a share, and participants being marked as clashing (the clash override line covers it).
@@ -191,3 +193,5 @@ Open at the time of writing:
 | #17 Recurring plans | F8 | feature (v2) |
 | #18 Push notifications on phones | F9 | feature (v2) |
 | #49 Test live updates on two phones against the live site | F13 | chore |
+| #52 Log updates to type merge rules in the change log | F10 | chore |
+| #53 Filter activities by "has a link" and "has photos" | F7 | feature |

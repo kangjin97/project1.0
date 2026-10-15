@@ -13,7 +13,7 @@ Source of truth: `supabase/migrations/`. Test coverage: `supabase/tests/database
 | `20261012020000_delete_account_order.sql` | `delete_my_account` unshares activities before deleting them |
 | `20261012030000_touch_updated_existing_users.sql` | `touch_updated` stamps `updated_by` only for existing users |
 | `20261014064145_cancel_email_change.sql` | `cancel_email_change` |
-| `20261014082408_function_grants_and_search_path.sql` | Revoke `execute` on trigger functions and `entry_range` from `authenticated`; pin `search_path` on the remaining invoker functions |
+| `20261014082408_function_grants_and_search_path.sql` | Revoke `execute` from `authenticated` on the init migration's trigger functions and `entry_range` (later trigger functions revoke it in their own migrations); pin `search_path` on the remaining invoker functions |
 | `20261014085422_list_notifications.sql` | `list_notifications` |
 | `20261014203717_list_group_history.sql` | `list_group_history` |
 | `20261014210549_realtime_broadcasts.sql` | `broadcast_change` triggers; who may listen on `realtime.messages` |
@@ -22,7 +22,7 @@ Source of truth: `supabase/migrations/`. Test coverage: `supabase/tests/database
 ## Tables
 
 ### `profiles`
-One per auth user, created by the `on_auth_user_created` trigger from sign-up metadata (`username`, `display_name`).
+One per auth user, created by the `on_auth_user_created` trigger from sign-up metadata (`username`, `display_name`). Without a username in the metadata it becomes `user_<first 12 hex characters of the id>`.
 
 | Column | Notes |
 |---|---|
@@ -40,7 +40,7 @@ Access: any signed-in user can read; users update their own row (`username`, `di
 - `group_members`: primary key `(group_id, user_id)`, `role` `owner|member`.
 
 Access:
-- **Groups:** members can read, and so can the group's creator. Invitees with a pending invitation can read the group too, to see its name. Only owners can rename or delete.
+- **Groups:** any signed-in user can create one (as `created_by`). Members can read, and so can the group's creator. Invitees with a pending invitation can read the group too, to see its name. Only owners can rename or delete.
 - **Members:** members can read the member list. You can remove yourself (leave), and the owner can remove anyone. Joining only happens through `respond_to_invitation` or `join_group_via_link`. If the owner leaves, ownership passes to the longest-standing member.
 
 ### `group_invite_links`, `group_invitations`
@@ -51,6 +51,7 @@ Access:
   - At most one pending invitation per (group, invitee). Members can invite non-members.
   - The `on_invitation_created` trigger sends the invitee a `group_invitation` notification.
   - Accept or decline goes through `respond_to_invitation` (invitee); cancel goes through `cancel_invitation` (any member, pending only).
+  - Access: the invitee and the group's members can read them. Inserting requires `invited_by` = the caller, membership of the group, and an invitee who isn't a member. There's no client update or delete policy, so the status only changes through the RPCs above.
   - Logged (`invitation`) and broadcast to the invitee and the group.
 
 ### `activities`
@@ -79,7 +80,7 @@ An activity shared into a group.
 | Column | Notes |
 |---|---|
 | `(group_id, activity_id)` | Primary key |
-| `type_id` | Required. Composite FK `(type_id, group_id)` keeps the type inside the group. If omitted on insert, it's filled from the owner's label. |
+| `type_id` | Required. Composite FK `(type_id, group_id)` keeps the type inside the group. If omitted on insert, it's filled from the owner's label; with no label either, the insert fails with P0001 "choose a type for this group". |
 | `source_type_name` | The label it was filed by (null if a type was picked by hand). Used when undoing merges. |
 | `added_by`, `added_at` | |
 
@@ -95,6 +96,7 @@ A user's private labels. Names are 1–40 characters and unique per owner, ignor
 - **Entry:**
   - `group_id` is required.
   - `activity_id` is optional (null means an **event**, and then `title` is required). Composite FK to `group_activities`, so the activity must be shared in that group.
+  - `title`, when set, is 1–120 characters.
   - Timing must be one of:
     1. all-day: `date` set, no times
     2. timed: `start_at < end_at`, no `date`
@@ -107,6 +109,18 @@ Access:
 - Members can update `activity_id` and `title` (swapping in an activity, or replacing an event) and delete entries.
 - Times change only through `reschedule_entry`.
 - Participants are added only through the RPCs. A participant can remove themselves, or set their own `status` to `added` to acknowledge a clash.
+
+### What deletes take with them
+
+Background for `delete_my_account` and for deleting groups (#10):
+- **Deleting an auth user** removes their `profiles` row, which cascades to:
+  - their `group_members` rows (groups are handed over or deleted by `hand_over_ownership`);
+  - invitations addressed to them (`group_invitations.invitee_id`);
+  - their `schedule_participants`, `notifications` and `personal_types`.
+  
+  Their activities must already be gone (`activities.owner_id` has no `on delete`), which `delete_my_account` takes care of.
+- **"Who did it" columns** become null instead of blocking the delete (`on delete set null`): `groups.created_by`, `group_invite_links.created_by`, `group_invitations.invited_by`, `activities.updated_by`, `activity_photos.uploaded_by`, `group_activities.added_by`, `schedule_entries.created_by` and `updated_by`, `schedule_participants.added_by`, `type_merges.created_by`. The app shows them as "a deleted user".
+- **Deleting a group** cascades to everything scoped to it: members, invite links, invitations, types, merge rules, shared activities (the activities themselves stay with their owners), and plans with their participants. `change_log` keeps its rows (no foreign keys).
 
 ### `change_log`
 `actor_id`, `group_id`, `entity_type`, `entity_id`, `action`, `before`, `after` (jsonb; for updates, only the changed fields), `created_at`. It has no foreign keys, so history survives deletes. It's written only by the `log_change` trigger and by `apply_participants` (`clash_override`).
@@ -129,7 +143,7 @@ The group History page reads it through `list_group_history` instead, which appl
 | `invitation` | invitation id | created (invited), updated (accepted, declined, cancelled) |
 | `schedule_entry` | entry id | created, updated, deleted, event_replaced, activity_swapped, reverted_to_event, clash_override |
 | `schedule_participant` | entry id | created, updated, deleted |
-| `type_merge` | rule id | created, deleted |
+| `type_merge` | rule id | created, deleted. Updates (`merge_types` re-pointing a rule to a new target) are not logged yet (#52) |
 
 ### `notifications`
 `user_id`, `kind`, `payload` jsonb, `read_at`. You read your own and can set `read_at`. The app reads them through `list_notifications`, which resolves the payload's ids. Kinds written so far:
@@ -169,7 +183,7 @@ See [`ai/endpoints.md`](ai/endpoints.md) for parameters, return shapes and error
 
 ### Internal helpers
 
-Used by RLS policies and RPCs. Clients can call the read-only access helpers, but they only answer about the caller.
+Used by RLS policies and RPCs. Signed-in users can call the read-only access helpers (all but `entry_range`, which is internal), but they only answer about the caller.
 
 | Function | Returns |
 |---|---|
@@ -217,12 +231,12 @@ Not executable by clients (`function_privileges.test.sql` checks all of this):
 ## Realtime
 
 Live updates use **Broadcast from the database** on private channels:
-- **Sending:** the `broadcast_change` trigger (after insert/update/delete) calls `realtime.send({table}, 'changed', <topic>, private => true)`.
-  - Topics: `group:<group_id>` and/or `user:<user_id>`, depending on the table. Activities go to their owner and every group they're shared in. Plans go to their group and each participant (who may have left the group). Plan participants go to the person and the plan's group. Invitations go to the invitee and the group. Invite links go to the group.
+- **Sending:** the `broadcast_change` trigger (after insert/update/delete; on `groups` only update/delete, since a new group has no members yet) calls `realtime.send({table}, 'changed', <topic>, private => true)`.
+  - Topics, by table: `groups`, `group_activities`, `activity_types`, `type_merges` and `group_invite_links` go to `group:<group_id>`. `group_members` go to the group and the member's `user:<user_id>`. `notifications` go to the user. Activities go to their owner and every group they're shared in. Plans go to their group and each participant (who may have left the group). Plan participants go to the person and the plan's group. Invitations go to the invitee and the group. Invite links go to the group.
   - Tables: `groups`, `group_members`, `group_invitations`, `group_invite_links`, `group_activities`, `activities`, `activity_photos`, `activity_types`, `type_merges`, `schedule_entries`, `schedule_participants`, `notifications`.
   - Messages carry only the table name, never row data. At most one is sent per topic and table per transaction (tracked in the `easyplan.broadcasts_sent` setting).
   - `realtime.send` swallows its own errors, so a failed broadcast never blocks a write.
-- **Listening:** the `easyplan_listen` select policy on `realtime.messages` lets an authenticated user join a private channel when `realtime.topic()` is `user:<their id>`, or `group:<id>` of a group they're a member of. There's no insert or update policy, so clients can't send. Signed-out users can't listen.
+- **Listening:** the `easyplan_listen` select policy on `realtime.messages` lets an authenticated user receive broadcast messages on a private channel when `realtime.topic()` is `user:<their id>`, or `group:<id>` of a group they're a member of. There's no insert or update policy, so clients can't send. Signed-out users can't listen.
 - **Not used:** the `supabase_realtime` publication from the init migration (`schedule_entries`, `schedule_participants`, `notifications`, `group_activities`, for "Postgres Changes") is still there but unused. That feed doesn't apply RLS to deletes and sends every subscriber the deleted row's key.
 
 ## Known gaps

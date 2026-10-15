@@ -29,7 +29,7 @@ A web and mobile app for friends to plan things to do together: collect activity
   - **Invite link** — shareable token, optional expiry, optional max uses.
   - **Direct invite** — search users by username or email; invitee accepts or declines.
 - Any member can see the group's active invite links (who made them, expiry, how many joined) and revoke one, and see pending invitations and cancel one. Revoking can't be undone; a cancelled invitation shows as cancelled to the invitee. Both are logged.
-- Any member can leave a group.
+- Any member can leave a group. The owner can rename the group and remove members.
 
 ### 2.2 Activities
 - Fields: `name` (required), `description`, `location`, `price_min`, `price_max`, `currency`, `url`, photos, and the owner's **label** (optional, see §2.3).
@@ -54,7 +54,7 @@ A web and mobile app for friends to plan things to do together: collect activity
 - **My activities:** text search on name, description, location, label; filters: label, private/shared, max budget.
 - **Group activities:** text search on name, description, location, type; filters: type, max budget, added by.
 - Sort: newest, name, price (cheapest first).
-- Not yet: has URL / has photos filters.
+- Not yet: "has a link" / "has photos" filters (#53).
 
 ### 2.5 Schedules
 - Every user has a schedule showing all entries they participate in, across all groups.
@@ -109,9 +109,9 @@ The full, current schema is documented in [`docs/database.md`](docs/database.md)
 
 | Table | Holds |
 |---|---|
-| `profiles` | Username, display name, timezone (one per auth user) |
+| `profiles` | Username, display name, avatar, bio, timezone (one per auth user) |
 | `groups`, `group_members` | Groups and membership with roles |
-| `group_invite_links`, `group_invitations` | Invite codes and direct invites |
+| `group_invite_links`, `group_invitations` | Invite codes (revocable) and direct invites (pending, accepted, declined or cancelled) |
 | `activities`, `activity_photos` | Activities (incl. owner's `personal_type_id`) and their photos |
 | `personal_types` | Users' private labels |
 | `activity_types`, `type_merges` | Per-group types and merge rules |
@@ -131,7 +131,7 @@ Notes:
 
 ### 4.1 Groups
 - Members can read the group, its members, types, activities, and schedule entries.
-- Any member can invite others and manage activity types.
+- Any member can invite others, see and revoke invite links, cancel pending invitations, and manage activity types. Only the owner can rename the group or remove members.
 
 ### 4.2 Activities
 - **Read / edit:** the owner, plus members of any group the activity is shared into.
@@ -159,7 +159,7 @@ While the app is open, screens update by themselves within a second or two when 
 3. **My Activities:** private and shared activities; create/edit; share to a group
 4. **Activity detail:** fields, photos, groups it's in, change history
 5. **Groups list:** create group, pending invitations
-6. **Group home:** tabs for Activities (search/filter), Schedule (with unscheduled events as "Ideas"), Members, Types; **History** (the group's change log) from the group's menu.
+6. **Group home:** tabs for Activities (search/filter), Schedule (with unscheduled events as "Ideas"), Members (invite people or create a link; active invite links with Revoke; invitations "Waiting for an answer" with Cancel; the member list, where the owner can remove people), Types; **History** (the group's change log) from the group's menu.
 7. **Schedule entry sheet:** pick activity or name an event, all-day or a time range, pick members, then the clash confirmation dialog
 8. **Replace event:** pick an activity from the group to fill the placeholder
 9. **Invite:** copy link, or search by username/email

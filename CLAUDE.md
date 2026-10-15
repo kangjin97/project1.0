@@ -28,6 +28,9 @@ cd app && flutter analyze           # must report "No issues found!"
 cd app && flutter test              # Dart unit tests (e.g. AppClock)
 ./scripts/board.sh <issue> progress # move an issue's card on the project board (todo|progress|done)
 cd app && flutter run -d web-server --web-hostname 127.0.0.1 --web-port 3000
+cd app && flutter run --profile -d web-server --web-hostname 127.0.0.1 --web-port 3001  # second person (own session)
+supabase migration list --linked    # which migrations the cloud has (read-only)
+gh workflow run ci.yml --ref main   # deploy the web app: ONLY when the owner asks, after their `supabase db push`
 ```
 
 The Supabase CLI may be at `~/.local/bin/supabase` rather than on `PATH`. The owner works on both a Mac and a Windows PC (`docs/development.md` → Working on both computers). On Windows, run `scripts/*.sh` in Git Bash, and remember Windows PowerShell has no `&&`.
