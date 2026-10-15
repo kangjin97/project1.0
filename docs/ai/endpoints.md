@@ -19,12 +19,12 @@ Every backend call the app makes, plus the RPCs the database exposes but the app
 | `AuthPage._submit` (sign in): Au `signIn(email, password)` | `auth.signInWithPassword(email, password)` | Email trimmed. |
 | `ProfilePage` | `auth.signOut()` | |
 
-## Profiles
+## User search
 
 | Dart | Call | Who | Notes |
 |---|---|---|---|
-| G `searchUsers(q)` (no `@`) | REST `GET profiles?select=<Profile.columns>&username=ilike.<prefix>*&id=neq.<me>&limit=10` | signed in | Query stripped to `[a-z0-9_]`, `_` escaped. Under 2 characters returns `[]` without a call. |
-| G `searchUsers(q)` (has `@`) | `rpc find_user_by_email(p_email text) → setof profiles` | signed in | Exact, case-insensitive. |
+| G `searchUsers(q)` (no `@`) | REST `GET profiles?select=<Profile.columns>&username=ilike.<prefix>*&id=neq.<me>&limit=10` | signed in | Query stripped to `[a-z0-9_]`, `_` escaped. Trimmed query under 2 characters (checked before stripping, for both rows) returns `[]` without a call. |
+| G `searchUsers(q)` (has `@`) | `rpc find_user_by_email(p_email text) → setof profiles` | signed in | Exact, case-insensitive. Under 2 characters returns `[]` without a call. |
 
 ## Groups
 
@@ -44,7 +44,7 @@ Every backend call the app makes, plus the RPCs the database exposes but the app
 | Dart | Call | Who | Errors / side effects |
 |---|---|---|---|
 | G `invite(groupId, userId)` | REST `POST group_invitations {group_id, invitee_id}` | members; invitee must not be a member | 23505 if a pending invite exists. Trigger: `group_invitation` notification. |
-| G `pendingInvitations()` | REST `GET group_invitations?select=id,groups(name),inviter:profiles!group_invitations_invited_by_fkey(username)&invitee_id=eq.<me>&status=eq.pending&order=created_at.asc` | invitee | |
+| G `pendingInvitations()` → `invitationsProvider` | REST `GET group_invitations?select=id,groups(name),inviter:profiles!group_invitations_invited_by_fkey(username)&invitee_id=eq.<me>&status=eq.pending&order=created_at.asc` | invitee | |
 | G `respond(id, accept)` | `rpc respond_to_invitation(p_invitation uuid, p_accept bool) → void` | invitee | P0001 "invitation not found". Accept → membership. |
 | G `createInviteLink(groupId, {validFor = 7 days})` | REST `POST group_invite_links {group_id, expires_at: now + validFor}` → `token` | members | |
 | G `previewLink(token)` | `rpc preview_invite_link(p_token text) → [{group_id, group_name, member_count}]` | signed in | Empty when invalid/expired/revoked/used up. |
@@ -70,7 +70,7 @@ Every backend call the app makes, plus the RPCs the database exposes but the app
 | G `merges(groupId)` | REST `GET type_merges?select=id,source_name,target_type_id&group_id=eq&order=source_name.asc` | members | |
 | G `mergeTypes(groupId, sourceIds, {targetTypeId, targetName})` | `rpc merge_types(p_group uuid, p_source_type_ids uuid[], p_target_type_id uuid = null, p_target_name text = null) → uuid target_id` | members | P0001 "not a member of this group", "target type not found", "choose what to merge them into", "choose at least one type to merge". Moves activities, deletes source types, upserts rules, re-points chained rules. |
 | G `removeMerge(id)` | `rpc remove_type_merge(p_merge uuid) → void` | members | P0001 "merge not found". Re-files activities whose `source_type_name` matches back to a same-name type (created if needed). |
-| A `previewType(groupId, label)` | `rpc preview_group_type(p_group uuid, p_name text) → [{type_id, type_name, merged, is_new}]` | members | Read-only. `type_id` null when `is_new`. |
+| A `previewType(groupId, label)` → `typePreviewProvider((groupId, label))` | `rpc preview_group_type(p_group uuid, p_name text) → [{type_id, type_name, merged, is_new}]` | members | Read-only. `type_id` null when `is_new`. P0001 "not a member of this group". |
 
 ## Activities
 
@@ -85,7 +85,7 @@ Select string `Activity.columns` (in `models.dart`):
 | A `update(id, input)` | REST `PATCH activities?id=eq <fields>` | owner or sharing-group member | Columns granted: name, description, location, price_min, price_max, currency, url, personal_type_id. `personal_type_id` only sent when `setLabel` (owner); non-owner change → 42501. Label change re-files in all groups. |
 | A `delete(id)` | `rpc delete_activity(p_activity uuid) → void` | owner | P0001 "only the owner can delete this activity". Unshares everywhere (entries → events), sets `deleted_at`. |
 
-`ActivityInput.toJson()` keys: `name, description, location, price_min, price_max, currency, url` (+ `personal_type_id` when `setLabel`). Blank strings become null.
+`ActivityInput.toJson()` keys: `name, description, location, price_min, price_max, currency, url` (+ `personal_type_id` when `setLabel`). Name is trimmed; blank description, location and url become null; currency is trimmed and upper-cased (default `SGD`).
 
 ## Sharing
 
@@ -118,7 +118,7 @@ Select string `Activity.columns` (in `models.dart`):
 
 | Dart | Call | Who |
 |---|---|---|
-| A `history(activityId)` | REST `GET change_log?select=entity_type,action,actor_id,before,after,created_at&entity_id=eq&entity_type=in.(activity,activity_photo,group_activity)&order=created_at.desc&limit=50`, then `GET profiles?select=id,username&id=in.(actors)` | actor, group members, or activity accessors |
+| A `history(activityId)` → `activityHistoryProvider(id)` | REST `GET change_log?select=entity_type,action,actor_id,before,after,created_at&entity_id=eq&entity_type=in.(activity,activity_photo,group_activity)&order=created_at.desc&limit=50`, then `GET profiles?select=id,username&id=in.(actors)` | actor, group members, or activity accessors |
 
 Rendered by `describeChange()` in `activity_detail_page.dart`.
 
@@ -133,9 +133,9 @@ Dart: `app/lib/data/profile_repository.dart` (P). `Profile.columns` = `id, usern
 | Dart | Call | Who | Notes |
 |---|---|---|---|
 | P `profile(id)` | REST `GET profiles?select=<columns>,bio,timezone&id=eq` (single) | signed in | Any profile is readable; the UI only links to people you share a group with. |
-| P `update(username, displayName, bio)` | REST `PATCH profiles?id=eq.<me> {username, display_name, bio}` | self | 23505 taken username; 23514 invalid username or bio > 160. |
+| P `update(username, displayName, bio)` | REST `PATCH profiles?id=eq.<me> {username, display_name, bio}` | self | Username trimmed and lower-cased; blank display name or bio → null. 23505 taken username; 23514 invalid username or bio > 160. |
 | P `usernameAvailable(name)` | `rpc username_available(p_username)` | anyone | Same RPC as sign-up. |
-| P `setAvatar(bytes, ext, previousPath)` | `storage.from('avatars').uploadBinary('<me>/<ts>.<ext>')`, `PATCH profiles {avatar_path}`, remove previous file | self | Writes only allowed in your own folder. |
+| P `setAvatar(bytes, {required extension, previousPath})` | `storage.from('avatars').uploadBinary('<me>/<ts>.<ext>')`, `PATCH profiles {avatar_path}`, remove previous file | self | Writes only allowed in your own folder. |
 | P `removeAvatar(path)` | `PATCH profiles {avatar_path: null}`, `storage.remove([path])` | self | |
 | P `avatarUrl(path)` | `storage.from('avatars').createSignedUrl(path, 3600)` | signed in | Cached per path by `avatarUrlProvider`. |
 | P `sharedGroups(userId)` | `rpc shared_groups(p_user uuid) → [{group_id, group_name, member_count}]` | signed in | Groups both you and they are in (all yours when `p_user` = you). |
@@ -163,7 +163,7 @@ Dart: `app/lib/data/schedule_repository.dart` (S). Times are sent as UTC ISO str
 | S `delete(id)` | REST `DELETE schedule_entries?id=eq` | members | Removes for everyone. |
 | S `leave(id)` | REST `DELETE schedule_participants?entry_id&user_id=<me>` | self | |
 | S `acknowledgeClash(id)` | REST `PATCH schedule_participants?entry_id&user_id=<me> {status:'added'}` | self | |
-| S `history(id)` | REST `GET change_log?select=entity_type,action,actor_id,before,after,created_at&entity_id=eq&entity_type=in.(schedule_entry,schedule_participant)&order=created_at.desc&limit=50` + profiles | group members | Rendered by `describeEntryChange()`. |
+| S `history(id)` → `entryHistoryProvider(id)` | REST `GET change_log?select=entity_type,action,actor_id,before,after,created_at&entity_id=eq&entity_type=in.(schedule_entry,schedule_participant)&order=created_at.desc&limit=50` + profiles | group members | Rendered by `describeEntryChange()`. |
 | P `myTimezone()`, called by `TimezoneController` on sign-in / restored session | REST `GET profiles?select=timezone&id=eq.<me>` (single) | self | Sets the display zone (`timezoneProvider`). |
 | P `setTimezone(name)`, via `TimezoneController.change(name)` | REST `PATCH profiles?id=eq.<me> {timezone}` | self | 22023 for unknown zones. Switches the app's display zone and refetches schedules. |
 | P `timezones()` → `timezoneOptionsProvider` | `rpc list_timezones() → [{name, region, city, offset_minutes}]` | signed in | Picker list. |
@@ -198,8 +198,8 @@ Returns `{status:'clash', clashes:[...]}` (nothing saved) or `{status:'created',
 
 | Dart | Call | Who | Notes |
 |---|---|---|---|
-| N `list({limit = 50})` | `rpc list_notifications(p_limit int = 50) → [{id, kind, created_at, read_at, actor_id, actor_name, group_id, group_name, invitation_status, entry_id, entry_title, entry_all_day, entry_date, entry_start_at, entry_end_at, clash_count}]` | self | Newest first; limit clamped to 1–200. `actor_name` is display name or username (null for deleted users). Plan fields are null unless you're still in the plan or its group; `group_name` null unless you're a member or the invitee. `clash_count` = plans it clashed with. |
-| N `unreadCount()` | REST `HEAD notifications?select=id&user_id=eq.<me>&read_at=is.null` (`count=exact`) | self | `unreadCountProvider`, the nav badge. |
+| N `list({limit = 50})` → `notificationsProvider` | `rpc list_notifications(p_limit int = 50) → [{id, kind, created_at, read_at, actor_id, actor_name, group_id, group_name, invitation_status, entry_id, entry_title, entry_all_day, entry_date, entry_start_at, entry_end_at, clash_count}]` | self | Newest first; limit clamped to 1–200. `actor_name` is display name or username (null for deleted users). Plan fields are null unless you're still in the plan or its group; `group_name` null unless you're a member or the invitee. `clash_count` = plans it clashed with. |
+| N `unreadCount()` | REST `GET notifications?select=id&user_id=eq.<me>&read_at=is.null` with `Prefer: count=exact` (`.count()`; the ids come back too) | self | `unreadCountProvider`, the nav badge. |
 | N `markAllRead()` | REST `PATCH notifications?user_id=eq.<me>&read_at=is.null {read_at: now}` | self | Only `read_at` is writable (column grant); RLS limits it to your rows. |
 
 ## Realtime
@@ -210,8 +210,9 @@ Dart: `app/lib/data/realtime_repository.dart` (R).
 |---|---|---|---|
 | R `listen(topic, {onChange, onRejoin})` → used by `liveUpdatesProvider` | `channel(topic, private: true).onBroadcast(event: 'changed').subscribe()`; leave with `removeChannel` | `user:<me>`: self; `group:<id>`: members (`easyplan_listen` policy on `realtime.messages`) | Payload `{table, id}`, where `id` is a message id. Clients can't send. On rejoin after a drop, everything for the topic is re-fetched. |
 
-The database sends on writes to `groups`, `group_members`, `group_invitations`, `group_invite_links`, `group_activities`, `activities`, `activity_photos`, `activity_types`, `type_merges`, `schedule_entries`, `schedule_participants` and `notifications` (`broadcast_change` trigger; topics in `docs/database.md` → Realtime). `providersAffectedBy(topic, table)` lists what each message refreshes.
+The database sends on writes to `groups` (update and delete only), `group_members`, `group_invitations`, `group_invite_links`, `group_activities`, `activities`, `activity_photos`, `activity_types`, `type_merges`, `schedule_entries`, `schedule_participants` and `notifications` (`broadcast_change` trigger; topics in `docs/database.md` → Realtime). `providersAffectedBy(topic, table)` lists what each message refreshes.
 
 ### Not yet used by the app
 - `find_clashes` directly (the RPCs above call it).
+- The policy helpers `is_group_member`, `is_group_owner`, `shares_group_with`, `is_activity_shared_with_me`, `can_access_activity`, `entry_group`, `is_entry_participant`, `try_uuid` and `is_valid_timezone`. Signed-in users can call them, and they only answer about the caller, but they exist for RLS and triggers, not the app.
 - The `supabase_realtime` publication ("Postgres Changes"); the app uses the broadcasts above instead.

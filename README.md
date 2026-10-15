@@ -14,12 +14,12 @@ EasyPlan (repo: group-planner) is a web and mobile app for friends to plan thing
 |---|---|
 | Sign up / sign in (email + password, unique username) | Done |
 | Groups: create, rename, leave, members, remove member | Done |
-| Invites: by username/email search, by invite link or code | Done |
+| Invites: by username/email search, by invite link or code; members can see and revoke links and cancel pending invitations | Done |
 | Activities: create/edit/delete, price range, link, photos, history | Done |
 | Sharing activities into groups, per-group activity types | Done |
 | Personal labels and group type merging | Done |
 | Search and filters (My activities, group activities) | Done |
-| Schedules: my schedule (agenda / week / month), group schedule, clash warnings, events | Done |
+| Schedules: my schedule (agenda / week / month, earlier weeks, past plans muted), group schedule, clash warnings, events | Done |
 | Profiles: picture, username, display name, bio, others' profiles, stats, email/password, changeable time zone | Done |
 | Account deletion, forgot password, privacy policy page | Done |
 | Release setup: app ID `com.kangjin.easyplan`, icon, Android signing, Netlify, build script | Done; see [`docs/deployment.md`](docs/deployment.md) |
@@ -69,7 +69,7 @@ docs/
   ai/                           Machine-friendly references (handover, endpoints, feature map, decisions)
 app/                            Flutter app
   lib/main.dart                 Entry point (Supabase init, ProviderScope)
-  lib/config.dart               Supabase URL/key (dart-define overridable)
+  lib/config.dart               Supabase URL/key and APP_URL (dart-define overridable); invite and privacy links
   lib/router.dart               go_router routes and auth redirect
   lib/data/                     Models, repositories (Supabase access), AppClock
   lib/features/<area>/          Screens and widgets per feature

@@ -10,7 +10,7 @@ flowchart LR
   end
   R -- "PostgREST (tables, RPCs)" --> DB[(Postgres + RLS)]
   R -- "Auth (email/password)" --> AUTH[Supabase Auth]
-  R -- "Storage (signed URLs)" --> ST[Storage: activity-photos]
+  R -- "Storage (signed URLs)" --> ST[Storage: activity-photos, avatars]
   DB -- "triggers broadcast 'changed'" --> RT[Realtime: private channels]
   RT -- "group:id / user:id" --> R
   AUTH -- "trigger: create profile" --> DB
@@ -63,9 +63,10 @@ All times are stored in UTC (`timestamptz`) or as calendar dates. The app shows 
 ### State and refresh
 
 - Reads are `FutureProvider` or `FutureProvider.family`, keyed by id (for example `groupActivitiesProvider(groupId)`).
-- After a mutation, the code that made it **invalidates** the affected providers. Two helpers cover the common cases:
+- After a mutation, the code that made it **invalidates** the affected providers. Three helpers cover the common cases:
   - `invalidateActivity(ref, activityId, {groupId})`: my activities, that activity, where it's shared, its history, and group activity lists.
   - `invalidateLabels(ref)`: everything a label change can affect, including group types, because labels can create types.
+  - `invalidateSchedule(ref)`: every schedule view and plan history.
 - **Other people's changes arrive live** (#7). Database triggers broadcast "table X changed" to private Realtime channels (`group:<id>`, `user:<id>`); RLS on `realtime.messages` decides who may listen. `liveUpdatesProvider` (`data/realtime_repository.dart`, watched by `HomeShell`) joins the user's channel and one per group. It waits 400 ms to batch messages, then invalidates the providers `providersAffectedBy(topic, table)` names; only the ones on screen re-fetch. Pull-to-refresh still works as a manual fallback.
 
 ### Errors
@@ -94,7 +95,7 @@ Repositories throw `PostgrestException`, `AuthException` or `StorageException`. 
    - `updated_at` / `updated_by`, and the change log.
    - Reverting entries to events when an activity leaves a group.
    - Label filing and re-filing.
-5. **Storage.** The private `activity-photos` bucket stores files at `<activity_id>/<file>`. Its policies call `can_access_activity` on the first path segment, and the app reads photos through 1-hour signed URLs.
+5. **Storage.** The private `activity-photos` bucket stores files at `<activity_id>/<file>`. Its policies call `can_access_activity` on the first path segment, and the app reads photos through 1-hour signed URLs. The private `avatars` bucket stores profile pictures at `<user_id>/<file>`: any signed-in user can read them, and you can only write in your own folder. They are also read through 1-hour signed URLs.
 
 Emails live only in `auth.users`. `profiles` is readable by all signed-in users but holds no email. Lookup by email (`find_user_by_email`) is exact-match only, so addresses can't be enumerated.
 

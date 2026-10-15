@@ -32,19 +32,39 @@ Settings that exist only in dashboards, and how to redo them, are in [`deploymen
 
 ## Current state (2026-10-15)
 
-- **Live:** deployed 2026-10-15 from `main` at `5fb615c`, the first on-request deploy (group history #8 and live updates #7 included). Deploys are on request, so `main` can be ahead of the live site. The cloud database is up to date (last: `20261014210549_realtime_broadcasts.sql`, checked with `supabase migration list --linked`). Both computers are linked to the cloud project.
-- **Deploys are on request only** (since 2026-10-15, #45): merging to `main` no longer deploys. See "Working agreements" below.
-- **Both computers are set up:** the Windows 11 PC got Flutter 3.47.6, Supabase CLI 2.119.0, WSL 2 and Docker on 2026-10-15. Its local database holds the seed accounts plus demo groups built while testing **"Weekend crew"**, **"Board games"** and **"Karaoke"** (`dev_alice` and `dev_bob`); it's test data and safe to change.
-- **Auth emails:** through Resend, with EasyPlan templates from `supabase/templates/` for *Confirm signup*, *Reset password* and *Change email address*. The cloud copies are pasted by hand; if the dashboard and the files ever disagree, the files are the intended version.
+**Where things are**
+- **Live site:** deployed 2026-10-15 from `main` at `5fb615c` (the first on-request deploy), with everything up to group history (#8) and live updates (#7).
+- **On `main` but not live yet:** past plans on phones (#11) and invite management (#9). The next deploy needs `supabase db push` first, for `20261014220820_invite_management.sql` (#9). #11 needs no migration.
+- **Cloud database:** up to date through `20261014210549_realtime_broadcasts.sql`; `20261014220820_invite_management.sql` is not pushed yet. Check with `supabase migration list --linked` (both computers are linked).
+- **In flight:** nothing; no open PRs. Always check `gh pr list` and the board's In Progress column.
+- **Deploys are on request only** (since 2026-10-15, #45): merging to `main` doesn't deploy. See "Working agreements" below.
+
+**What's built** (details per feature in [`features.md`](features.md))
+- Everything in SPEC §6 build order: accounts, groups and invites, activities with labels and type merging, search, schedules with clash checks, events, profiles, account deletion, notifications.
+- Added on 2026-10-15:
+  - **Group history** (#8): group page ⋮ → History. It includes activity edits made while the activity was shared there, and lines open what they're about. F10.
+  - **Live updates** (#7): other people's changes appear on open screens silently, and the Alerts badge is live. It uses database broadcasts to private Realtime channels. F13. When adding a table that a screen shows, add a `broadcast_change` trigger and a `providersAffectedBy` case (CLAUDE.md rule 6).
+  - **Past plans on phones** (#11): "Show earlier" on schedule lists, and plans that are over are muted. F8.
+  - **Invite management** (#9): the Members tab lists active links (Revoke) and pending invitations (Cancel). Any member can do both; it's logged in group history and updates live. F3.
+- **Auth emails** go through Resend, with EasyPlan templates from `supabase/templates/` (*Confirm signup*, *Reset password*, *Change email address*). The cloud copies are pasted by hand; if the dashboard and the files ever disagree, the files are the intended version.
 - **Privacy policy:** live at `/privacy.html`.
-- **In flight at the time of writing:** the PR for #9 (manage invite links and invitations). It adds `20261014220820_invite_management.sql`, which must be pushed with `supabase db push` before the next deploy. It hasn't left this computer yet, so it can still be changed in place while the PR is open. #11 (past plans, merged) is also waiting for the next deploy. Always check `gh pr list` and the board's In Progress column.
-- **Docs were audited against the code on 2026-10-14** (endpoints, database, features, architecture, README, SPEC, setup and deployment guides) and fixed. Code-level gaps it found became issues and are fixed: #19 (function grants and `search_path`; now guarded by `function_privileges.test.sql`) and #38 (all Supabase calls go through repositories). **Checked again on 2026-10-15** after #44, #45, #8 and #7. That pass compared the docs against the open issues, PRs, migrations, tests and file layout, and checked that every documented path and section link resolves.
-- **Notifications** (#6): Alerts tab with a live unread badge.
-- **Group history** (#8, merged): group page ⋮ → History. Lists who did what in the group, including activity edits made while the activity was shared there (kept after it leaves the group); lines open the activity, plan or person. Details: `features.md` F10.
-- **Live updates** (#7, merged): other people's changes appear on open screens within a second or two, silently. Database triggers broadcast to private Realtime channels; one app-wide listener re-fetches. Details: `features.md` F13. When adding a table that a screen shows, add a `broadcast_change` trigger and a `providersAffectedBy` case (CLAUDE.md rule 6).
-- **Invite management** (#9, PR open): Members tab lists active links (Revoke) and pending invitations (Cancel); any member can do both; logged in group history; live. Details: `features.md` F3.
-- **Not built:** deleting a group / handing over ownership (#10), store apps (#13, #14). Full list: `gh issue list`.
-- **Next priorities (owner's labels):** `priority:high` issues first: #5 phone smoke test, together with #49 (live updates on two phones, step by step); both are ready now that group history and live updates are live. Then features from the backlog (`gh issue list`), e.g. #10 deleting a group / handing over ownership.
+
+**Not built yet** (`gh issue list`): delete a group / hand over ownership (#10), drag to reschedule (#12), store apps (#13, #14), app icon (#15), server-side search (#16), recurring plans (#17), push notifications (#18), "has a link / has photos" filters (#53), logging merge-rule updates (#52).
+
+**Next priorities**
+1. `priority:high`: #5 phone smoke test, together with #49 (live updates on two phones, step by step). Both can run on the live site now. Re-check #9 and #11 after the next deploy.
+2. Then the backlog, e.g. #10 (delete a group / hand over ownership), which completes group housekeeping.
+
+**Computers**
+- Both the Mac and the Windows 11 PC are set up. The Windows PC got Flutter 3.47.6, Supabase CLI 2.119.0, WSL 2 and Docker on 2026-10-15.
+- The Windows PC's local database holds the seed accounts plus demo groups built while testing: "Weekend crew", "Board games", "Karaoke night" and "Movie club" (`dev_alice`, `dev_bob`). It's test data and safe to change.
+
+**Docs**
+- Audited against the code on 2026-10-14. The code-level gaps it found became issues and are fixed: #19 (function grants and `search_path`, now guarded by `function_privileges.test.sql`) and #38 (all Supabase calls go through repositories).
+- Audited again on 2026-10-15 after #44, #45, #8, #7, #11 and #9:
+  - every reference doc checked line by line against the code, migrations and tests;
+  - status checked against the open issues, PRs, migrations and the cloud;
+  - every documented path and section link checked.
 
 ## How to resume work
 
@@ -89,4 +109,7 @@ These come from the owner's instructions and from how sessions have gone. They a
 
 ## Open questions for the owner
 
-From [`decisions.md`](decisions.md) ("Choices made on the owner's behalf") and [`SPEC.md`](../../SPEC.md) §7. Raise them when they become relevant rather than all at once.
+From [`decisions.md`](decisions.md) ("Choices made on the owner's behalf") and [`SPEC.md`](../../SPEC.md) §7. Raise them when they become relevant rather than all at once. The ones most likely to come up next:
+- Any member can remove an activity from a group (and its plans there become events). Should that stay open to every member?
+- Labels match group types by exact name only (ignoring case and spaces), with no fuzzy "similar" matching.
+- For #10: what happens to a deleted group's plans and history, and whether ownership hand-over needs the new owner to accept.
