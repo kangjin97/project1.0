@@ -18,7 +18,7 @@ EasyPlan (repo: group-planner) is a web and mobile app for friends to plan thing
 | Activities: create/edit/delete, price range, link, photos, history | Done |
 | Sharing activities into groups, per-group activity types | Done |
 | Personal labels and group type merging | Done |
-| Search and filters (My activities, group activities) | Done |
+| Search and filters (My activities, group activities): text, label/type, sharing, budget, added by, has a link, has photos | Done |
 | Schedules: my schedule (agenda / week / month, earlier weeks, past plans muted), group schedule, clash warnings, events | Done |
 | Profiles: picture, username, display name, bio, others' profiles, stats, email/password, changeable time zone | Done |
 | Account deletion, forgot password, privacy policy page | Done |

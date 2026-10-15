@@ -53,10 +53,9 @@ A web and mobile app for friends to plan things to do together: collect activity
 - **Label changes follow through:** if the owner changes or renames an activity's label, the activity is re-filed in every group it's in (into a merged type where one applies), overriding any manual type change. Deleting a label leaves group types unchanged.
 
 ### 2.4 Search & filter
-- **My activities:** text search on name, description, location, label; filters: label, private/shared, max budget.
-- **Group activities:** text search on name, description, location, type; filters: type, max budget, added by.
+- **My activities:** text search on name, description, location, label; filters: label, private/shared, max budget, has a link, has photos.
+- **Group activities:** text search on name, description, location, type; filters: type, max budget, added by, has a link, has photos.
 - Sort: newest, name, price (cheapest first).
-- Not yet: "has a link" / "has photos" filters (#53).
 
 ### 2.5 Schedules
 - Every user has a schedule showing all entries they participate in, across all groups.

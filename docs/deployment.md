@@ -16,7 +16,7 @@ Order: **1 → 2 → 3** gets friends using it on their phones via the browser. 
 
 | Piece | Status |
 |---|---|
-| Web app | **Live at https://easyplan-hehe.netlify.app** (Netlify project `easyplan-hehe`; `easyplan` was taken). Last deployed 2026-10-15 from `main` at `5fb615c` (group history #8, live updates #7). `main` is ahead: past plans (#11), invite management (#9), and deleting groups / handing over ownership (#10) go live with the next deploy |
+| Web app | **Live at https://easyplan-hehe.netlify.app** (Netlify project `easyplan-hehe`; `easyplan` was taken). Last deployed 2026-10-15 from `main` at `5fb615c` (group history #8, live updates #7). `main` is ahead: past plans (#11), invite management (#9), deleting groups / handing over ownership (#10) and the link/photo filters (#53) go live with the next deploy |
 | Supabase cloud project | Created; linked from the Mac and the Windows PC; schema pushed with `supabase db push` (link once per computer: [`setup-windows.md`](setup-windows.md#deploying-from-windows)). Up to date through `20261014210549_realtime_broadcasts.sql` (checked 2026-10-15). **Waiting for `supabase db push` before the next deploy:** `20261014220820_invite_management.sql` (#9) and `20261015053917_delete_group_transfer_ownership.sql` (#10). Check any time with `supabase migration list --linked` |
 | Supabase Auth URLs | Site URL `https://easyplan-hehe.netlify.app`; redirect `https://easyplan-hehe.netlify.app/**` |
 | `app/env/prod.json` | Filled in on the owner's Mac (git-ignored) |

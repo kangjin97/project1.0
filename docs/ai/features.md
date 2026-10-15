@@ -71,12 +71,13 @@ Status legend: **Done** = DB + UI + tests. **DB only** = schema/RPCs/tests exist
 - Tests: `labels_and_merges.test.sql` (the yummy/goodfood scenario end to end).
 
 ## F7. Search and filters — Done (client-side)
-- My activities: text search over name, description, location, label; filters label (multi), sharing (all/private/shared), max budget; sort newest/name/cheapest.
-- Group activities: text search over name, description, location, group type; filters type (multi), max budget, added by; same sorts.
+- My activities: text search over name, description, location, label; filters label (multi), sharing (all/private/shared), max budget, has a link, has photos; sort newest/name/cheapest.
+- Group activities: text search over name, description, location, group type; filters type (multi), max budget, added by, has a link, has photos; same sorts.
 - Budget filter keeps activities whose range overlaps `[0, max]` or that have no price (`Activity.fitsBudget`).
-- Runs in memory on the loaded list. If groups grow large, move to server-side filtering (#16). Not built yet: "has a link" / "has photos" filters (#53).
+- "Has link" / "Has photos" chips (#53) keep activities with a non-blank link (`Activity.hasLink`) or at least one photo (`Activity.hasPhotos`). All filters combine (AND); Clear resets them.
+- Runs in memory on the loaded list. If groups grow large, move to server-side filtering (#16).
 - UI: `activities_page.dart` (`_apply`), `group_activities_tab.dart` (`_apply`).
-- Tests: none automated (pure client-side filtering); checked by hand.
+- Tests: `app/test/activity_filters_test.dart` (`hasLink`, including blank links; `hasPhotos`). The filter rows themselves were checked in the browser.
 
 ## F8. Schedules, clash detection, events — Done
 - Entries belong to a group; either an activity or an event (title only). Timing: timed (may run past midnight), all-day, or "no date yet" (events only).
@@ -195,4 +196,3 @@ Open at the time of writing:
 | #18 Push notifications on phones | F9 | feature (v2) |
 | #49 Test live updates on two phones against the live site | F13 | chore |
 | #52 Log updates to type merge rules in the change log | F10 | chore |
-| #53 Filter activities by "has a link" and "has photos" | F7 | feature |
