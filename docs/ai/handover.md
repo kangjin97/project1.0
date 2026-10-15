@@ -34,9 +34,9 @@ Settings that exist only in dashboards, and how to redo them, are in [`deploymen
 
 **Where things are**
 - **Live site:** deployed 2026-10-15 from `main` at `e2534a6` (the second on-request deploy; the first was `5fb615c`). Everything on `main` is live.
-- **On `main` but not live yet:** nothing (as of the `e2534a6` deploy). Check with `git log --oneline e2534a6..origin/main`.
-- **Cloud database** (checked 2026-10-15): up to date with every migration on `main`, through `20261015064456_log_type_merge_updates.sql`. Recurring plans (#17) add `20261015083758_recurring_plans.sql` and `20261015083759_recurring_history.sql`: once merged, the owner runs `supabase db push` **before** the next deploy. Check with `supabase migration list --linked` (both computers are linked).
-- **In flight** (2026-10-15): the recurring plans PR (#17). Always check `gh pr list` and the board's In Progress column.
+- **On `main` but not live yet:** recurring plans (#17, merged 2026-10-15 in `e085ba6`). Check with `git log --oneline e2534a6..origin/main`.
+- **Cloud database** (checked 2026-10-15): has every migration through `20261015064456_log_type_merge_updates.sql`. **Waiting for `supabase db push`** (owner, before the next deploy): `20261015083758_recurring_plans.sql` and `20261015083759_recurring_history.sql` (#17). Check with `supabase migration list --linked` (both computers are linked).
+- **In flight** (2026-10-15): nothing; no open PRs. Always check `gh pr list` and the board's In Progress column.
 - **Deploys are on request only** (since 2026-10-15, #45): merging to `main` doesn't deploy. See "Working agreements" below.
 
 **What's built** (details per feature in [`features.md`](features.md))
@@ -71,7 +71,7 @@ Settings that exist only in dashboards, and how to redo them, are in [`deploymen
   - every reference doc checked line by line against the code, migrations and tests;
   - status checked against the open issues, PRs, migrations and the cloud;
   - every documented path and section link checked.
-- Status sections re-checked on 2026-10-15 after #57, #10 and #58 (#61), and again after #53, #52 and #12 (#66): deploy state, cloud migrations (`supabase migration list --linked`), open issues and PRs.
+- Status sections re-checked on 2026-10-15 after #57, #10 and #58 (#61), again after #53, #52 and #12 (#66), and after #17 (#72): deploy state, cloud migrations (`supabase migration list --linked`), open issues and PRs.
 
 ## How to resume work
 
@@ -97,7 +97,7 @@ These come from the owner's instructions and from how sessions have gone. They a
 
 ## Pitfalls that already happened
 
-- **Stacked PRs merged into the wrong branch.** The repo's "Automatically delete head branches" setting is off, so when a lower PR merges, GitHub does not retarget the PR above it to `main`; it merges into the stale branch. Avoid stacking; if you must, change the upper PR's base to `main` yourself after the lower one merges (or ask the owner to turn the setting on).
+- **Stacked PRs merged into the wrong branch** (#30). The repo's "Automatically delete head branches" setting was off then, so GitHub didn't retarget the PR above to `main`. It's on now (since 2026-10-15): merged branches are deleted on GitHub automatically, and GitHub retargets a stacked PR when its base branch goes. Still avoid stacking. After a merge, only the local branch needs deleting (`git branch -D <branch>`).
 - **`supabase db reset` wiped the owner's data once.** Use `supabase migration up`.
 - **Auth email links land on the site root** with `?code=`, `?message=` or `?error_description=`. The router's `/` redirect handles them; removing it brings back a "no routes for location" crash.
 - **Email templates and dashboard settings don't deploy from git.** Changing `supabase/templates/*` or `config.toml` affects only the local stack.
