@@ -9,6 +9,7 @@ import '../../data/activities_repository.dart';
 import '../../data/app_clock.dart';
 import '../../data/groups_repository.dart';
 import '../../data/models.dart';
+import '../../data/places_repository.dart';
 import '../../widgets/async_body.dart';
 import '../../widgets/dialogs.dart';
 import '../schedule/entry_editor.dart';
@@ -126,11 +127,8 @@ class _Body extends ConsumerWidget {
           ListTile(
             leading: const Icon(Icons.place_outlined),
             title: Text(a.location!),
-            subtitle: const Text('Open in maps'),
-            onTap: () => launchUrl(
-              Uri.https('www.google.com', '/maps/search/', {'api': '1', 'query': a.location!}),
-              mode: LaunchMode.externalApplication,
-            ),
+            subtitle: Text(a.placeId == null ? 'Search in Google Maps' : 'Open in Google Maps'),
+            onTap: () => launchUrl(googleMapsUri(a.location!, placeId: a.placeId), mode: LaunchMode.externalApplication),
           ),
         if (a.priceLabel != null)
           ListTile(leading: const Icon(Icons.payments_outlined), title: Text(a.priceLabel!)),

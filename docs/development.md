@@ -58,6 +58,9 @@ flutter run -d <ios-simulator-or-android-device>
 - **Production builds:** use `./scripts/build.sh` with `app/env/prod.json`; see [`deployment.md`](deployment.md).
 - **Hosted Supabase project:**
   `flutter run --dart-define=SUPABASE_URL=https://<ref>.supabase.co --dart-define=SUPABASE_PUBLISHABLE_KEY=<key>`
+- **Edge Functions** (`supabase/functions/`; e.g. `places` for Google place search): put the keys in `supabase/functions/.env` (git-ignored; see `deployment.md` → Edge Functions and Google Maps), then run
+  `supabase functions serve places --env-file supabase/functions/.env`
+  alongside the stack; the app reaches it at `:54321/functions/v1/places`. Without the key, place search answers "isn't set up yet" and the Location field still takes free text.
 - **Two people at once** (for anything shared, e.g. live updates or invitations): tabs on one address share a sign-in, and the debug server only runs the app in one tab. So start a second server as a profile build on another port:
   `flutter run --profile -d web-server --web-hostname 127.0.0.1 --web-port 3001`
   Sign in as `dev_alice` on :3000 and `dev_bob` on :3001. Release builds refuse the local backend; profile builds don't. Neither server hot-reloads when an agent starts it in the background: restart after Dart changes.

@@ -2,7 +2,7 @@
 
 Read this first if you're picking EasyPlan up without the history of earlier sessions: a new AI agent, a new account, or a new developer. It holds what used to live only in chat and in local agent memory. Then read [`CLAUDE.md`](../../CLAUDE.md) (rules and gotchas) and follow its "Where to look" table.
 
-Last updated: 2026-10-15.
+Last updated: 2026-10-16.
 
 ## The project in one paragraph
 
@@ -26,17 +26,18 @@ All accounts belong to the owner. **No secrets are stored in the repo or in this
 | Resend | Sends auth emails via Supabase custom SMTP, from `no-reply@easyplanhehe.online`; region Tokyo | API key is the SMTP password, entered only in Supabase |
 | Namecheap | Domain `easyplanhehe.online` (DNS for Resend; email forwarding on). The web app does **not** use this domain yet | Owner's Namecheap login |
 | Gmail | `easyplanhehe@gmail.com`: public contact in the privacy policy; Resend account email | Owner |
+| Google Cloud | Project with **Places API (New)** for place search (#73); billing account and budget alert (owner, 2026-10-16) | API key (restricted to Places API (New)): `supabase/functions/.env` on each computer (git-ignored) and the Supabase secret `GOOGLE_MAPS_API_KEY` |
 | Google Play / Apple | Not set up yet (#13, #14) | — |
 
 Settings that exist only in dashboards, and how to redo them, are in [`deployment.md`](../deployment.md) §1 (Supabase auth URLs, SMTP, rate limits, email templates, DNS).
 
-## Current state (2026-10-15)
+## Current state (2026-10-16)
 
 **Where things are**
 - **Live site:** deployed 2026-10-15 from `main` at `e2534a6` (the second on-request deploy; the first was `5fb615c`). Everything on `main` is live.
 - **On `main` but not live yet:** recurring plans (#17, merged 2026-10-15 in `e085ba6`). Check with `git log --oneline e2534a6..origin/main`.
 - **Cloud database** (checked 2026-10-15): has every migration through `20261015064456_log_type_merge_updates.sql`. **Waiting for `supabase db push`** (owner, before the next deploy): `20261015083758_recurring_plans.sql` and `20261015083759_recurring_history.sql` (#17). Check with `supabase migration list --linked` (both computers are linked).
-- **In flight** (2026-10-15): nothing; no open PRs. Always check `gh pr list` and the board's In Progress column.
+- **In flight** (2026-10-16): the PR for #73 (Google Maps locations). Before the deploy that ships it, the owner must run `supabase db push` (`20261016044829_place_search.sql`), `supabase secrets set GOOGLE_MAPS_API_KEY=...` and `supabase functions deploy places` (`deployment.md` → Edge Functions and Google Maps). #74 (AI fill from a link) is next; its decisions are on the issue. Always check `gh pr list` and the board's In Progress column.
 - **Deploys are on request only** (since 2026-10-15, #45): merging to `main` doesn't deploy. See "Working agreements" below.
 
 **What's built** (details per feature in [`features.md`](features.md))
@@ -50,10 +51,11 @@ Settings that exist only in dashboards, and how to redo them, are in [`deploymen
   - **"Has link" / "Has photos" filters** (#53) on My activities and the group Activities tab. F7.
   - **Repeating plans** (#17): weekly, every 2 weeks or monthly until a date (at most a year); "this date only" or "this and later dates" for every edit; Extend; one notification per series; one history line per series action. F8.
   - **Invite management** (#9): the Members tab lists active links (Revoke) and pending invitations (Cancel). Any member can do both; it's logged in group history and updates live. F3.
+  - **Google Maps locations** (#73, PR open): the Location field suggests real places (through the `places` Edge Function, the first one; 100 searches per person per day); the picked place ID opens the exact pin in Google Maps. F4.
 - **Auth emails** go through Resend, with EasyPlan templates from `supabase/templates/` (*Confirm signup*, *Reset password*, *Change email address*). The cloud copies are pasted by hand; if the dashboard and the files ever disagree, the files are the intended version.
 - **Privacy policy:** live at `/privacy.html`.
 
-**Not built yet** (`gh issue list`): store apps (#13, #14), app icon (#15), server-side search (#16), push notifications (#18).
+**Not built yet** (`gh issue list`): AI fill from a link (#74, after #73), store apps (#13, #14), app icon (#15), server-side search (#16), push notifications (#18).
 
 **Next priorities**
 1. `priority:high`: #5 phone smoke test together with #49 (live updates on two phones, step by step) on the live site, covering everything deployed on 2026-10-15 (#7–#12, #52, #53, the #58 fix).
@@ -86,7 +88,7 @@ These come from the owner's instructions and from how sessions have gone. They a
 - **Develop and test locally.** The local stack is where features are built and checked; the live site is not a test environment.
 - **The owner merges.** Agents open PRs and wait. Agents never run `supabase db push` and never sign up or sign in on the live site.
 - **Deploys happen only when the owner asks** (since 2026-10-15; each Netlify deploy costs credits). Merging to `main` doesn't deploy. When the owner says to deploy, usually at the end of the day: check whether anything merged since the last deploy adds migrations (if so, the owner runs `supabase db push` first), then run `gh workflow run ci.yml --ref main`, watch it, and report the result. Never start one on your own. Steps: [`deployment.md`](../deployment.md#deploying-the-web-app).
-- **Dashboard steps are the owner's.** When a change needs something in Supabase, Resend, Namecheap, Netlify or GitHub settings, put the exact steps in the PR description and in `deployment.md`, and tell the owner. Examples: pasting an email template, `supabase db push` for a migration (before the next deploy), DNS records.
+- **Dashboard steps are the owner's.** When a change needs something in Supabase, Resend, Namecheap, Netlify, Google Cloud or GitHub settings (including `supabase secrets set` and `supabase functions deploy`), put the exact steps in the PR description and in `deployment.md`, and tell the owner. Examples: pasting an email template, `supabase db push` for a migration (before the next deploy), DNS records.
 - **Every bug or follow-up gets an issue**, even small ones found while testing, before it's fixed. Don't park work in docs or chat.
 - **Explain options with a recommendation**; the owner decides on cost, accounts and product questions (e.g. which email provider, buying a domain).
 - **Verify before claiming.** Run the checks, test in the browser where possible, and say plainly what wasn't tested (often "on the phone, after deploy").

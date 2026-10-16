@@ -24,6 +24,7 @@ Order: **1 → 2 → 3** gets friends using it on their phones via the browser. 
 | Auth email templates | EasyPlan templates from `supabase/templates/` pasted into the dashboard: **Confirm signup** (`confirmation.html`), **Reset password** (`recovery.html`), **Change email address** (`email_change.html`). Magic link, invite and reauthentication aren't used |
 | Privacy policy | Live at `<APP_URL>/privacy.html`; names Supabase (Singapore), Netlify and Resend (Tokyo); contact easyplanhehe@gmail.com |
 | Deploys | **On request only** (since 2026-10-15): merging to `main` doesn't deploy. The owner decides when; a manual run of CI deploys `main` after the checks pass (GitHub Actions → Netlify). See [Deploying the web app](#deploying-the-web-app). |
+| Edge Functions | `places` (Google Maps place search, #73): **not deployed yet**. It needs, from the owner: the Google Cloud setup, `supabase secrets set GOOGLE_MAPS_API_KEY=...`, `supabase functions deploy places`, and `supabase db push` for `20261016044829_place_search.sql`, all before the deploy that ships #73. See [Edge Functions and Google Maps](#edge-functions-and-google-maps-73) |
 | Still to do | Phone smoke test (#5) and the two-phone live-updates test (#49); Android (#13) and iOS (#14) store builds |
 
 The cloud database is separate from the local one: local accounts and test data don't exist there, and the local seed accounts are never pushed.
@@ -67,6 +68,35 @@ The cloud database is separate from the local one: local accounts and test data 
      - Magic link, Invite user and Reauthentication aren't used by the app; their defaults are fine.
 4. **(you)** Copy **Project URL** and the **Publishable key** (Project Settings → API keys) into `app/env/prod.json`.
 5. Plan: the free plan pauses a project after a week without activity and has small storage limits. Fine for a trial with friends; move to Pro before a public launch. Turn on backups (Pro includes daily backups).
+
+### Edge Functions and Google Maps (#73)
+
+Place search runs in the `places` Edge Function (`supabase/functions/places/index.ts`), which calls Google's Places API (New) with a secret key.
+
+**Google Cloud (owner, once):**
+1. At console.cloud.google.com, create a project (e.g. "EasyPlan").
+2. Link a **billing account**. Google requires one even within its free monthly allowance; current prices are on Google's Places pricing page.
+3. In APIs & Services → Library, enable **Places API (New)**.
+4. In Credentials, create an **API key** and restrict it (API restrictions) to **Places API (New)** only. There's no application restriction to set: the key is used server-side from Supabase.
+5. In Billing → **Budgets & alerts**, set a small monthly budget with email alerts. Optionally cap requests per day in the API's **Quotas**. The app also caps each person at 100 searches a day in the database.
+
+**The key** (owner; never in chat, never committed):
+- **Locally:** `supabase/functions/.env` (git-ignored, one per computer):
+  ```
+  GOOGLE_MAPS_API_KEY=AIza...
+  ```
+  Serve the function with `supabase functions serve places --env-file supabase/functions/.env` while the local stack runs.
+- **Cloud:**
+  ```bash
+  supabase secrets set GOOGLE_MAPS_API_KEY=AIza...
+  ```
+  Type it straight into your terminal. `supabase secrets list` shows the name, never the value.
+
+**Deploying the function** (owner, whenever `supabase/functions/` changes, before the web deploy that needs it):
+```bash
+supabase functions deploy places
+```
+`verify_jwt = true` comes from `supabase/config.toml`, so only signed-in users can call it. Without the secret, the function answers "Place search isn't set up yet."
 
 ## 2. Production config
 
@@ -148,7 +178,7 @@ Toolchain first:
 Deploys happen **only when the owner asks**: typically at the end of a day of work, or whenever the live app needs the latest `main`. Every production deploy costs Netlify credits, so merging a pull request doesn't deploy (until 2026-10-15 it did, and several merges a day used the credits up too fast). Develop and test on the local stack; merge to `main` as often as you like.
 
 **To deploy** (the owner, or an agent when the owner says so):
-1. If anything merged since the last deploy adds migrations, run `supabase db push` on the cloud project **first** (owner). `supabase migration list --linked` shows which migrations the cloud has.
+1. If anything merged since the last deploy adds migrations, run `supabase db push` on the cloud project **first** (owner). `supabase migration list --linked` shows which migrations the cloud has. If it changed an Edge Function (`supabase/functions/`), also run `supabase functions deploy <name>` (owner), after setting any new secret ([Edge Functions and Google Maps](#edge-functions-and-google-maps-73)).
 2. Start the deploy:
    ```bash
    gh workflow run ci.yml --ref main
@@ -195,7 +225,7 @@ If any are missing, the deploy job fails with a message naming them, and nothing
 ## 6. Each release
 
 1. Bump `version:` in `app/pubspec.yaml` (e.g. `1.0.1+2`; the number after `+` must increase for every store upload).
-2. `supabase db push` if there are new migrations, **before** deploying the web app or shipping app builds that need them.
+2. `supabase db push` if there are new migrations, and `supabase functions deploy <name>` if an Edge Function changed, **before** deploying the web app or shipping app builds that need them.
 3. Web: merge to `main`, then deploy ([Deploying the web app](#deploying-the-web-app)). Phones: `./scripts/build.sh android` / `ios` + upload.
 
 ## Checklist before inviting real users

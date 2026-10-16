@@ -5,7 +5,7 @@ Every backend call the app makes, plus the RPCs the database exposes but the app
 **Conventions**
 - "Who" is enforced by the database (RLS, grants or the RPC body), not by the app.
 - `P0001 "<msg>"` means the RPC raises that message; the app shows it via `friendlyError`.
-- Dart methods are in `app/lib/data/groups_repository.dart` (G), `activities_repository.dart` (A), `schedule_repository.dart` (S), `profile_repository.dart` (P), `auth_repository.dart` (Au), `notifications_repository.dart` (N) and `realtime_repository.dart` (R); `friendlyError` is in `groups_repository.dart`.
+- Dart methods are in `app/lib/data/groups_repository.dart` (G), `activities_repository.dart` (A), `schedule_repository.dart` (S), `profile_repository.dart` (P), `auth_repository.dart` (Au), `notifications_repository.dart` (N) and `realtime_repository.dart` (R) and `places_repository.dart` (Pl); `friendlyError` is in `groups_repository.dart`.
 - `<Profile.columns>` is `id, username, display_name, avatar_path` (`data/models.dart`); embedded profiles use it.
 - Each repository file ends with its Riverpod providers (`FutureProvider` / `.family`, keyed by id) and invalidation helpers (`invalidateActivity`, `invalidateLabels`, `invalidateSchedule`). Providers are named after the method, e.g. `myGroupsProvider`, `membersProvider(groupId)`, `scheduleProvider(query)`; only ones that differ are listed below.
 
@@ -78,17 +78,17 @@ Every backend call the app makes, plus the RPCs the database exposes but the app
 ## Activities
 
 Select string `Activity.columns` (in `models.dart`):
-`id, owner_id, name, description, location, price_min, price_max, currency, url, created_at, updated_at, personal_type_id, activity_photos(id, storage_path, position), personal_type:personal_types!activities_personal_type_fk(name)`
+`id, owner_id, name, description, location, place_id, price_min, price_max, currency, url, created_at, updated_at, personal_type_id, activity_photos(id, storage_path, position), personal_type:personal_types!activities_personal_type_fk(name)`
 
 | Dart | Call | Who | Errors / effects |
 |---|---|---|---|
 | A `myActivities()` | REST `GET activities?select=<columns>,group_activities(group_id)&owner_id=eq.<me>&deleted_at=is.null&order=created_at.desc` | owner | `group_activities` length → `sharedGroupCount` (only groups the user is in). |
 | A `activity(id)` | REST `GET activities?select=<columns>&id=eq` (maybeSingle) | owner or member of a sharing group | null if deleted / not visible. `personal_type` is null for non-owners (RLS). |
 | A `create(input)` | REST `POST activities <ActivityInput.toJson()>` → `id` | signed in | `owner_id` defaults to caller. 23503 if `personal_type_id` isn't the caller's label. |
-| A `update(id, input)` | REST `PATCH activities?id=eq <fields>` | owner or sharing-group member | Columns granted: name, description, location, price_min, price_max, currency, url, personal_type_id. `personal_type_id` only sent when `setLabel` (owner); non-owner change → 42501. Label change re-files in all groups. |
+| A `update(id, input)` | REST `PATCH activities?id=eq <fields>` | owner or sharing-group member | Columns granted: name, description, location, place_id, price_min, price_max, currency, url, personal_type_id. Changing `location` without a new `place_id` clears the place (trigger). `personal_type_id` only sent when `setLabel` (owner); non-owner change → 42501. Label change re-files in all groups. |
 | A `delete(id)` | `rpc delete_activity(p_activity uuid) → void` | owner | P0001 "only the owner can delete this activity". Unshares everywhere (entries → events), sets `deleted_at`. |
 
-`ActivityInput.toJson()` keys: `name, description, location, price_min, price_max, currency, url` (+ `personal_type_id` when `setLabel`). Name is trimmed; blank description, location and url become null; currency is trimmed and upper-cased (default `SGD`).
+`ActivityInput.toJson()` keys: `name, description, location, place_id, price_min, price_max, currency, url` (`place_id` only with location text, else null) (+ `personal_type_id` when `setLabel`). Name is trimmed; blank description, location and url become null; currency is trimmed and upper-cased (default `SGD`).
 
 ## Sharing
 
@@ -116,6 +116,16 @@ Select string `Activity.columns` (in `models.dart`):
 | A `addPhoto(activityId, bytes, {required extension, position = 0})` | `storage.from('activity-photos').uploadBinary('<activityId>/<random>.<ext>')` then REST `POST activity_photos {activity_id, storage_path, position}` | can access activity | Content type png or jpeg. |
 | A `removePhoto(photo)` | REST `DELETE activity_photos?id=eq` then `storage.remove([path])` | can access activity | |
 | A `photoUrl(path)` | `storage.createSignedUrl(path, 3600)` | can access activity | Cached per path by `photoUrlProvider`. |
+
+## Place search (Edge Function)
+
+Dart: `app/lib/data/places_repository.dart` (Pl). The project's first Edge Function: `supabase/functions/places/index.ts`.
+
+| Dart | Call | Who | Notes |
+|---|---|---|---|
+| Pl `suggest(input)` | `functions.invoke('places', body: {input, languageCode: 'en'})` → `{suggestions: [{placeId, text, mainText, secondaryText}]}` | signed in (`verify_jwt = true`) | Trimmed input under 3 characters returns `[]` without a call; the function also returns `[]` for under 3 or over 200 characters without spending a search. Each real search first calls `consume_api_quota('places')` as the caller (100 a day). Errors come back as `{error}`, which the app shows: **429** "You've used today's place searches…", **503** key not set, **502** Google unavailable, **401** not signed in. Behind it: `POST https://places.googleapis.com/v1/places:autocomplete` with `X-Goog-Api-Key` (secret `GOOGLE_MAPS_API_KEY`) and a field mask of `placeId`, `text`, `structuredFormat`; no session token, no Place Details. |
+| — | `rpc consume_api_quota(p_kind text) → void` | signed in | Counts one call of `p_kind` for the caller today (their profile time zone) and raises **PT429** (HTTP 429) "daily limit reached; try again tomorrow" past the limit (`places`: 100). P0001 "unknown quota" for other kinds; 42501 when signed out. The refused call isn't counted. Called by Edge Functions, not by the app. |
+| `googleMapsUri(location, placeId:)` | — | — | `https://www.google.com/maps/search/?api=1&query=<location>[&query_place_id=<id>]`: a Maps URL, no key, no cost. |
 
 ## History
 

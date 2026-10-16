@@ -162,10 +162,11 @@ class Activity {
     this.sharedGroupCount,
     this.personalTypeId,
     this.personalTypeName,
+    this.placeId,
   });
 
   /// Columns to select for an activity, including its photos.
-  static const columns = 'id, owner_id, name, description, location, price_min, price_max, currency, url, '
+  static const columns = 'id, owner_id, name, description, location, place_id, price_min, price_max, currency, url, '
       'created_at, updated_at, personal_type_id, activity_photos(id, storage_path, position), '
       'personal_type:personal_types!activities_personal_type_fk(name)';
 
@@ -188,6 +189,7 @@ class Activity {
         sharedGroupCount: (j['group_activities'] as List?)?.length,
         personalTypeId: j['personal_type_id'] as String?,
         personalTypeName: (j['personal_type'] as Map?)?['name'] as String?,
+        placeId: j['place_id'] as String?,
       );
 
   final String id;
@@ -195,6 +197,9 @@ class Activity {
   final String name;
   final String? description;
   final String? location;
+
+  /// The Google place picked for [location], if one was (#73).
+  final String? placeId;
   final double? priceMin;
   final double? priceMax;
   final String currency;

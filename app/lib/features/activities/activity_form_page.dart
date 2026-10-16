@@ -8,6 +8,7 @@ import '../../data/activities_repository.dart';
 import '../../data/models.dart';
 import '../../widgets/dialogs.dart';
 import 'activity_widgets.dart';
+import 'place_field.dart';
 
 const _currencies = ['SGD', 'MYR', 'USD', 'EUR', 'GBP', 'AUD', 'JPY', 'KRW', 'THB', 'IDR'];
 
@@ -33,6 +34,7 @@ class _ActivityFormPageState extends ConsumerState<ActivityFormPage> {
   late final _name = TextEditingController(text: _a?.name);
   late final _description = TextEditingController(text: _a?.description);
   late final _location = TextEditingController(text: _a?.location);
+  late String? _placeId = _a?.placeId;
   late final _priceMin = TextEditingController(text: _num(_a?.priceMin));
   late final _priceMax = TextEditingController(text: _num(_a?.priceMax));
   late final _url = TextEditingController(text: _a?.url);
@@ -83,6 +85,7 @@ class _ActivityFormPageState extends ConsumerState<ActivityFormPage> {
       name: _name.text,
       description: _description.text,
       location: _location.text,
+      placeId: _placeId,
       priceMin: _parse(_priceMin.text),
       priceMax: _parse(_priceMax.text),
       currency: _currency,
@@ -161,13 +164,10 @@ class _ActivityFormPageState extends ConsumerState<ActivityFormPage> {
                       decoration: const InputDecoration(labelText: 'Description', border: OutlineInputBorder()),
                     ),
                     gap,
-                    TextFormField(
+                    PlaceField(
                       controller: _location,
-                      decoration: const InputDecoration(
-                        labelText: 'Location',
-                        prefixIcon: Icon(Icons.place_outlined),
-                        border: OutlineInputBorder(),
-                      ),
+                      placeId: _placeId,
+                      onPlaceChanged: (id) => setState(() => _placeId = id),
                     ),
                     gap,
                     Text('Price range', style: Theme.of(context).textTheme.titleSmall),
