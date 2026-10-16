@@ -22,6 +22,7 @@ Source of truth: `supabase/migrations/`. Test coverage: `supabase/tests/database
 | `20261015064456_log_type_merge_updates.sql` | `log_type_merges` also logs updates (re-pointed merge rules) |
 | `20261015083758_recurring_plans.sql` | Repeating plans (#17): `schedule_series`, `schedule_entries.series_id`; `create_schedule_series`, `extend_series` and the `*_following` RPCs; helpers `series_dates`, `entry_key`, `series_targets`, `notify_series`; `apply_participants` gains `p_notify`; series fields in `list_schedule` and `list_notifications` |
 | `20261015083759_recurring_history.sql` | `list_group_history` folds one action across a series into one row (`repeat_count`) |
+| `20261016044829_place_search.sql` | Google Maps locations (#73): `activities.place_id` (format check, needs location text), trigger `activities_drop_stale_place`; `api_usage` + `consume_api_quota` (daily per-user quota for paid outside APIs) |
 
 ## Tables
 
@@ -65,12 +66,16 @@ Access:
 | `owner_id` | Creator. Can't be changed (no column grant). FK to `profiles` has no `on delete`, so the owner's activities must be deleted first (`delete_my_account` does). |
 | `name` | 1–120 characters, required |
 | `description`, `location`, `url` | Optional |
+| `place_id` | The Google place picked for `location` (#73), or null for free text. Letters, digits, `_` and `-`, 10–300 characters (it goes into a Maps link); only with `location` text. Google allows storing place IDs indefinitely. Changing `location` without a new `place_id` clears it (`activities_drop_stale_place`) |
 | `price_min`, `price_max`, `currency` | Numeric ≥ 0, `max ≥ min`; currency is `char(3)` (length only, no letter check), default `SGD` |
 | `personal_type_id` | The owner's label. Composite FK `(personal_type_id, owner_id)` → `personal_types`, so it must be the owner's own label. Set to null if the label is deleted. Only the owner can change it (guard trigger, 42501). |
 | `updated_at`, `updated_by` | Set by trigger |
 | `deleted_at` | Soft delete, through `delete_activity` only |
 
 Access: the owner, plus members of any group it's shared into, can read and update the editable columns. Nobody can delete rows directly.
+
+### `api_usage`
+Daily per-user counters for paid outside APIs called by Edge Functions (#73: `places`; #74 will add its own kind). One row per `(user_id, kind, day)`, with `count`; `day` is the user's date in their profile time zone. Cascades with the profile. Clients can't read or write it at all (RLS on, no policies, privileges revoked); only `consume_api_quota` touches it.
 
 ### `activity_photos`
 `storage_path` (`<activity_id>/<file>` in the `activity-photos` bucket) and `position`. Anyone who can access the activity can add, remove or reorder its photos.
@@ -173,6 +178,7 @@ See [`ai/endpoints.md`](ai/endpoints.md) for parameters, return shapes and error
 | `join_group_via_link(token)` / `preview_invite_link(token)` | Invite links |
 | `respond_to_invitation(id, accept)` | Accept or decline |
 | `cancel_invitation(id)` | Any member cancels a pending invitation from their group |
+| `consume_api_quota(kind)` | Counts one paid outside-API call for the caller today and refuses past the daily limit (`places`: 100) with PT429 / HTTP 429. Called by Edge Functions with the user's token |
 | `group_deletion_summary(group)` | Owner only: members, upcoming plans, undated ideas, for the delete confirmation |
 | `delete_group(group, confirm_name)` | Owner only; the name must match. Notifies members and plan participants (`group_deleted`), then deletes the group (cascades: members, invites, types, group activities, plans and participants; activities stay) |
 | `transfer_ownership(group, new_owner)` | Owner only, to another current member. Swaps roles, logs it (`group_member` `updated`), notifies the new owner |
@@ -211,7 +217,7 @@ Used by RLS policies and RPCs. Signed-in users can call the read-only access hel
 
 Not executable by clients (`function_privileges.test.sql` checks all of this):
 - Internal helpers `resolve_group_type`, `apply_participants`, `entry_range`, `series_dates`, `entry_key`, `series_targets`, `notify_series` (only called inside `security definer` RPCs).
-- Every trigger function: `handle_new_user`, `handle_new_group`, `log_change`, `notify_invitee`, `revert_entries_to_events`, `touch_updated`, `group_activity_defaults`, `guard_personal_type`, `refile_activity`, `refile_renamed_label`, `guard_timezone`, `hand_over_ownership`, `broadcast_change`, `guard_invite_link_revoke`. Postgres doesn't check `execute` when firing a trigger.
+- Every trigger function: `handle_new_user`, `handle_new_group`, `log_change`, `notify_invitee`, `revert_entries_to_events`, `touch_updated`, `group_activity_defaults`, `guard_personal_type`, `refile_activity`, `refile_renamed_label`, `guard_timezone`, `hand_over_ownership`, `broadcast_change`, `guard_invite_link_revoke`, `drop_stale_place`. Postgres doesn't check `execute` when firing a trigger.
 - Still callable by signed-in users because policies or invoker triggers use them: `try_uuid` (storage policies), `is_valid_timezone` (`guard_timezone`); and `list_timezones` (the picker).
 - Signed-out (`anon`) callers can execute only `username_available`.
 - Every function in `public` sets `search_path` (`= ''` and fully qualified names).
@@ -227,6 +233,7 @@ Not executable by clients (`function_privileges.test.sql` checks all of this):
 | `group_invitations` | `on_invitation_created` | Notifies the invitee |
 | `group_invite_links` | `group_invite_links_guard_revoke` | Revoking is one-way; sets `revoked_at` to `now()` |
 | `activities` | `activities_touch` | Sets `updated_at` / `updated_by` |
+| `activities` | `activities_drop_stale_place` | Changing `location` without a new `place_id` clears the place |
 | `activities` | `activities_guard_personal_type` | Only the owner may change the label (42501) |
 | `activities` | `activities_refile` | Label change → re-resolve type in every group (label removed → only `source_type_name` is cleared; types stay) |
 | `personal_types` | `personal_types_refile` | Rename → re-resolve type for activities with that label |

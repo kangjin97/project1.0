@@ -18,6 +18,7 @@ class ActivityInput {
     required this.name,
     this.description,
     this.location,
+    this.placeId,
     this.priceMin,
     this.priceMax,
     this.currency = 'SGD',
@@ -29,6 +30,9 @@ class ActivityInput {
   final String name;
   final String? description;
   final String? location;
+
+  /// The Google place picked for [location]; null for free text.
+  final String? placeId;
   final double? priceMin;
   final double? priceMax;
   final String currency;
@@ -44,6 +48,9 @@ class ActivityInput {
       'name': name.trim(),
       'description': blank(description),
       'location': blank(location),
+      // A place only goes with location text (the database also drops it when
+      // the text changes without a new pick).
+      'place_id': blank(location) == null ? null : placeId,
       'price_min': priceMin,
       'price_max': priceMax,
       'currency': currency.trim().toUpperCase(),

@@ -43,11 +43,18 @@ Status legend: **Done** = DB + UI + tests. **DB only** = schema/RPCs/tests exist
 - Fields: name (required), description, location, price min/max + currency (max ≥ min; 0/0 shows "Free"), link (https:// added if missing), photos, personal label.
 - Private to the owner until shared. Once shared, **one shared record**: owner and members of any group it's in can edit; edits show everywhere.
 - Only the owner deletes (soft delete); the activity leaves all groups and its schedule entries become events.
-- Detail page: photos, label (owner only), location → Google Maps search, link, groups it's in (change type / remove), history.
+- Detail page: photos, label (owner only), location → Google Maps ("Open in Google Maps" opens the exact place when one was picked, otherwise a search), link, groups it's in (change type / remove), history.
 - UI: `features/activities/activities_page.dart`, `activity_form_page.dart` (`showActivityForm`), `activity_detail_page.dart` (`describeChange`), `activity_widgets.dart` (`ActivityCard`, `ActivityPhotoImage`).
 - Data: A `myActivities`, `activity`, `create`, `update`, `delete`, `addPhoto`, `removePhoto`, `photoUrl`, `history`; providers `myActivitiesProvider`, `activityProvider(id)`, `activityHistoryProvider(id)`, `photoUrlProvider(path)`; helper `invalidateActivity`.
 - DB: `activities`, `activity_photos`, storage bucket `activity-photos`, `delete_activity`, `can_access_activity`, `log_change`.
 - Tests: `core_rules.test.sql` (visibility, member edits, owner-only delete, logging).
+- **Google Maps locations** (#73):
+  - Typing 3+ characters in Location suggests places from Google Maps (Places API (New) Autocomplete), after a 400 ms pause. Suggestions show name and area, with the required "Google Maps" attribution in the list.
+  - Picking one fills "Name, area" and keeps the place ID (check mark, "Exact place from Google Maps"). Free text still works.
+  - Editing the text after a pick drops the place, in the form and in the database (trigger), so a place never outlives its text.
+  - Searches run in the `places` Edge Function, so the Google key never reaches the browser. Signed-in users only; 100 searches per person per day, counted in their time zone (`consume_api_quota`). Billed per search (no sessions or Place Details); see decisions.md.
+  - UI: `features/activities/place_field.dart` (`PlaceField`), form and detail page. Data: `data/places_repository.dart` (`PlacesRepository.suggest`, `PlaceSuggestion`, `googleMapsUri`); `Activity.placeId`, `ActivityInput.placeId`. Function: `supabase/functions/places/index.ts`. DB: `activities.place_id`, trigger `activities_drop_stale_place`, `api_usage`, `consume_api_quota`.
+  - Tests: `place_search.test.sql` (ID format, place needs text, editing text drops the place, other edits keep it, 100 a day then refused and not counted, per-person, time zone, unknown kinds, table locked, anon); `app/test/places_test.dart` (labels, maps links, input); `app/test/place_field_test.dart` (editing drops the pick, one search per pause, attribution, under 3 characters never searches). The function was tried against the real Places API locally; it has no automated test (it needs Google).
 
 ## F5. Sharing into groups and per-group types — Done
 - Share from an activity (pick group) or from a group (pick one of your activities, or create one inline).
@@ -199,3 +206,4 @@ Open at the time of writing:
 | #16 Server-side search and filters for large groups | F7 | feature |
 | #18 Push notifications on phones | F9 | feature (v2) |
 | #49 Test live updates on two phones against the live site | F13 | chore |
+| #74 Fill an activity from a link (AI) | F4 | feature (after #73) |

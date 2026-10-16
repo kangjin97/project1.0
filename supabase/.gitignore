@@ -6,3 +6,6 @@
 .env.keys
 .env.local
 .env.*.local
+
+# Edge Function secrets for local testing (API keys); never commit
+functions/.env
