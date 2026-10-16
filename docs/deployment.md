@@ -12,19 +12,19 @@ How to take EasyPlan from your computer to people's phones. Everything here also
 
 Order: **1 → 2 → 3** gets friends using it on their phones via the browser. **4 / 5** are the store apps.
 
-## Current state (2026-10-15)
+## Current state (2026-10-16)
 
 | Piece | Status |
 |---|---|
-| Web app | **Live at https://easyplan-hehe.netlify.app** (Netlify project `easyplan-hehe`; `easyplan` was taken). Last deployed 2026-10-15 from `main` at `e2534a6` (second on-request deploy, run 38697471184): everything on `main` up to then is live (recurring plans, #17, merged afterwards and isn't), including past plans (#11), invite management (#9), deleting groups / handing over ownership (#10), the link/photo filters (#53), logging re-pointed merge rules (#52), drag to reschedule (#12) and the #58 notification fix |
-| Supabase cloud project | Created; linked from the Mac and the Windows PC; schema pushed with `supabase db push` (link once per computer: [`setup-windows.md`](setup-windows.md#deploying-from-windows)). Has every migration through `20261015064456_log_type_merge_updates.sql` (checked 2026-10-15). **Waiting for `supabase db push`** before the next deploy: `20261015083758_recurring_plans.sql` and `20261015083759_recurring_history.sql` (recurring plans, #17, merged to `main`). Check any time with `supabase migration list --linked` |
+| Web app | **Live at https://easyplan-hehe.netlify.app** (Netlify project `easyplan-hehe`; `easyplan` was taken). Last deployed 2026-10-15 from `main` at `e2534a6` (second on-request deploy, run 38697471184): everything on `main` up to then is live (recurring plans, #17, and Google Maps locations, #73, merged afterwards and aren't), including past plans (#11), invite management (#9), deleting groups / handing over ownership (#10), the link/photo filters (#53), logging re-pointed merge rules (#52), drag to reschedule (#12) and the #58 notification fix |
+| Supabase cloud project | Created; linked from the Mac and the Windows PC; schema pushed with `supabase db push` (link once per computer: [`setup-windows.md`](setup-windows.md#deploying-from-windows)). Has every migration through `20261015064456_log_type_merge_updates.sql` (checked 2026-10-16). **Waiting for `supabase db push`** before the next deploy: `20261015083758_recurring_plans.sql` and `20261015083759_recurring_history.sql` (recurring plans, #17), `20261016044829_place_search.sql` (Google Maps locations, #73) and, once #74 merges, `20261016050829_ai_fill_quota.sql`. Check any time with `supabase migration list --linked` |
 | Supabase Auth URLs | Site URL `https://easyplan-hehe.netlify.app`; redirect `https://easyplan-hehe.netlify.app/**` |
 | `app/env/prod.json` | Filled in on the owner's Mac (git-ignored) |
 | Auth emails | Sent through **Resend** from `no-reply@easyplanhehe.online` (custom SMTP in Supabase). Domain `easyplanhehe.online` at Namecheap; Resend region Tokyo, Japan (`ap-northeast-1`) |
 | Auth email templates | EasyPlan templates from `supabase/templates/` pasted into the dashboard: **Confirm signup** (`confirmation.html`), **Reset password** (`recovery.html`), **Change email address** (`email_change.html`). Magic link, invite and reauthentication aren't used |
-| Privacy policy | Live at `<APP_URL>/privacy.html`; names Supabase (Singapore), Netlify and Resend (Tokyo); contact easyplanhehe@gmail.com |
+| Privacy policy | Live at `<APP_URL>/privacy.html`; names Supabase (Singapore), Netlify and Resend (Tokyo); contact easyplanhehe@gmail.com. The repo copy also names Google (place search, #73) and AIML API → Anthropic ("Fill from link", #74); it goes live with the next deploy |
 | Deploys | **On request only** (since 2026-10-15): merging to `main` doesn't deploy. The owner decides when; a manual run of CI deploys `main` after the checks pass (GitHub Actions → Netlify). See [Deploying the web app](#deploying-the-web-app). |
-| Edge Functions | `places` (Google Maps place search, #73): **not deployed yet**. It needs, from the owner: the Google Cloud setup, `supabase secrets set GOOGLE_MAPS_API_KEY=...`, `supabase functions deploy places`, and `supabase db push` for `20261016044829_place_search.sql`, all before the deploy that ships #73. See [Edge Functions and Google Maps](#edge-functions-and-google-maps-73) |
+| Edge Functions | `places` (Google Maps place search, #73) and `fill-activity` ("Fill from link", #74): **not deployed yet**. Before the deploy that ships them, the owner needs to: do the Google Cloud and AIML API setup; run `supabase secrets set GOOGLE_MAPS_API_KEY=...`, `ANTHROPIC_API_KEY=...` and `ANTHROPIC_BASE_URL=https://api.aimlapi.com`; run `supabase functions deploy places` and `fill-activity`; and run `supabase db push` for `20261016044829_place_search.sql` and `20261016050829_ai_fill_quota.sql`. See [Edge Functions and Google Maps](#edge-functions-and-google-maps-73) |
 | Still to do | Phone smoke test (#5) and the two-phone live-updates test (#49); Android (#13) and iOS (#14) store builds |
 
 The cloud database is separate from the local one: local accounts and test data don't exist there, and the local seed accounts are never pushed.
@@ -92,11 +92,50 @@ Place search runs in the `places` Edge Function (`supabase/functions/places/inde
   ```
   Type it straight into your terminal. `supabase secrets list` shows the name, never the value.
 
-**Deploying the function** (owner, whenever `supabase/functions/` changes, before the web deploy that needs it):
+### Claude for "Fill from link" (#74)
+
+The `fill-activity` function calls Claude Haiku 5.5 (`claude-haiku-5-5`) through the official Anthropic SDK. It also uses the Google key above to match places. Two settings choose where the request goes:
+
+| Setting | Meaning |
+|---|---|
+| `ANTHROPIC_API_KEY` | The key for whichever provider is used |
+| `ANTHROPIC_BASE_URL` | Optional. `https://api.aimlapi.com` sends the request through AIML API; leave it out to go straight to Anthropic |
+
+**Now: AIML API** (owner's choice, 2026-10-16). The owner bought $20 of prepaid credits at aimlapi.com, a reseller with an Anthropic-style endpoint. It works with the function unchanged (tested locally 2026-10-16), but:
+- it adds a markup: a test call cost about 40% more than Anthropic's own price (still well under a cent per fill);
+- credits aren't refundable;
+- its privacy policy says nothing about how API requests (screenshots, captions) are used or kept. The company is Boiler Labs FZ-LLC (UAE).
+
+Setup (owner, once):
+1. At aimlapi.com, top up credits and create an API key. AIML API keys don't start with `sk-ant-`.
+2. **Locally:** in `supabase/functions/.env`, set `ANTHROPIC_API_KEY=<the AIML key>` and `ANTHROPIC_BASE_URL=https://api.aimlapi.com`, then restart `supabase functions serve` (it reads `.env` only at start).
+3. **Cloud:** type it into your terminal, never into chat:
+   ```bash
+   supabase secrets set ANTHROPIC_API_KEY=... ANTHROPIC_BASE_URL=https://api.aimlapi.com
+   ```
+
+**When the AIML API credits run out: switch to Anthropic directly** (recommended). It's cheaper (no reseller markup; Claude Haiku 5.5 is $0.10 / $0.50 per million input / output tokens, about $0.0005 per fill, so $5 lasts around 10,000 fills), and Anthropic doesn't use API data to train its models (check Anthropic's commercial terms when switching). No code change:
+1. At **console.anthropic.com** (an API account; separate from any Claude.ai subscription, which can't be used for this), add credit under Billing and set a **monthly spend limit** (Settings → Limits).
+2. Create an API key (starts `sk-ant-api`).
+3. **Locally:** in `supabase/functions/.env`, replace `ANTHROPIC_API_KEY` with the new key and **delete the `ANTHROPIC_BASE_URL` line**; restart `supabase functions serve`.
+4. **Cloud:**
+   ```bash
+   supabase secrets set ANTHROPIC_API_KEY=sk-ant-...
+   supabase secrets unset ANTHROPIC_BASE_URL
+   ```
+   No redeploy is needed for a secret change.
+5. **Privacy page** (`app/web/privacy.html`, "Fill from link" sentence): remove "through AIML API" and its link, so it names only Anthropic. It may say again that Anthropic doesn't use this data to train its models, once you've checked their terms. Then deploy the web app.
+
+When credits run out, fills fail, usually with "Fill from link is unavailable right now." (HTTP 502; the function log, Supabase dashboard → Edge Functions → `fill-activity` → Logs, shows the provider's error). Check the balance on aimlapi.com now and then. The rest of the app keeps working.
+
+### Deploying the functions
+
+Owner, whenever `supabase/functions/` changes (including `_shared/`), before the web deploy that needs it:
 ```bash
 supabase functions deploy places
+supabase functions deploy fill-activity
 ```
-`verify_jwt = true` comes from `supabase/config.toml`, so only signed-in users can call it. Without the secret, the function answers "Place search isn't set up yet."
+`verify_jwt = true` for both comes from `supabase/config.toml`, so only signed-in users can call them. Without their secrets they answer "… isn't set up yet." `supabase functions serve --env-file supabase/functions/.env` serves all of them locally.
 
 ## 2. Production config
 

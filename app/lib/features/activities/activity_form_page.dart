@@ -5,9 +5,11 @@ import 'package:image_picker/image_picker.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../data/activities_repository.dart';
+import '../../data/ai_fill_repository.dart';
 import '../../data/models.dart';
 import '../../widgets/dialogs.dart';
 import 'activity_widgets.dart';
+import 'fill_from_link_sheet.dart';
 import 'place_field.dart';
 
 const _currencies = ['SGD', 'MYR', 'USD', 'EUR', 'GBP', 'AUD', 'JPY', 'KRW', 'THB', 'IDR'];
@@ -46,6 +48,13 @@ class _ActivityFormPageState extends ConsumerState<ActivityFormPage> {
   final List<XFile> _newPhotos = [];
   bool _saving = false;
 
+  // From "Fill from link" (#74): a new label Claude suggested (created only if
+  // tapped), and the link's preview image, used as the first photo unless
+  // unticked.
+  String? _suggestedLabel;
+  AiFill? _filled;
+  bool _useFilledPhoto = true;
+
   bool get _editing => _a != null;
 
   /// Labels are personal: only the owner sees and sets them.
@@ -76,6 +85,52 @@ class _ActivityFormPageState extends ConsumerState<ActivityFormPage> {
     if (picked.isNotEmpty) setState(() => _newPhotos.addAll(picked));
   }
 
+  /// Opens "Fill from link" and puts what comes back into the form. The user
+  /// still reviews and saves; nothing is stored here.
+  Future<void> _fillFromLink() async {
+    final fill = await showFillFromLinkSheet(context, initialUrl: _url.text);
+    if (fill == null || !mounted) return;
+    String num(double? v) => _num(v);
+    final labels = ref.read(labelsProvider).value ?? const <PersonalType>[];
+    final existing = fill.labelIsNew
+        ? null
+        : labels.where((l) => l.name.toLowerCase() == fill.labelName?.toLowerCase()).firstOrNull;
+    setState(() {
+      if (fill.name.isNotEmpty) _name.text = fill.name;
+      if (fill.description != null) _description.text = fill.description!;
+      if (fill.location != null) {
+        _location.text = fill.location!;
+        _placeId = fill.placeId;
+      }
+      _priceMin.text = num(fill.priceMin);
+      _priceMax.text = num(fill.priceMax);
+      if (fill.currency != null && _currencies.contains(fill.currency)) _currency = fill.currency!;
+      if (fill.url != null) _url.text = fill.url!;
+      if (existing != null) _labelId = existing.id;
+      _suggestedLabel = existing == null ? fill.labelName : null;
+      _filled = fill;
+      _useFilledPhoto = fill.photo != null;
+    });
+    showMessage(context, 'Filled in from the link. Check it before saving.');
+  }
+
+  Future<void> _addSuggestedLabel() async {
+    final name = _suggestedLabel;
+    if (name == null) return;
+    try {
+      final id = await ref.read(activitiesRepositoryProvider).addLabel(name);
+      ref.invalidate(labelsProvider);
+      if (mounted) {
+        setState(() {
+          _labelId = id;
+          _suggestedLabel = null;
+        });
+      }
+    } catch (e) {
+      if (mounted) showError(context, e);
+    }
+  }
+
   Future<void> _save() async {
     if (!_form.currentState!.validate()) return;
     var url = _url.text.trim();
@@ -103,6 +158,10 @@ class _ActivityFormPageState extends ConsumerState<ActivityFormPage> {
         await repo.removePhoto(p);
       }
       var position = _keptPhotos.length;
+      final filled = _filled;
+      if (filled?.photo != null && _useFilledPhoto) {
+        await repo.addPhoto(id, filled!.photo!, extension: filled.photoExtension, position: position++);
+      }
       for (final file in _newPhotos) {
         final ext = file.name.contains('.') ? file.name.split('.').last : 'jpg';
         await repo.addPhoto(id, await file.readAsBytes(), extension: ext, position: position++);
@@ -147,6 +206,17 @@ class _ActivityFormPageState extends ConsumerState<ActivityFormPage> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
+                    if (!_editing) ...[
+                      FilledButton.tonalIcon(
+                        onPressed: _saving ? null : _fillFromLink,
+                        icon: const Icon(Icons.auto_awesome),
+                        label: const Text('Fill from link'),
+                      ),
+                      const SizedBox(height: 4),
+                      Text('Paste a TikTok, YouTube or web link and the form fills itself in.',
+                          textAlign: TextAlign.center, style: Theme.of(context).textTheme.bodySmall),
+                      gap,
+                    ],
                     TextFormField(
                       controller: _name,
                       autofocus: !_editing,
@@ -178,6 +248,8 @@ class _ActivityFormPageState extends ConsumerState<ActivityFormPage> {
                         SizedBox(
                           width: 110,
                           child: DropdownButtonFormField<String>(
+                            // initialValue is read once; a fill can change it.
+                            key: ValueKey(_currency),
                             initialValue: _currencies.contains(_currency) ? _currency : null,
                             decoration: const InputDecoration(border: OutlineInputBorder()),
                             items: [for (final c in _currencies) DropdownMenuItem(value: c, child: Text(c))],
@@ -224,6 +296,18 @@ class _ActivityFormPageState extends ConsumerState<ActivityFormPage> {
                       ],
                     ),
                     const SizedBox(height: 8),
+                    if (_filled?.photo case final photo?)
+                      CheckboxListTile(
+                        contentPadding: EdgeInsets.zero,
+                        value: _useFilledPhoto,
+                        onChanged: _saving ? null : (v) => setState(() => _useFilledPhoto = v ?? false),
+                        secondary: ClipRRect(
+                          borderRadius: BorderRadius.circular(6),
+                          child: Image.memory(photo, width: 56, height: 56, fit: BoxFit.cover),
+                        ),
+                        title: const Text('Use the link’s preview image'),
+                        subtitle: const Text('Saved as the first photo'),
+                      ),
                     _photoGrid(),
                     const SizedBox(height: 32),
                   ],
@@ -268,6 +352,13 @@ class _ActivityFormPageState extends ConsumerState<ActivityFormPage> {
                 selected: _labelId == l.id,
                 onSelected: (on) => setState(() => _labelId = on ? l.id : null),
               ),
+            if (_suggestedLabel != null)
+              ActionChip(
+                avatar: const Icon(Icons.auto_awesome, size: 18),
+                label: Text('Add “$_suggestedLabel”'),
+                tooltip: 'Suggested from the link: creates this label and picks it',
+                onPressed: _addSuggestedLabel,
+              ),
             ActionChip(avatar: const Icon(Icons.add, size: 18), label: const Text('New label'), onPressed: _newLabel),
           ],
         ),
@@ -303,6 +394,8 @@ class _ActivityFormPageState extends ConsumerState<ActivityFormPage> {
         ),
     ];
     if (tiles.isEmpty) {
+      // The link's preview image is listed just above; don't contradict it.
+      if (_filled?.photo != null) return const SizedBox.shrink();
       return Text('No photos yet.', style: Theme.of(context).textTheme.bodySmall);
     }
     return Wrap(spacing: 8, runSpacing: 8, children: tiles);

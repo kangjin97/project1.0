@@ -36,6 +36,7 @@ A web and mobile app for friends to plan things to do together: collect activity
 ### 2.2 Activities
 - Fields: `name` (required), `description`, `location`, `price_min`, `price_max`, `currency`, `url`, photos, and the owner's **label** (optional, see §2.3).
 - **Location from Google Maps:** typing a location suggests real places from Google Maps; picking one keeps that exact place, so "Open in Google Maps" shows the right pin. Free text is still allowed. Each person can run 100 place searches a day.
+- **Fill from link:** on New activity, paste a TikTok, YouTube or web link (plus an optional screenshot or caption, which is how Instagram works) and AI fills the form: name, description, location (matched to a Google place), price range, link and label, with the link's preview image offered as the first photo. Nothing is saved until the user reviews and saves. 30 fills per person per day.
 - New activities are private to the owner.
 - **Sharing:** the owner (or any member of a group it's already in) shares it into a group. If the activity has a label, it is filed automatically (§2.3); otherwise the sharer **must pick an activity type** for that group. The sharer can always override and pick a type by hand.
 - **One source of truth:** there is a single activity record. Edits by the owner or any member of any group it's shared into apply everywhere — all groups and the owner's view see the same data. (Rationale: corrections like a fixed price or address should reach everyone.)

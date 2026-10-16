@@ -31,7 +31,7 @@ cd app && flutter run -d web-server --web-hostname 127.0.0.1 --web-port 3000
 cd app && flutter run --profile -d web-server --web-hostname 127.0.0.1 --web-port 3001  # second person (own session)
 supabase migration list --linked    # which migrations the cloud has (read-only)
 gh workflow run ci.yml --ref main   # deploy the web app: ONLY when the owner asks, after their `supabase db push`
-supabase functions serve places --env-file supabase/functions/.env  # Edge Functions locally (Google key in the git-ignored .env)
+supabase functions serve --env-file supabase/functions/.env  # Edge Functions locally (places, fill-activity); keys in the git-ignored .env
 ```
 
 The Supabase CLI may be at `~/.local/bin/supabase` rather than on `PATH`. The owner works on both a Mac and a Windows PC (`docs/development.md` → Working on both computers). On Windows, run `scripts/*.sh` in Git Bash, and remember Windows PowerShell has no `&&`.
@@ -83,7 +83,7 @@ The Supabase CLI may be at `~/.local/bin/supabase` rather than on `PATH`. The ow
 - Live web app: **https://easyplan-hehe.netlify.app** (Netlify project `easyplan-hehe`), backed by a Supabase cloud project linked from this repo. Current state and steps: `docs/deployment.md`.
 - The cloud database is separate from the local one; nothing local (accounts, seed data) is in it.
 - **Deploys are on request only** (each Netlify deploy costs credits). The owner develops and tests locally, merges to `main` as often as they like, and says when to deploy, usually at the end of the day. The `deploy-web` job in `.github/workflows/ci.yml` runs only on a manual run on `main` (`gh workflow run ci.yml --ref main`), after the app and database checks pass. Settings come from GitHub secrets/variables (`docs/deployment.md` → Deploying the web app). Rollback: Netlify → Deploys → Publish an earlier deploy.
-- **Edge Functions** (`supabase/functions/`; first one: `places`, Google place search, #73) reach the cloud only via `supabase functions deploy <name>` and their keys via `supabase secrets set`, both run by the owner, before the web deploy that needs them; say so in the PR. Outside APIs that cost money are capped per user per day in the database (`consume_api_quota`).
+- **Edge Functions** (`supabase/functions/`: `places` for Google place search, #73; `fill-activity` for "Fill from link" with Claude, #74, bought through the reseller AIML API via `ANTHROPIC_BASE_URL` until its credits run out, then direct from Anthropic (`docs/deployment.md`); shared code in `_shared/`) reach the cloud only via `supabase functions deploy <name>` and their keys via `supabase secrets set`, both run by the owner, before the web deploy that needs them; say so in the PR. Outside APIs that cost money are capped per user per day in the database (`consume_api_quota`).
 - Agents start a deploy only when the owner asks for one in chat. Before starting it, check whether anything merged since the last deploy adds migrations; if so, remind the owner to run `supabase db push` first. Agents don't deploy by any other route, don't merge without the owner's go-ahead, don't run `supabase db push`, and don't sign up/sign in on the live site. Test locally.
 
 ## Local test data

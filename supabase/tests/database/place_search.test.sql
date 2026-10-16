@@ -56,6 +56,12 @@ set local role authenticated;
 select pg_temp.act_as('22222222-2222-2222-2222-222222222222');
 select lives_ok($$ select consume_api_quota('places') $$, 'each person has their own quota');
 select throws_ok($$ select consume_api_quota('something_else') $$, 'P0001', 'unknown quota', 'only known kinds can be counted');
+
+-- AI fills from a link (#74): 30 a day, counted separately from place searches.
+select lives_ok($$ select consume_api_quota('ai_fill') from generate_series(1, 30) $$, 'the first 30 AI fills of the day are allowed');
+select throws_ok($$ select consume_api_quota('ai_fill') $$, 'PT429', 'daily limit reached; try again tomorrow',
+                 'the 31st AI fill is refused');
+select lives_ok($$ select consume_api_quota('places') $$, 'place searches have their own count');
 select throws_ok($$ select * from api_usage $$, '42501', null, 'nobody reads the usage table directly');
 select throws_ok($$ insert into api_usage (user_id, kind, day) values (auth.uid(), 'places', current_date) $$,
                  '42501', null, 'nobody writes it directly either');

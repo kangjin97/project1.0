@@ -15,12 +15,14 @@ flowchart LR
   RT -- "group:id / user:id" --> R
   AUTH -- "trigger: create profile" --> DB
   ST -- "policies call can_access_activity()" --> DB
-  R -- "functions.invoke (user token)" --> EF[Edge Function: places]
+  R -- "functions.invoke (user token)" --> EF[Edge Functions: places, fill-activity]
   EF -- "consume_api_quota (as the user)" --> DB
   EF -- "secret key" --> GP[Google Places API]
+  EF -- "secret key" --> CL["Claude API (via AIML API)"]
+  EF -- "official previews" --> WEB[TikTok / YouTube oEmbed, page preview tags]
 ```
 
-There is no custom server of our own. The Flutter app talks to Supabase directly. The one exception is a Supabase **Edge Function** (`supabase/functions/places`) for calls that need a secret key: Google place search (#73). It runs as the signed-in user, checks their daily quota in the database, and keeps the key out of the browser. Otherwise and **every rule is enforced in Postgres** through Row Level Security, column-level grants, triggers, and `security definer` functions (RPCs). The app does no access control of its own; at most it hides buttons that the database would reject anyway.
+There is no custom server of our own. The Flutter app talks to Supabase directly. The one exception is Supabase **Edge Functions** (`supabase/functions/`) for calls that need a secret key: Google place search (`places`, #73) and "Fill from link" (`fill-activity`, #74: official link previews + Claude, currently bought through the reseller AIML API). They run as the signed-in user, check their daily quota in the database, and keep the keys out of the browser. Otherwise and **every rule is enforced in Postgres** through Row Level Security, column-level grants, triggers, and `security definer` functions (RPCs). The app does no access control of its own; at most it hides buttons that the database would reject anyway.
 
 ## Flutter app
 

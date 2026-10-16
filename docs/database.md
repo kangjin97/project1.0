@@ -23,6 +23,7 @@ Source of truth: `supabase/migrations/`. Test coverage: `supabase/tests/database
 | `20261015083758_recurring_plans.sql` | Repeating plans (#17): `schedule_series`, `schedule_entries.series_id`; `create_schedule_series`, `extend_series` and the `*_following` RPCs; helpers `series_dates`, `entry_key`, `series_targets`, `notify_series`; `apply_participants` gains `p_notify`; series fields in `list_schedule` and `list_notifications` |
 | `20261015083759_recurring_history.sql` | `list_group_history` folds one action across a series into one row (`repeat_count`) |
 | `20261016044829_place_search.sql` | Google Maps locations (#73): `activities.place_id` (format check, needs location text), trigger `activities_drop_stale_place`; `api_usage` + `consume_api_quota` (daily per-user quota for paid outside APIs) |
+| `20261016050829_ai_fill_quota.sql` | `consume_api_quota` gains the `ai_fill` kind (30 a day) for "Fill from link" (#74) |
 
 ## Tables
 
@@ -75,7 +76,7 @@ Access:
 Access: the owner, plus members of any group it's shared into, can read and update the editable columns. Nobody can delete rows directly.
 
 ### `api_usage`
-Daily per-user counters for paid outside APIs called by Edge Functions (#73: `places`; #74 will add its own kind). One row per `(user_id, kind, day)`, with `count`; `day` is the user's date in their profile time zone. Cascades with the profile. Clients can't read or write it at all (RLS on, no policies, privileges revoked); only `consume_api_quota` touches it.
+Daily per-user counters for paid outside APIs called by Edge Functions: `places` (#73, 100 a day) and `ai_fill` (#74, 30 a day). One row per `(user_id, kind, day)`, with `count`; `day` is the user's date in their profile time zone. Cascades with the profile. Clients can't read or write it at all (RLS on, no policies, privileges revoked); only `consume_api_quota` touches it.
 
 ### `activity_photos`
 `storage_path` (`<activity_id>/<file>` in the `activity-photos` bucket) and `position`. Anyone who can access the activity can add, remove or reorder its photos.
@@ -178,7 +179,7 @@ See [`ai/endpoints.md`](ai/endpoints.md) for parameters, return shapes and error
 | `join_group_via_link(token)` / `preview_invite_link(token)` | Invite links |
 | `respond_to_invitation(id, accept)` | Accept or decline |
 | `cancel_invitation(id)` | Any member cancels a pending invitation from their group |
-| `consume_api_quota(kind)` | Counts one paid outside-API call for the caller today and refuses past the daily limit (`places`: 100) with PT429 / HTTP 429. Called by Edge Functions with the user's token |
+| `consume_api_quota(kind)` | Counts one paid outside-API call for the caller today and refuses past the daily limit (`places`: 100, `ai_fill`: 30) with PT429 / HTTP 429. Called by Edge Functions with the user's token |
 | `group_deletion_summary(group)` | Owner only: members, upcoming plans, undated ideas, for the delete confirmation |
 | `delete_group(group, confirm_name)` | Owner only; the name must match. Notifies members and plan participants (`group_deleted`), then deletes the group (cascades: members, invites, types, group activities, plans and participants; activities stay) |
 | `transfer_ownership(group, new_owner)` | Owner only, to another current member. Swaps roles, logs it (`group_member` `updated`), notifies the new owner |
