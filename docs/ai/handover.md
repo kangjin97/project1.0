@@ -2,6 +2,8 @@
 
 Read this first if you're picking EasyPlan up without the history of earlier sessions: a new AI agent, a new account, or a new developer. It holds what used to live only in chat and in local agent memory. Then read [`CLAUDE.md`](../../CLAUDE.md) (rules and gotchas) and follow its "Where to look" table.
 
+**Using an AI agent other than Claude Code?** The rules still apply. [`CLAUDE.md`](../../CLAUDE.md) is the agent rulebook whatever the tool; [`AGENTS.md`](../../AGENTS.md) points to it for agents that look for that file. A few notes are about Claude Code itself (its preview pane, restarting the Claude app to pick up PATH changes, the `Co-Authored-By` / "Generated with Claude Code" lines); use your own tool's equivalent. Earlier agents kept no private memory outside the repo: everything known is in these docs, the issues and the PRs.
+
 Last updated: 2026-10-16.
 
 ## The project in one paragraph
@@ -27,6 +29,7 @@ All accounts belong to the owner. **No secrets are stored in the repo or in this
 | Namecheap | Domain `easyplanhehe.online` (DNS for Resend; email forwarding on). The web app does **not** use this domain yet | Owner's Namecheap login |
 | Gmail | `easyplanhehe@gmail.com`: public contact in the privacy policy; Resend account email | Owner |
 | Google Cloud | Project with **Places API (New)** for place search (#73); billing account and budget alert (owner, 2026-10-16) | API key (restricted to Places API (New)): `supabase/functions/.env` on each computer (git-ignored) and the Supabase secret `GOOGLE_MAPS_API_KEY` |
+| AIML API (aimlapi.com) | Claude Haiku 5.5 for "Fill from link" (#74), bought as $20 of prepaid credits through this reseller rather than from Anthropic directly (owner, 2026-10-16). **When the credits run out, recommend switching to Anthropic directly** (console.anthropic.com): cheaper (no markup), clear no-training terms, no code change. Steps: [`deployment.md`](../deployment.md#claude-for-fill-from-link-74) | API key: `supabase/functions/.env` on each computer (git-ignored) and Supabase secrets, as `ANTHROPIC_API_KEY` with `ANTHROPIC_BASE_URL=https://api.aimlapi.com` |
 | Google Play / Apple | Not set up yet (#13, #14) | — |
 
 Settings that exist only in dashboards, and how to redo them, are in [`deployment.md`](../deployment.md) §1 (Supabase auth URLs, SMTP, rate limits, email templates, DNS).
@@ -34,10 +37,15 @@ Settings that exist only in dashboards, and how to redo them, are in [`deploymen
 ## Current state (2026-10-16)
 
 **Where things are**
-- **Live site:** deployed 2026-10-15 from `main` at `e2534a6` (the second on-request deploy; the first was `5fb615c`). Everything on `main` is live.
-- **On `main` but not live yet:** recurring plans (#17, merged 2026-10-15 in `e085ba6`). Check with `git log --oneline e2534a6..origin/main`.
-- **Cloud database** (checked 2026-10-15): has every migration through `20261015064456_log_type_merge_updates.sql`. **Waiting for `supabase db push`** (owner, before the next deploy): `20261015083758_recurring_plans.sql` and `20261015083759_recurring_history.sql` (#17). Check with `supabase migration list --linked` (both computers are linked).
-- **In flight** (2026-10-16): the PR for #73 (Google Maps locations). Before the deploy that ships it, the owner must run `supabase db push` (`20261016044829_place_search.sql`), `supabase secrets set GOOGLE_MAPS_API_KEY=...` and `supabase functions deploy places` (`deployment.md` → Edge Functions and Google Maps). #74 (AI fill from a link) is next; its decisions are on the issue. Always check `gh pr list` and the board's In Progress column.
+- **Live site:** deployed 2026-10-15 from `main` at `e2534a6` (the second on-request deploy; the first was `5fb615c`).
+- **On `main` but not live yet:** recurring plans (#17) and Google Maps locations (#73). Check with `git log --oneline e2534a6..origin/main`.
+- **Cloud database** (checked 2026-10-16): has every migration through `20261015064456_log_type_merge_updates.sql`. **Waiting for `supabase db push`** (owner, before the next deploy): `20261015083758_recurring_plans.sql`, `20261015083759_recurring_history.sql` (#17), `20261016044829_place_search.sql` (#73) and, once #74 merges, `20261016050829_ai_fill_quota.sql`. Check with `supabase migration list --linked` (both computers are linked).
+- **In flight** (2026-10-16): the PR for #74 ("Fill from link" with AI). Before the deploy that ships #73 and #74, the owner must:
+  - `supabase db push` (recurring plans' two migrations, `20261016044829_place_search.sql`, `20261016050829_ai_fill_quota.sql`);
+  - `supabase secrets set GOOGLE_MAPS_API_KEY=...`, `ANTHROPIC_API_KEY=...` (the AIML API key) and `ANTHROPIC_BASE_URL=https://api.aimlapi.com`;
+  - `supabase functions deploy places` and `fill-activity`.
+
+  See `deployment.md` → Edge Functions.
 - **Deploys are on request only** (since 2026-10-15, #45): merging to `main` doesn't deploy. See "Working agreements" below.
 
 **What's built** (details per feature in [`features.md`](features.md))
@@ -51,15 +59,17 @@ Settings that exist only in dashboards, and how to redo them, are in [`deploymen
   - **"Has link" / "Has photos" filters** (#53) on My activities and the group Activities tab. F7.
   - **Repeating plans** (#17): weekly, every 2 weeks or monthly until a date (at most a year); "this date only" or "this and later dates" for every edit; Extend; one notification per series; one history line per series action. F8.
   - **Invite management** (#9): the Members tab lists active links (Revoke) and pending invitations (Cancel). Any member can do both; it's logged in group history and updates live. F3.
-  - **Google Maps locations** (#73, PR open): the Location field suggests real places (through the `places` Edge Function, the first one; 100 searches per person per day); the picked place ID opens the exact pin in Google Maps. F4.
+  - **Google Maps locations** (#73, merged): the Location field suggests real places (through the `places` Edge Function; 100 searches per person per day); the picked place ID opens the exact pin in Google Maps. F4.
+  - **Fill from link** (#74, PR open): on New activity, paste a TikTok/YouTube/web link (plus an optional screenshot or caption) and Claude Haiku 5.5 fills the form, location matched to a Google place, preview image offered as the first photo; nothing is saved until the user saves; 30 a day. Instagram and Facebook share no previews, so those need a screenshot or the caption. Tested locally end to end through AIML API on 2026-10-16 (website, YouTube, caption only, Instagram without extras, and saving with the preview photo); TikTok's oEmbed returned "overload" (429) from the Windows PC's network that day, so TikTok links are untested. F4.
 - **Auth emails** go through Resend, with EasyPlan templates from `supabase/templates/` (*Confirm signup*, *Reset password*, *Change email address*). The cloud copies are pasted by hand; if the dashboard and the files ever disagree, the files are the intended version.
 - **Privacy policy:** live at `/privacy.html`.
 
-**Not built yet** (`gh issue list`): AI fill from a link (#74, after #73), store apps (#13, #14), app icon (#15), server-side search (#16), push notifications (#18).
+**Not built yet** (`gh issue list`): store apps (#13, #14), app icon (#15), server-side search (#16), push notifications (#18).
 
 **Next priorities**
 1. `priority:high`: #5 phone smoke test together with #49 (live updates on two phones, step by step) on the live site, covering everything deployed on 2026-10-15 (#7–#12, #52, #53, the #58 fix).
 2. The backlog: #15 the app icon (needs the owner's direction), then the store apps (#13, #14) or v2 items (#16 server-side search, #18 push).
+3. **When the AIML API credits run out** (fills start failing; check the balance on aimlapi.com): suggest the owner moves to a direct Anthropic API key, which is cheaper. Steps, including the privacy page change: [`deployment.md`](../deployment.md#claude-for-fill-from-link-74).
 
 **Computers**
 - Both the Mac and the Windows 11 PC are set up ([`setup-mac.md`](../setup-mac.md), [`setup-windows.md`](../setup-windows.md)).
@@ -74,6 +84,7 @@ Settings that exist only in dashboards, and how to redo them, are in [`deploymen
   - status checked against the open issues, PRs, migrations and the cloud;
   - every documented path and section link checked.
 - Status sections re-checked on 2026-10-15 after #57, #10 and #58 (#61), again after #53, #52 and #12 (#66), and after #17 (#72): deploy state, cloud migrations (`supabase migration list --linked`), open issues and PRs.
+- Audited again on 2026-10-16 with #74, before the owner moved to a different AI agent: every doc checked against the code for the two Edge Functions, the quota migration and tests; all relative links and anchors resolve; the provider setup (AIML API now, Anthropic direct later) is described the same way in `deployment.md`, this file, `CLAUDE.md`, `endpoints.md`, `features.md`, `decisions.md`, `architecture.md` and the privacy page.
 
 ## How to resume work
 
@@ -116,6 +127,8 @@ These come from the owner's instructions and from how sessions have gone. They a
   - You can also play the other person from the database, acting as them through RLS (`set role authenticated` + `set_config('request.jwt.claims', …)` in `psql` via `docker exec -i supabase_db_group-planner psql -U postgres`).
   - Either way, screens should change within about 2 s without a reload. In pgTAP, call `set_config('easyplan.broadcasts_sent', '', true)` between steps, because the whole test is one transaction and the trigger sends once per topic and table per transaction.
 - **Dragging in the Claude preview pane** (e.g. testing #12's week view): the browser tool's drag is a single jump, which Flutter doesn't treat as a drag, and its clicks can miss small buttons when the viewport is scaled. Send pointer events from JavaScript instead, as a pointerdown, ~30 pointermoves 16 ms apart and a pointerup, on `document.querySelector('flutter-view')`. Multiply CSS coordinates by `devicePixelRatio`, since Flutter reads synthetic events in device pixels. Emulate a wide viewport no bigger than the pane (e.g. 900×650); larger ones get scaled down. Check the result in the database, not just the screen.
+- **Edge Functions read `supabase/functions/.env` only when `supabase functions serve` starts.** After the owner changes a key, restart it. A key that doesn't fit the provider shows up as 502 "Fill from link is unavailable right now." with `401 invalid x-api-key` in the serve log (on 2026-10-16 an AIML API key was first tried against Anthropic directly). Check a key's shape without printing it (length, prefix), never its value.
+- **A Claude.ai subscription can't power the app.** The owner asked; it's billed separately from the API and only covers personal use. The app needs an API key (AIML API now, Anthropic later).
 - **Rows in one transaction share `now()`**, so `created_at` can't order them (pgTAP tests run in one transaction). Order change-log rows by `change_log.id`, as `list_group_history` does.
 
 ## Open questions for the owner

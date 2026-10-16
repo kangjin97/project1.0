@@ -433,3 +433,9 @@ enabled = true
 # `supabase secrets set GOOGLE_MAPS_API_KEY=...` in the cloud.
 [functions.places]
 verify_jwt = true
+
+# "Fill from link" (#74). Signed-in users only; needs ANTHROPIC_API_KEY (and
+# GOOGLE_MAPS_API_KEY to match places), from supabase/functions/.env locally
+# and `supabase secrets set` in the cloud.
+[functions.fill-activity]
+verify_jwt = true

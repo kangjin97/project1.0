@@ -5,7 +5,7 @@ Every backend call the app makes, plus the RPCs the database exposes but the app
 **Conventions**
 - "Who" is enforced by the database (RLS, grants or the RPC body), not by the app.
 - `P0001 "<msg>"` means the RPC raises that message; the app shows it via `friendlyError`.
-- Dart methods are in `app/lib/data/groups_repository.dart` (G), `activities_repository.dart` (A), `schedule_repository.dart` (S), `profile_repository.dart` (P), `auth_repository.dart` (Au), `notifications_repository.dart` (N) and `realtime_repository.dart` (R) and `places_repository.dart` (Pl); `friendlyError` is in `groups_repository.dart`.
+- Dart methods are in `app/lib/data/groups_repository.dart` (G), `activities_repository.dart` (A), `schedule_repository.dart` (S), `profile_repository.dart` (P), `auth_repository.dart` (Au), `notifications_repository.dart` (N) and `realtime_repository.dart` (R), `places_repository.dart` (Pl) and `ai_fill_repository.dart` (AI); `friendlyError` is in `groups_repository.dart`.
 - `<Profile.columns>` is `id, username, display_name, avatar_path` (`data/models.dart`); embedded profiles use it.
 - Each repository file ends with its Riverpod providers (`FutureProvider` / `.family`, keyed by id) and invalidation helpers (`invalidateActivity`, `invalidateLabels`, `invalidateSchedule`). Providers are named after the method, e.g. `myGroupsProvider`, `membersProvider(groupId)`, `scheduleProvider(query)`; only ones that differ are listed below.
 
@@ -119,13 +119,21 @@ Select string `Activity.columns` (in `models.dart`):
 
 ## Place search (Edge Function)
 
-Dart: `app/lib/data/places_repository.dart` (Pl). The project's first Edge Function: `supabase/functions/places/index.ts`.
+Dart: `app/lib/data/places_repository.dart` (Pl). Function: `supabase/functions/places/index.ts` (shared code in `supabase/functions/_shared/`).
 
 | Dart | Call | Who | Notes |
 |---|---|---|---|
-| Pl `suggest(input)` | `functions.invoke('places', body: {input, languageCode: 'en'})` → `{suggestions: [{placeId, text, mainText, secondaryText}]}` | signed in (`verify_jwt = true`) | Trimmed input under 3 characters returns `[]` without a call; the function also returns `[]` for under 3 or over 200 characters without spending a search. Each real search first calls `consume_api_quota('places')` as the caller (100 a day). Errors come back as `{error}`, which the app shows: **429** "You've used today's place searches…", **503** key not set, **502** Google unavailable, **401** not signed in. Behind it: `POST https://places.googleapis.com/v1/places:autocomplete` with `X-Goog-Api-Key` (secret `GOOGLE_MAPS_API_KEY`) and a field mask of `placeId`, `text`, `structuredFormat`; no session token, no Place Details. |
-| — | `rpc consume_api_quota(p_kind text) → void` | signed in | Counts one call of `p_kind` for the caller today (their profile time zone) and raises **PT429** (HTTP 429) "daily limit reached; try again tomorrow" past the limit (`places`: 100). P0001 "unknown quota" for other kinds; 42501 when signed out. The refused call isn't counted. Called by Edge Functions, not by the app. |
+| Pl `suggest(input)` | `functions.invoke('places', body: {input, languageCode: 'en'})` → `{suggestions: [{placeId, text, mainText, secondaryText}]}` | signed in (`verify_jwt = true`) | Trimmed input under 3 characters returns `[]` without a call; the function also returns `[]` for under 3 or over 200 characters without spending a search. Each real search first calls `consume_api_quota('places')` as the caller (100 a day). Errors come back as `{error}`, which the app shows: **429** "You've used today's place searches…", **503** key not set, **502** Google unavailable, **401** not signed in, **400** bad JSON, **405** not a POST. Behind it: `POST https://places.googleapis.com/v1/places:autocomplete` with `X-Goog-Api-Key` (secret `GOOGLE_MAPS_API_KEY`) and a field mask of `placeId`, `text`, `structuredFormat`; no session token, no Place Details. |
+| — | `rpc consume_api_quota(p_kind text) → void` | signed in | Counts one call of `p_kind` for the caller today (their profile time zone) and raises **PT429** (HTTP 429) "daily limit reached; try again tomorrow" past the limit (`places`: 100, `ai_fill`: 30). P0001 "unknown quota" for other kinds; 42501 when signed out. The refused call isn't counted. Called by Edge Functions, not by the app. |
 | `googleMapsUri(location, placeId:)` | — | — | `https://www.google.com/maps/search/?api=1&query=<location>[&query_place_id=<id>]`: a Maps URL, no key, no cost. |
+
+## Fill from link (Edge Function)
+
+Dart: `app/lib/data/ai_fill_repository.dart` (AI). Function: `supabase/functions/fill-activity/index.ts` (shared code in `supabase/functions/_shared/`).
+
+| Dart | Call | Who | Notes |
+|---|---|---|---|
+| AI `fill({url, caption, screenshot, screenshotType})` | `functions.invoke('fill-activity', body: {url?, caption?, image?: {data: <base64>, mediaType}})` → `{source, fields: {name, description, location, placeId, priceMin, priceMax, currency, url, label: {name, isNew} \| null}, photo: {data, mediaType} \| null}` | signed in (`verify_jwt = true`) | **Order:** <ol><li>Needs a link, caption or screenshot (**400** otherwise, or for bad JSON; a screenshot whose `mediaType` isn't JPEG/PNG/GIF/WebP is ignored).</li><li>**503** "isn't set up yet" when `ANTHROPIC_API_KEY` is missing.</li><li>Reads the link's official preview (`source` `tiktok`/`youtube`/`web`/`meta`/`none`). With nothing usable and no screenshot or caption, returns **422** with a hint, before counting or calling Claude.</li><li>`consume_api_quota('ai_fill')` (30 a day; **429** past it).</li><li>Reads the caller's label names (RLS).</li><li>Calls Claude Haiku 5.5 with structured outputs (secret `ANTHROPIC_API_KEY`; optional `ANTHROPIC_BASE_URL`, now `https://api.aimlapi.com`, the reseller the owner buys credits from); **422** on refusal, no fields, or nothing to do (`found` false and no name).</li><li>Matches `location` with one Google place search (counted as `places`). Skipped, keeping Claude's text, when the location is under 3 characters, `GOOGLE_MAPS_API_KEY` is missing, that quota is used up or Google fails.</li></ol>**The fill is counted before Claude is called**, so a failed Claude call still uses one of the 30. **Other errors:** **503** Claude busy (rate-limited), **502** Claude unavailable (including a wrong key or no credit), **413** screenshot over ~4.5 MB, **401** not signed in (also any non-429 error from the quota check), **405** not a POST. Output is trimmed: name 120, label 40, location 200 characters. **Limits:** caption ≤ 4000 characters, link ≤ 2000. `photo` is the link's preview image (JPEG/PNG/GIF/WebP ≤ 4 MB), base64. Nothing is saved. |
 
 ## History
 
