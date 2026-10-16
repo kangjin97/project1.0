@@ -37,15 +37,10 @@ Settings that exist only in dashboards, and how to redo them, are in [`deploymen
 ## Current state (2026-10-16)
 
 **Where things are**
-- **Live site:** deployed 2026-10-15 from `main` at `e2534a6` (the second on-request deploy; the first was `5fb615c`).
-- **On `main` but not live yet:** recurring plans (#17) and Google Maps locations (#73). Check with `git log --oneline e2534a6..origin/main`.
-- **Cloud database** (checked 2026-10-16): has every migration through `20261015064456_log_type_merge_updates.sql`. **Waiting for `supabase db push`** (owner, before the next deploy): `20261015083758_recurring_plans.sql`, `20261015083759_recurring_history.sql` (#17), `20261016044829_place_search.sql` (#73) and, once #74 merges, `20261016050829_ai_fill_quota.sql`. Check with `supabase migration list --linked` (both computers are linked).
-- **In flight** (2026-10-16): PR #76 for #74 ("Fill from link" with AI), waiting for the owner to merge. Before the deploy that ships #73 and #74, the owner must:
-  - `supabase db push` (recurring plans' two migrations, `20261016044829_place_search.sql`, `20261016050829_ai_fill_quota.sql`);
-  - `supabase secrets set GOOGLE_MAPS_API_KEY=...`, `ANTHROPIC_API_KEY=...` (the AIML API key) and `ANTHROPIC_BASE_URL=https://api.aimlapi.com`;
-  - `supabase functions deploy places` and `fill-activity`.
-
-  See `deployment.md` → Edge Functions.
+- **Live site:** deployed 2026-10-16 from `main` at `64de21b` (the third on-request deploy, run 38859417843; earlier ones were `5fb615c` and `e2534a6`). Everything on `main` up to then is live, including recurring plans (#17), Google Maps locations (#73) and Fill from link (#74). Anything merged later: `git log --oneline 64de21b..origin/main`.
+- **Cloud database** (checked 2026-10-16): has every migration through `20261016050829_ai_fill_quota.sql`, nothing waiting. Check with `supabase migration list --linked` (both computers are linked).
+- **Edge Functions in the cloud** (2026-10-16): `places` and `fill-activity` deployed (version 1, `verify_jwt` on); secrets `GOOGLE_MAPS_API_KEY`, `ANTHROPIC_API_KEY` (the AIML API key) and `ANTHROPIC_BASE_URL` set (the owner used `supabase secrets set --env-file supabase/functions/.env`). Check with `supabase functions list` and `supabase secrets list` (names and hashes only). Redeploy a function whenever `supabase/functions/` changes (`deployment.md` → Deploying the functions).
+- **In flight:** nothing (2026-10-16).
 - **Deploys are on request only** (since 2026-10-15, #45): merging to `main` doesn't deploy. See "Working agreements" below.
 
 **What's built** (details per feature in [`features.md`](features.md))
@@ -60,14 +55,14 @@ Settings that exist only in dashboards, and how to redo them, are in [`deploymen
   - **Repeating plans** (#17): weekly, every 2 weeks or monthly until a date (at most a year); "this date only" or "this and later dates" for every edit; Extend; one notification per series; one history line per series action. F8.
   - **Invite management** (#9): the Members tab lists active links (Revoke) and pending invitations (Cancel). Any member can do both; it's logged in group history and updates live. F3.
   - **Google Maps locations** (#73, merged): the Location field suggests real places (through the `places` Edge Function; 100 searches per person per day); the picked place ID opens the exact pin in Google Maps. F4.
-  - **Fill from link** (#74, PR #76 open): on New activity, paste a TikTok/YouTube/web link (plus an optional screenshot or caption) and Claude Haiku 5.5 fills the form, location matched to a Google place, preview image offered as the first photo; nothing is saved until the user saves; 30 a day. Instagram and Facebook share no previews, so those need a screenshot or the caption. Tested locally end to end through AIML API on 2026-10-16 (website, YouTube, caption only, Instagram without extras, and saving with the preview photo); TikTok's oEmbed returned "overload" (429) from the Windows PC's network that day, so TikTok links are untested. F4.
+  - **Fill from link** (#74, merged and live 2026-10-16): on New activity, paste a TikTok/YouTube/web link (plus an optional screenshot or caption) and Claude Haiku 5.5 fills the form, location matched to a Google place, preview image offered as the first photo; nothing is saved until the user saves; 30 a day. Instagram and Facebook share no previews, so those need a screenshot or the caption. Tested locally end to end through AIML API on 2026-10-16 (website, YouTube, caption only, Instagram without extras, and saving with the preview photo); TikTok's oEmbed returned "overload" (429) from the Windows PC's network that day, so TikTok links are untested. F4.
 - **Auth emails** go through Resend, with EasyPlan templates from `supabase/templates/` (*Confirm signup*, *Reset password*, *Change email address*). The cloud copies are pasted by hand; if the dashboard and the files ever disagree, the files are the intended version.
 - **Privacy policy:** live at `/privacy.html`.
 
 **Not built yet** (`gh issue list`): store apps (#13, #14), app icon (#15), server-side search (#16), push notifications (#18).
 
 **Next priorities**
-1. `priority:high`: #5 phone smoke test together with #49 (live updates on two phones, step by step) on the live site, covering everything deployed on 2026-10-15 (#7–#12, #52, #53, the #58 fix).
+1. `priority:high`: #5 phone smoke test together with #49 (live updates on two phones, step by step) on the live site, covering everything deployed on 2026-10-15 (#7–#12, #52, #53, the #58 fix) and 2026-10-16 (repeating plans #17, Google Maps locations #73, Fill from link #74, including a TikTok link and a screenshot from the phone, which weren't tested locally).
 2. The backlog: #15 the app icon (needs the owner's direction), then the store apps (#13, #14) or v2 items (#16 server-side search, #18 push).
 3. **When the AIML API credits run out** (fills start failing; check the balance on aimlapi.com): suggest the owner moves to a direct Anthropic API key, which is cheaper. Steps, including the privacy page change: [`deployment.md`](../deployment.md#claude-for-fill-from-link-74).
 
