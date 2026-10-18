@@ -31,8 +31,10 @@ select respond_to_invitation('cccccccc-0000-0000-0000-000000000001', true);
 
 -- Ann makes a link; Ben (any member) revokes it.
 select pg_temp.act_as('11111111-1111-1111-1111-111111111111');
-insert into group_invite_links (id, group_id, expires_at, token) values
-  ('dddddddd-0000-0000-0000-000000000001', 'aaaaaaaa-0000-0000-0000-000000000001', now() + interval '7 days', 'tok-crew-1');
+-- The server picks the token (#82), so read it back.
+with l as (insert into group_invite_links (id, group_id) values
+  ('dddddddd-0000-0000-0000-000000000001', 'aaaaaaaa-0000-0000-0000-000000000001') returning token)
+select set_config('test.tok1', token, true) from l;
 
 select pg_temp.act_as('33333333-3333-3333-3333-333333333333');
 update group_invite_links set revoked_at = now() where id = 'dddddddd-0000-0000-0000-000000000001';
@@ -50,15 +52,16 @@ select throws_ok($$ update group_invite_links set revoked_at = null where id = '
                  'P0001', 'this invite link is already revoked', 'a revoked link can''t be revived');
 
 select pg_temp.act_as('33333333-3333-3333-3333-333333333333');
-select throws_ok($$ select join_group_via_link('tok-crew-1') $$,
+select throws_ok($$ select join_group_via_link(current_setting('test.tok1')) $$,
                  'P0001', 'invite link is invalid or expired', 'nobody can join through a revoked link');
 
 -- Using a link (not revoking it) still works: Ann makes another, Cat joins.
 select pg_temp.act_as('11111111-1111-1111-1111-111111111111');
-insert into group_invite_links (group_id, expires_at, token) values
-  ('aaaaaaaa-0000-0000-0000-000000000001', now() + interval '7 days', 'tok-crew-2');
+with l as (insert into group_invite_links (group_id) values
+  ('aaaaaaaa-0000-0000-0000-000000000001') returning token)
+select set_config('test.tok2', token, true) from l;
 select pg_temp.act_as('33333333-3333-3333-3333-333333333333');
-select is(join_group_via_link('tok-crew-2'), 'aaaaaaaa-0000-0000-0000-000000000001'::uuid,
+select is(join_group_via_link(current_setting('test.tok2')), 'aaaaaaaa-0000-0000-0000-000000000001'::uuid,
           'joining through a link still counts its use');
 
 -- Ann invites Dan; Ben (any member) cancels it.

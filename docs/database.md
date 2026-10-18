@@ -24,6 +24,7 @@ Source of truth: `supabase/migrations/`. Test coverage: `supabase/tests/database
 | `20261015083759_recurring_history.sql` | `list_group_history` folds one action across a series into one row (`repeat_count`) |
 | `20261016044829_place_search.sql` | Google Maps locations (#73): `activities.place_id` (format check, needs location text), trigger `activities_drop_stale_place`; `api_usage` + `consume_api_quota` (daily per-user quota for paid outside APIs) |
 | `20261016050829_ai_fill_quota.sql` | `consume_api_quota` gains the `ai_fill` kind (30 a day) for "Fill from link" (#74) |
+| `20261018190056_invite_link_expiry.sql` | Invite links last at most 7 days, and the server picks the token and bookkeeping columns (`guard_invite_link_insert`, #82); caps any existing longer link |
 
 ## Tables
 
@@ -50,7 +51,8 @@ Access:
 - **Members:** members can read the member list. You can remove yourself (leave), and the owner can remove anyone. Joining only happens through `respond_to_invitation` or `join_group_via_link`. If the owner leaves, ownership passes to the longest-standing member.
 
 ### `group_invite_links`, `group_invitations`
-- **Links:** a random 64-hex `token`, optional `expires_at` and `max_uses`, plus `use_count` and `revoked_at`. Members create and read them.
+- **Links:** a random 64-hex `token`, `expires_at`, optional `max_uses`, plus `use_count` and `revoked_at`. Members create and read them.
+  - On insert, the `group_invite_links_guard_insert` trigger caps `expires_at` at 7 days from now (a missing one becomes 7 days; shorter is kept) and sets `token`, `created_at`, `use_count` and `revoked_at` itself, whatever the client sent (#82).
   - Only `revoked_at` can be updated, by any member, and only once: the `group_invite_links_guard_revoke` trigger sets it to `now()` and refuses to change or clear it afterwards (P0001).
   - Logged (`invite_link`) and broadcast to the group.
 - **Invitations:** `invitee_id`, `invited_by`, `status` `pending|accepted|declined|cancelled`, `responded_at`.
@@ -218,7 +220,7 @@ Used by RLS policies and RPCs. Signed-in users can call the read-only access hel
 
 Not executable by clients (`function_privileges.test.sql` checks all of this):
 - Internal helpers `resolve_group_type`, `apply_participants`, `entry_range`, `series_dates`, `entry_key`, `series_targets`, `notify_series` (only called inside `security definer` RPCs).
-- Every trigger function: `handle_new_user`, `handle_new_group`, `log_change`, `notify_invitee`, `revert_entries_to_events`, `touch_updated`, `group_activity_defaults`, `guard_personal_type`, `refile_activity`, `refile_renamed_label`, `guard_timezone`, `hand_over_ownership`, `broadcast_change`, `guard_invite_link_revoke`, `drop_stale_place`. Postgres doesn't check `execute` when firing a trigger.
+- Every trigger function: `handle_new_user`, `handle_new_group`, `log_change`, `notify_invitee`, `revert_entries_to_events`, `touch_updated`, `group_activity_defaults`, `guard_personal_type`, `refile_activity`, `refile_renamed_label`, `guard_timezone`, `hand_over_ownership`, `broadcast_change`, `guard_invite_link_revoke`, `guard_invite_link_insert`, `drop_stale_place`. Postgres doesn't check `execute` when firing a trigger.
 - Still callable by signed-in users because policies or invoker triggers use them: `try_uuid` (storage policies), `is_valid_timezone` (`guard_timezone`); and `list_timezones` (the picker).
 - Signed-out (`anon`) callers can execute only `username_available`.
 - Every function in `public` sets `search_path` (`= ''` and fully qualified names).
@@ -232,6 +234,7 @@ Not executable by clients (`function_privileges.test.sql` checks all of this):
 | `groups` | `on_group_created` | Owner membership and starter types |
 | `group_members` | `group_members_hand_over` | When the last owner leaves (or is deleted), the longest-standing member becomes owner; an empty group is deleted |
 | `group_invitations` | `on_invitation_created` | Notifies the invitee |
+| `group_invite_links` | `group_invite_links_guard_insert` | Before insert: expiry at most 7 days; server-picked token, `created_at`, `use_count`, `revoked_at` |
 | `group_invite_links` | `group_invite_links_guard_revoke` | Revoking is one-way; sets `revoked_at` to `now()` |
 | `activities` | `activities_touch` | Sets `updated_at` / `updated_by` |
 | `activities` | `activities_drop_stale_place` | Changing `location` without a new `place_id` clears the place |
