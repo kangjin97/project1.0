@@ -40,7 +40,7 @@ Settings that exist only in dashboards, and how to redo them, are in [`deploymen
 - **Live site:** deployed 2026-10-16 from `main` at `64de21b` (the third on-request deploy, run 38859417843; earlier ones were `5fb615c` and `e2534a6`). Everything on `main` up to then is live, including recurring plans (#17), Google Maps locations (#73) and Fill from link (#74). Anything merged later: `git log --oneline 64de21b..origin/main`.
 - **Cloud database** (checked 2026-10-16): has every migration through `20261016050829_ai_fill_quota.sql`, nothing waiting. Check with `supabase migration list --linked` (both computers are linked).
 - **Edge Functions in the cloud** (2026-10-16): `places` and `fill-activity` deployed (version 1, `verify_jwt` on); secrets `GOOGLE_MAPS_API_KEY`, `ANTHROPIC_API_KEY` (the AIML API key) and `ANTHROPIC_BASE_URL` set (the owner used `supabase secrets set --env-file supabase/functions/.env`). Check with `supabase functions list` and `supabase secrets list` (names and hashes only). Redeploy a function whenever `supabase/functions/` changes (`deployment.md` → Deploying the functions).
-- **In flight:** nothing (2026-10-16).
+- **In flight:** #79 (Fill from link reused an unrelated label; prompt fix). Once merged, the owner runs `supabase functions deploy fill-activity`; no migration, no web deploy needed.
 - **Deploys are on request only** (since 2026-10-15, #45): merging to `main` doesn't deploy. See "Working agreements" below.
 
 **What's built** (details per feature in [`features.md`](features.md))
