@@ -38,9 +38,9 @@ Settings that exist only in dashboards, and how to redo them, are in [`deploymen
 
 **Where things are**
 - **Live site:** deployed 2026-10-16 from `main` at `64de21b` (the third on-request deploy, run 38859417843; earlier ones were `5fb615c` and `e2534a6`). Everything on `main` up to then is live, including recurring plans (#17), Google Maps locations (#73) and Fill from link (#74). Anything merged later: `git log --oneline 64de21b..origin/main`.
-- **Cloud database** (checked 2026-10-19): has every migration through `20261016050829_ai_fill_quota.sql`, nothing waiting. Check with `supabase migration list --linked` (both computers are linked).
+- **Cloud database** (checked 2026-10-19): has every migration through `20261016050829_ai_fill_quota.sql`; `20261018190056_invite_link_expiry.sql` (#82) waits for `supabase db push` once merged. Check with `supabase migration list --linked` (both computers are linked).
 - **Edge Functions in the cloud** (checked 2026-10-19): `places` version 1 (2026-10-16) and `fill-activity` version 2 (redeployed 2026-10-19 with the #79 label fix), both with `verify_jwt` on; secrets `GOOGLE_MAPS_API_KEY`, `ANTHROPIC_API_KEY` (the AIML API key) and `ANTHROPIC_BASE_URL` set (the owner used `supabase secrets set --env-file supabase/functions/.env`). Check with `supabase functions list` and `supabase secrets list` (names and hashes only). Redeploy a function whenever `supabase/functions/` changes (`deployment.md` → Deploying the functions).
-- **In flight:** nothing (2026-10-19). #79 (Fill from link reused an unrelated label) is fixed, merged and its function redeployed; it needed no web deploy, since only the function changed.
+- **In flight:** #82 (invite links capped at 7 days in the database). It adds `20261018190056_invite_link_expiry.sql`: after merging, the owner runs `supabase db push`, before or with the next web deploy (the current app already sends 7 days, so the order doesn't break anything).
 - **Deploys are on request only** (since 2026-10-15, #45): merging to `main` doesn't deploy. See "Working agreements" below.
 
 **What's built** (details per feature in [`features.md`](features.md))
@@ -59,7 +59,7 @@ Settings that exist only in dashboards, and how to redo them, are in [`deploymen
 - **Auth emails** go through Resend, with EasyPlan templates from `supabase/templates/` (*Confirm signup*, *Reset password*, *Change email address*). The cloud copies are pasted by hand; if the dashboard and the files ever disagree, the files are the intended version.
 - **Privacy policy:** live at `/privacy.html`.
 
-**Not built yet** (`gh issue list`): store apps (#13, #14), app icon (#15), server-side search (#16), push notifications (#18). Database guards still missing (found 2026-10-19): invite-link expiry (#82) and display-name length (#83).
+**Not built yet** (`gh issue list`): store apps (#13, #14), app icon (#15), server-side search (#16), push notifications (#18). Database guard still missing (found 2026-10-19): display-name length (#83).
 
 **Next priorities**
 1. `priority:high`: #5 phone smoke test together with #49 (live updates on two phones, step by step) on the live site, covering everything deployed on 2026-10-15 (#7–#12, #52, #53, the #58 fix) and 2026-10-16 (repeating plans #17, Google Maps locations #73, Fill from link #74, including a TikTok link and a screenshot from the phone, which weren't tested locally).

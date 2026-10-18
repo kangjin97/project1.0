@@ -27,7 +27,7 @@ Status legend: **Done** = DB + UI + tests. **DB only** = schema/RPCs/tests exist
 
 ## F3. Invites — Done
 - Direct: search by username prefix or exact email → invitation → invitee accepts/declines on Groups page.
-- Link: 7-day invite code/link (`<APP_URL>/join/<token>`, built by `AppConfig.inviteLink`); "Join with code" accepts the bare code or a pasted link; preview shows group name and member count; joining is idempotent. On Android the link opens the installed app once App Links are verified (see `docs/deployment.md`).
+- Link: 7-day invite code/link (the database caps every link at 7 days) (`<APP_URL>/join/<token>`, built by `AppConfig.inviteLink`); "Join with code" accepts the bare code or a pasted link; preview shows group name and member count; joining is idempotent. On Android the link opens the installed app once App Links are verified (see `docs/deployment.md`).
 - **Managing invites** (Members tab, any member; owner's choices):
   - **Active invite links** lists links that still work (not expired, used up or revoked): code, who made it, expiry, "N joined". Tap a link to copy it again.
   - **Revoke** asks for confirmation. Revoking is one-way: the database sets the time and refuses to undo it. People who already joined stay.
@@ -36,7 +36,7 @@ Status legend: **Done** = DB + UI + tests. **DB only** = schema/RPCs/tests exist
   - Both lists update live, and every create, revoke, invite and cancel shows in group history with who did it (F10).
 - UI: `group_page.dart` (`_InviteSheet`, `_showInviteLinkDialog`, `_InviteLinksSection`, `_SentInvitationsSection`), `groups_page.dart` (invitations, "Join with code"), `join_page.dart`.
 - Data: G `searchUsers`, `invite`, `pendingInvitations`, `respond`, `createInviteLink`, `previewLink`, `joinViaLink`, `inviteLinks`, `revokeInviteLink`, `sentInvitations`, `cancelInvitation`; providers `invitationsProvider`, `inviteLinksProvider(groupId)`, `sentInvitationsProvider(groupId)`; models `InviteLink` (`isActiveAt`), `SentInvitation`.
-- DB: `group_invitations` (status `pending|accepted|declined|cancelled`), `group_invite_links`, `find_user_by_email`, `respond_to_invitation`, `cancel_invitation`, `preview_invite_link`, `join_group_via_link`, triggers `notify_invitee`, `group_invite_links_guard_revoke`.
+- DB: `group_invitations` (status `pending|accepted|declined|cancelled`), `group_invite_links`, `find_user_by_email`, `respond_to_invitation`, `cancel_invitation`, `preview_invite_link`, `join_group_via_link`, triggers `notify_invitee`, `group_invite_links_guard_revoke`, `group_invite_links_guard_insert` (7-day cap and server-picked token, #82).
 - Tests: `core_rules.test.sql`; `invite_management.test.sql` (any member revokes, non-members can't, server sets the time, no un-revoking, revoked links refuse joins, any member cancels, invitee can't, only pending ones, cancelled can't be accepted, alert shows "cancelled", history lines without codes, live broadcasts).
 
 ## F4. Activities — Done
@@ -215,5 +215,4 @@ Open at the time of writing:
 | #16 Server-side search and filters for large groups | F7 | feature |
 | #18 Push notifications on phones | F9 | feature (v2) |
 | #49 Test live updates on two phones against the live site | F13 | chore |
-| #82 Invite links: enforce the 7-day expiry in the database | F3 | bug |
 | #83 Display name: enforce the 50-character limit in the database | F11 | bug |
