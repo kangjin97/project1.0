@@ -22,7 +22,7 @@ flowchart LR
   EF -- "official previews" --> WEB[TikTok / YouTube oEmbed, page preview tags]
 ```
 
-There is no custom server of our own. The Flutter app talks to Supabase directly. The one exception is Supabase **Edge Functions** (`supabase/functions/`) for calls that need a secret key: Google place search (`places`, #73) and "Fill from link" (`fill-activity`, #74: official link previews + Claude, currently bought through the reseller AIML API). They run as the signed-in user, check their daily quota in the database, and keep the keys out of the browser. Otherwise and **every rule is enforced in Postgres** through Row Level Security, column-level grants, triggers, and `security definer` functions (RPCs). The app does no access control of its own; at most it hides buttons that the database would reject anyway.
+There is no custom server of our own. The Flutter app talks to Supabase directly. The one exception is Supabase **Edge Functions** (`supabase/functions/`) for calls that need a secret key: Google place search (`places`, #73) and "Fill from link" (`fill-activity`, #74: official link previews + Claude, currently bought through the reseller AIML API). They run as the signed-in user, check their daily quota in the database, and keep the keys out of the browser. Otherwise, **every rule is enforced in Postgres** through Row Level Security, column-level grants, triggers, and `security definer` functions (RPCs). The app does no access control of its own; at most it hides buttons that the database would reject anyway.
 
 ## Flutter app
 
@@ -31,7 +31,7 @@ There is no custom server of our own. The Flutter app talks to Supabase directly
 | Layer | Location | Responsibility |
 |---|---|---|
 | Entry | `main.dart` | Path URL strategy, release-config guard, `Supabase.initialize`, `AppClock.init`, `ProviderScope`, Material 3 theme |
-| Config | `config.dart` | `SUPABASE_URL`, `SUPABASE_PUBLISHABLE_KEY`, `APP_URL` (defaults to local; `--dart-define-from-file=env/prod.json` for releases); invite and privacy links |
+| Config | `config.dart` | `SUPABASE_URL`, `SUPABASE_PUBLISHABLE_KEY`, `APP_URL` (defaults to the page's origin on web, `http://127.0.0.1:3000` elsewhere; `--dart-define-from-file=env/prod.json` for releases); invite and privacy links |
 | Routing | `router.dart` | `go_router` routes, auth redirect, `ShellRoute` with the navigation shell |
 | Data | `data/models.dart`, `data/schedule_models.dart` | Plain immutable models with `fromJson`, plus select-column strings; schedule entries, timing and date helpers |
 | Data | `data/*_repository.dart` | Every Supabase call (`auth_repository.dart` for sign-up, sign-in and password resets), plus `FutureProvider`s exposing them. `friendlyError` lives in `groups_repository.dart`. Elsewhere the app only reads local session state (`currentUser`, `onAuthStateChange`) and calls `signOut` |
@@ -49,7 +49,7 @@ There is no custom server of our own. The Flutter app talks to Supabase directly
 | `/join/:token` | `JoinPage` | Previews and joins a group from an invite link. Outside the shell. |
 | `/schedule` | `MySchedulePage` | List / Week / Month switch on all sizes; phones default to List, wide screens to Week. |
 | `/groups` | `GroupsPage` | Groups list and pending invitations. |
-| `/groups/:id` | `GroupPage` | Tabs: Activities, Schedule, Members, Types. The ⋮ menu has Rename, History and Leave. |
+| `/groups/:id` | `GroupPage` | Tabs: Activities, Schedule, Members, Types. The ⋮ menu has History and Leave, plus Rename and Delete for the owner. |
 | `/groups/:id/history` | `GroupHistoryPage` | Who did what in the group, newest first; opened with `context.push` from the group's menu. Lines open the activity (`context.push`), the plan's detail sheet (`showEntryDetail` with `queryAroundEntry`) or the member's profile. |
 | `/activities` | `ActivitiesPage` | My activities. |
 | `/notifications` | `NotificationsPage` | The "Alerts" tab: notifications, newest first; opening marks them read. |
@@ -87,14 +87,16 @@ Repositories throw `PostgrestException`, `AuthException` or `StorageException`. 
 | `AuthException` | Its message (from Supabase Auth) |
 | Anything else, including `StorageException` | "Something went wrong. Please try again." |
 
+Edge Function calls are different: `PlacesRepository` and `AiFillRepository` turn a `FunctionException` into `PlaceSearchException` / `AiFillException` carrying the function's `{error}` text, and the place field and the Fill-from-link sheet show that text directly.
+
 ## Backend security model
 
 1. **RLS on every table.** Policies are written with `security definer` helpers, so they don't recurse through other tables' policies:
    - `is_group_member(group)` and `is_group_owner(group)`
    - `can_access_activity(activity)`: the owner, or a member of a group it's shared into
    - `shares_group_with(user)`, `entry_group(entry)`, `is_entry_participant(entry)`
-2. **Column grants.** `update` is revoked on tables and granted only on editable columns. Clients can't change ownership, ids or bookkeeping columns, and can't move a schedule entry's time except through `reschedule_entry`, which checks for clashes.
-3. **Insert-only through RPCs.** `group_members`, `schedule_entries`, `schedule_participants`, `notifications`, `change_log` and `type_merges` can't be inserted directly; the RPCs or triggers do it.
+2. **Column grants.** `update` is revoked on tables and granted only on editable columns. Clients can't change ownership, ids or bookkeeping columns, and can't move a schedule entry's time except through `reschedule_entry` or `reschedule_following`, which check for clashes.
+3. **Insert-only through RPCs.** `group_members`, `schedule_entries`, `schedule_participants`, `notifications`, `change_log`, `type_merges` and `schedule_series` can't be inserted directly; the RPCs or triggers do it.
 4. **Triggers do the bookkeeping.**
    - Profile creation on sign-up, group owner membership and starter types.
    - `updated_at` / `updated_by`, and the change log.
@@ -121,7 +123,7 @@ sequenceDiagram
 
 ### Changing or renaming a label
 
-When `activities.personal_type_id` or `personal_types.name` changes, a trigger runs `resolve_group_type` for every group the activity is in. It sets `source_type_name` and `type_id`, which overrides any type a member chose by hand.
+When `activities.personal_type_id` or `personal_types.name` changes, a trigger runs `resolve_group_type` for every group the activity is in. It sets `source_type_name` and `type_id`, which overrides any type a member chose by hand. When the label is removed, only `source_type_name` is cleared; the group types stay.
 
 ### Merging types
 

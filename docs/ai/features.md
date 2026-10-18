@@ -138,7 +138,7 @@ Status legend: **Done** = DB + UI + tests. **DB only** = schema/RPCs/tests exist
 ## F12. Account lifecycle and release readiness — Done
 - **Forgot password**: sign-in screen → email → `resetPasswordForEmail(redirectTo: <APP_URL>/reset-password)` → link opens `ResetPasswordPage` (waits for the PKCE code exchange, then "Choose a new password"; "link expired" after 10 s). The router sends any `passwordRecovery` session to `/reset-password`.
 - **Delete account**: Profile → Delete account (type username) → removes storage files (`my_storage_files`) → `delete_my_account` → local sign-out. DB: activities deleted (unshared first so plans become events), auth user deleted (cascades), groups handed over by `hand_over_ownership` trigger (also on normal "leave"), "who did it" columns `on delete set null`.
-- **Privacy policy**: `app/web/privacy.html` (effective 13 October 2026; contact easyplanhehe@gmail.com; names Supabase (Singapore), Netlify and Resend (Japan)), linked from sign-up and the profile (`AppConfig.privacyPolicyUrl`).
+- **Privacy policy**: `app/web/privacy.html` (last updated 16 October 2026; contact easyplanhehe@gmail.com; names Supabase (Singapore), Netlify, Resend (Japan), Google Maps Platform (location search) and AIML API / Anthropic (Fill from link)), linked from sign-up and the profile (`AppConfig.privacyPolicyUrl`).
 - **Auth emails** (sign-up confirmation, password reset, email change): Supabase custom SMTP through Resend, from `no-reply@easyplanhehe.online`; set up in the Supabase dashboard, not in the repo (`docs/deployment.md` §1). EasyPlan wording from `supabase/templates/` (`confirmation.html`, `recovery.html`, `email_change.html`; cloud copies pasted by hand). Locally they still go to Mailpit.
 - **Identity**: EasyPlan, `com.kangjin.easyplan` (Android namespace/applicationId, iOS bundle ID), web manifest/title, placeholder icon (`app/assets/icon/generate_icon.py` → `flutter_launcher_icons`).
 - **Config**: `AppConfig` reads `SUPABASE_URL`, `SUPABASE_PUBLISHABLE_KEY`, `APP_URL` (`--dart-define-from-file=env/prod.json`); release builds against the local backend show a "no server configured" screen. Path URL strategy; invite links `AppConfig.inviteLink(token)` = `<APP_URL>/join/<token>`.
@@ -215,3 +215,5 @@ Open at the time of writing:
 | #16 Server-side search and filters for large groups | F7 | feature |
 | #18 Push notifications on phones | F9 | feature (v2) |
 | #49 Test live updates on two phones against the live site | F13 | chore |
+| #82 Invite links: enforce the 7-day expiry in the database | F3 | bug |
+| #83 Display name: enforce the 50-character limit in the database | F11 | bug |
