@@ -2,8 +2,9 @@
 // into suggested activity fields for the New activity form. Nothing is saved
 // here; the user reviews the form first (owner's choice).
 //
-// 1. Count the fill against the caller's daily quota (30, in the database).
-// 2. Read the link's official preview (see _shared/link_preview.ts).
+// 1. Read the link's official preview (see _shared/link_preview.ts); stop if
+//    there's nothing to go on, before anything is counted.
+// 2. Count the fill against the caller's daily quota (30, in the database).
 // 3. Ask Claude Haiku 5.5 for the fields, as schema-checked JSON.
 // 4. Match the location to a Google place (#73), using a place search.
 import Anthropic from "npm:@anthropic-ai/sdk@0.131.0";

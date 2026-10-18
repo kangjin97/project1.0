@@ -12,19 +12,19 @@ How to take EasyPlan from your computer to people's phones. Everything here also
 
 Order: **1 → 2 → 3** gets friends using it on their phones via the browser. **4 / 5** are the store apps.
 
-## Current state (2026-10-16)
+## Current state (2026-10-19)
 
 | Piece | Status |
 |---|---|
 | Web app | **Live at https://easyplan-hehe.netlify.app** (Netlify project `easyplan-hehe`; `easyplan` was taken). Last deployed 2026-10-16 from `main` at `64de21b` (third on-request deploy, run 38859417843): everything on `main` up to then is live, including Fill from link (#74), Google Maps locations (#73), recurring plans (#17), past plans (#11), invite management (#9), deleting groups / handing over ownership (#10), the link/photo filters (#53), logging re-pointed merge rules (#52), drag to reschedule (#12) and the #58 notification fix |
-| Supabase cloud project | Created; linked from the Mac and the Windows PC; schema pushed with `supabase db push` (link once per computer: [`setup-windows.md`](setup-windows.md#deploying-from-windows)). Has every migration through `20261016050829_ai_fill_quota.sql` (checked 2026-10-16); nothing waiting. Check any time with `supabase migration list --linked` |
+| Supabase cloud project | Created; linked from the Mac and the Windows PC; schema pushed with `supabase db push` (link once per computer: [`setup-windows.md`](setup-windows.md#deploying-from-windows)). Has every migration through `20261016050829_ai_fill_quota.sql` (checked 2026-10-19); nothing waiting. Check any time with `supabase migration list --linked` |
 | Supabase Auth URLs | Site URL `https://easyplan-hehe.netlify.app`; redirect `https://easyplan-hehe.netlify.app/**` |
 | `app/env/prod.json` | Filled in on the owner's Mac (git-ignored) |
 | Auth emails | Sent through **Resend** from `no-reply@easyplanhehe.online` (custom SMTP in Supabase). Domain `easyplanhehe.online` at Namecheap; Resend region Tokyo, Japan (`ap-northeast-1`) |
 | Auth email templates | EasyPlan templates from `supabase/templates/` pasted into the dashboard: **Confirm signup** (`confirmation.html`), **Reset password** (`recovery.html`), **Change email address** (`email_change.html`). Magic link, invite and reauthentication aren't used |
 | Privacy policy | Live at `<APP_URL>/privacy.html`; names Supabase (Singapore), Netlify and Resend (Tokyo); Google (place search, #73) and AIML API → Anthropic ("Fill from link", #74); contact easyplanhehe@gmail.com |
 | Deploys | **On request only** (since 2026-10-15): merging to `main` doesn't deploy. The owner decides when; a manual run of CI deploys `main` after the checks pass (GitHub Actions → Netlify). See [Deploying the web app](#deploying-the-web-app). |
-| Edge Functions | `places` (Google Maps place search, #73) and `fill-activity` ("Fill from link", #74): **deployed 2026-10-16** (version 1). `fill-activity` changed since (#79, label choice): redeploy it with `supabase functions deploy fill-activity` once that PR merges. Secrets `GOOGLE_MAPS_API_KEY`, `ANTHROPIC_API_KEY` (AIML API key) and `ANTHROPIC_BASE_URL=https://api.aimlapi.com` set with `supabase secrets set --env-file supabase/functions/.env`. Redeploy whenever `supabase/functions/` changes; check with `supabase functions list` / `supabase secrets list`. See [Edge Functions and Google Maps](#edge-functions-and-google-maps-73) |
+| Edge Functions | `places` (Google Maps place search, #73) and `fill-activity` ("Fill from link", #74): **deployed**: `places` version 1 (2026-10-16), `fill-activity` version 2 (2026-10-19, the #79 label fix). Both have `verify_jwt` on. Secrets `GOOGLE_MAPS_API_KEY`, `ANTHROPIC_API_KEY` (AIML API key) and `ANTHROPIC_BASE_URL=https://api.aimlapi.com` set with `supabase secrets set --env-file supabase/functions/.env`. Redeploy whenever `supabase/functions/` changes; check with `supabase functions list` / `supabase secrets list`. See [Edge Functions and Google Maps](#edge-functions-and-google-maps-73) |
 | Still to do | Phone smoke test (#5) and the two-phone live-updates test (#49); Android (#13) and iOS (#14) store builds |
 
 The cloud database is separate from the local one: local accounts and test data don't exist there, and the local seed accounts are never pushed.
@@ -273,7 +273,7 @@ If any are missing, the deploy job fails with a message naming them, and nothing
 - [x] SMTP connected (Resend, `easyplanhehe.online`)
 - [x] `app/env/prod.json` filled in; web deployed to https://easyplan-hehe.netlify.app
 - [ ] Smoke test passed on a phone
-- [x] Privacy policy filled in and published (names Supabase, Netlify and Resend)
+- [x] Privacy policy filled in and published (names Supabase, Netlify, Resend, Google, and AIML API → Anthropic)
 - [x] Email templates mention EasyPlan (confirm signup, reset password, change email)
 - [ ] (Stores) upload key backed up; data safety / App Privacy answered; reviewer demo account ready
 - [ ] (Optional) replace the placeholder icon (`app/assets/icon/`, then `dart run flutter_launcher_icons`)

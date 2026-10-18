@@ -116,7 +116,7 @@ A user's private labels. Names are 1–40 characters and unique per owner, ignor
 
 Access:
 - Group members can read entries; participants can also read entries in groups they've left.
-- Entries are created only through `create_schedule_entry`.
+- Entries are created only through `create_schedule_entry`, `create_schedule_series` and `extend_series`.
 - Members can update `activity_id` and `title` (swapping in an activity, or replacing an event) and delete entries.
 - Times change only through `reschedule_entry` and `reschedule_following`.
 - Participants are added only through the RPCs. A participant can remove themselves, or set their own `status` to `added` to acknowledge a clash.
@@ -127,14 +127,14 @@ Background for `delete_my_account` and for deleting groups (#10):
 - **Deleting an auth user** removes their `profiles` row, which cascades to:
   - their `group_members` rows (groups are handed over or deleted by `hand_over_ownership`);
   - invitations addressed to them (`group_invitations.invitee_id`);
-  - their `schedule_participants`, `notifications` and `personal_types`.
+  - their `schedule_participants`, `notifications`, `personal_types` and `api_usage` rows.
   
   Their activities must already be gone (`activities.owner_id` has no `on delete`), which `delete_my_account` takes care of.
-- **"Who did it" columns** become null instead of blocking the delete (`on delete set null`): `groups.created_by`, `group_invite_links.created_by`, `group_invitations.invited_by`, `activities.updated_by`, `activity_photos.uploaded_by`, `group_activities.added_by`, `schedule_entries.created_by` and `updated_by`, `schedule_participants.added_by`, `type_merges.created_by`. The app shows them as "a deleted user".
-- **Deleting a group** cascades to everything scoped to it: members, invite links, invitations, types, merge rules, shared activities (the activities themselves stay with their owners), and plans with their participants. `change_log` keeps its rows (no foreign keys).
+- **"Who did it" columns** become null instead of blocking the delete (`on delete set null`): `groups.created_by`, `group_invite_links.created_by`, `group_invitations.invited_by`, `activities.updated_by`, `activity_photos.uploaded_by`, `group_activities.added_by`, `schedule_entries.created_by` and `updated_by`, `schedule_participants.added_by`, `schedule_series.created_by`, `type_merges.created_by`. The app shows them as "a deleted user".
+- **Deleting a group** cascades to everything scoped to it: members, invite links, invitations, types, merge rules, shared activities (the activities themselves stay with their owners), plans with their participants, and repeat rules (`schedule_series`). `change_log` keeps its rows (no foreign keys).
 
 ### `change_log`
-`actor_id`, `group_id`, `entity_type`, `entity_id`, `action`, `before`, `after` (jsonb; for updates, only the changed fields), `created_at`. It has no foreign keys, so history survives deletes. It's written only by the `log_change` trigger and by `apply_participants` (`clash_override`).
+`actor_id`, `group_id`, `entity_type`, `entity_id`, `action`, `before`, `after` (jsonb; for updates, only the changed fields), `created_at`. It has no foreign keys, so history survives deletes. It's written only by the `log_change` trigger, by `apply_participants` (`clash_override`) and by `transfer_ownership` (`group_member` `updated`).
 
 You can read an entry if any of these is true:
 - you made the change;
@@ -149,7 +149,7 @@ The group History page reads it through `list_group_history` instead, which appl
 | `activity_photo` | activity id | created, deleted |
 | `activity_type` | type id | created, updated, deleted |
 | `group_activity` | activity id | created (shared), deleted (unshared), updated, type_changed |
-| `group_member` | user id | created (joined), deleted (left or removed) |
+| `group_member` | user id | created (joined), deleted (left or removed), updated (ownership transferred, by `transfer_ownership`) |
 | `invite_link` | link id | created, updated (revoked; also use-count bumps, which group history hides) |
 | `invitation` | invitation id | created (invited), updated (accepted, declined, cancelled) |
 | `schedule_entry` | entry id | created, updated, deleted, event_replaced, activity_swapped, reverted_to_event, clash_override |
@@ -253,7 +253,7 @@ Not executable by clients (`function_privileges.test.sql` checks all of this):
 
 Live updates use **Broadcast from the database** on private channels:
 - **Sending:** the `broadcast_change` trigger (after insert/update/delete; on `groups` only update/delete, since a new group has no members yet) calls `realtime.send({table}, 'changed', <topic>, private => true)`.
-  - Topics, by table: `groups`, `group_activities`, `activity_types`, `type_merges` and `group_invite_links` go to `group:<group_id>`. `group_members` go to the group and the member's `user:<user_id>`. `notifications` go to the user. Activities go to their owner and every group they're shared in. Plans go to their group and each participant (who may have left the group). Plan participants go to the person and the plan's group. Invitations go to the invitee and the group. Invite links go to the group.
+  - Topics, by table: `groups`, `group_activities`, `activity_types`, `type_merges` and `group_invite_links` go to `group:<group_id>`. `group_members` go to the group and the member's `user:<user_id>`. `notifications` go to the user. Activities and their photos go to the activity's owner and every group it's shared in. Plans go to their group and each participant (who may have left the group). Plan participants go to the person and the plan's group. Invitations go to the invitee and the group. Invite links go to the group.
   - Tables: `groups`, `group_members`, `group_invitations`, `group_invite_links`, `group_activities`, `activities`, `activity_photos`, `activity_types`, `type_merges`, `schedule_entries`, `schedule_participants`, `notifications`.
   - Messages carry only the table name, never row data. At most one is sent per topic and table per transaction (tracked in the `easyplan.broadcasts_sent` setting).
   - `realtime.send` swallows its own errors, so a failed broadcast never blocks a write.
@@ -263,5 +263,4 @@ Live updates use **Broadcast from the database** on private channels:
 ## Known gaps
 
 - Accounts created before the time zone migration keep whatever zone they had (the seed accounts start as `UTC`).
-- Group deletion is allowed by policy, but there's no UI for it.
 - `change_log` keeps entries by deleted users (no FK); their `before`/`after` may still contain names of things they created.

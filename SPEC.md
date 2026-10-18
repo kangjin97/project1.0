@@ -26,7 +26,7 @@ A web and mobile app for friends to plan things to do together: collect activity
 ### 2.1 Groups & membership
 - A user can create a group and becomes its owner.
 - Members join by:
-  - **Invite link** — shareable token, optional expiry, optional max uses.
+  - **Invite link** — shareable code/link, valid for 7 days; can be revoked (the database also supports a max-uses limit, which the app doesn't offer).
   - **Direct invite** — search users by username or email; invitee accepts or declines.
 - Any member can see the group's active invite links (who made them, expiry, how many joined) and revoke one, and see pending invitations and cancel one. Revoking can't be undone; a cancelled invitation shows as cancelled to the invitee. Both are logged.
 - Any member can leave a group. The owner can rename the group and remove members.
@@ -76,7 +76,7 @@ A web and mobile app for friends to plan things to do together: collect activity
 - On **Cancel**: nothing is saved.
 
 ### 2.7 Events (placeholders)
-- Created only inside a group, exactly like scheduling an activity but with no activity attached. Only `name` is required (date/time and participants are optional).
+- Created only inside a group, exactly like scheduling an activity but with no activity attached. Only `name` is required (date/time is optional; participants default to the creator, and at least one is needed).
 - Visible to all members of that group, so others can suggest something suitable.
 - **Any group member** can:
   - replace an event with an activity, or
@@ -120,14 +120,15 @@ The full, current schema is documented in [`docs/database.md`](docs/database.md)
 | `personal_types` | Users' private labels |
 | `activity_types`, `type_merges` | Per-group types and merge rules |
 | `group_activities` | Activity shared into a group, with its type and `source_type_name` |
-| `schedule_entries`, `schedule_participants` | Plans/events and who's in them |
+| `schedule_entries`, `schedule_participants`, `schedule_series` | Plans/events, who's in them, and repeating-plan series |
+| `api_usage` | Per-user daily counts for paid outside APIs (place searches, AI fills) |
 | `change_log`, `notifications` | Audit trail and in-app notifications |
 
 Notes:
 - **Event** = `schedule_entries` row with `activity_id IS NULL`. Replacing it sets `activity_id`; `title` is kept for history.
 - Activity type lives on `group_activities`, so one activity can have a different type in each group.
 - `change_log` is written by database triggers, so no client can skip logging.
-- Clash checks are Postgres functions (`find_clashes`, used by `create_schedule_entry` / `reschedule_entry` / `add_entry_participants`).
+- Clash checks are Postgres functions (`find_clashes`, used by `create_schedule_entry` / `reschedule_entry` / `add_entry_participants` and the repeating-plan RPCs `create_schedule_series` / `extend_series` / `reschedule_following` / `add_participants_following`).
 
 ---
 
@@ -163,11 +164,11 @@ While the app is open, screens update by themselves within a second or two when 
 3. **My Activities:** private and shared activities; create/edit; share to a group
 4. **Activity detail:** fields, photos, groups it's in, change history
 5. **Groups list:** create group, pending invitations
-6. **Group home:** tabs for Activities (search/filter), Schedule (with unscheduled events as "Ideas"), Members (invite people or create a link; active invite links with Revoke; invitations "Waiting for an answer" with Cancel; the member list, where the owner can remove people), Types; **History** (the group's change log) from the group's menu.
+6. **Group home:** tabs for Activities (search/filter), Schedule (with unscheduled events as "Ideas"), Members (invite people or create a link; active invite links with Revoke; invitations "Waiting for an answer" with Cancel; the member list, where the owner can remove people or make another member the owner), Types; **History** (the group's change log) from the group's menu.
 7. **Schedule entry sheet:** pick activity or name an event, all-day or a time range, pick members, then the clash confirmation dialog
 8. **Replace event:** pick an activity from the group to fill the placeholder
 9. **Invite:** copy link, or search by username/email
-10. **Notifications** ("Alerts" tab with an unread badge): invitations, added to a plan, clash alerts. "Event replaced" isn't written by the database yet.
+10. **Notifications** ("Alerts" tab with an unread badge): invitations, added to a plan or a repeating plan, clash alerts, group deleted, made the group's owner. "Event replaced" isn't written by the database yet.
 11. **Profile:** own profile, stats, account settings; **other people's profiles** from shared groups
 12. **Join:** preview and join a group from an invite link
 13. **Reset password:** set a new password from the emailed link
@@ -187,6 +188,10 @@ While the app is open, screens update by themselves within a second or two when 
 | 6 | Schedules: entries, participants, clash detection | Done |
 | 7 | Events and replacement | Done |
 | 8 | Change-log views, notifications and live updates | Done: activity, entry and group history; notifications screen; live updates (#7) |
+| 9 | Group admin and invites: delete group, hand over ownership, manage invite links and invitations (#9, #10) | Done |
+| 10 | Schedule extras: past plans, drag to reschedule, repeating plans (#11, #12, #17) | Done |
+| 11 | Google Maps locations and Fill from link with AI (#73, #74) | Done |
+| 12 | Store builds and app icon (#13, #14, #15) | Not started |
 
 Details and backlog: [`docs/ai/features.md`](docs/ai/features.md).
 
@@ -195,7 +200,7 @@ Details and backlog: [`docs/ai/features.md`](docs/ai/features.md).
 ## 7. Open points
 
 - Decisions made so far (including assumptions awaiting confirmation) are logged in [`docs/ai/decisions.md`](docs/ai/decisions.md).
-- Assumed, awaiting the owner's confirmation (see `decisions.md`): any member can unshare an activity (logged); labels match by exact name only (no fuzzy "similar" matching).
+- Assumed, awaiting the owner's confirmation (see `decisions.md`): any member can unshare an activity (logged); labels match by name, ignoring case and surrounding spaces (no fuzzy "similar" matching).
 - Recurring entries (e.g. weekly game night): built (#17). Weekly, every 2 weeks or monthly, ending on a date at most a year ahead; edits apply to one date or that date and later ones; one notification per series.
 - Push notifications on phones: in-app only for v1; tracked as #18.
 - Time zones: stored in UTC (`timestamptz`), shown in each user's **profile** time zone (not the device's).

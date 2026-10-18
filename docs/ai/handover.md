@@ -4,7 +4,7 @@ Read this first if you're picking EasyPlan up without the history of earlier ses
 
 **Using an AI agent other than Claude Code?** The rules still apply. [`CLAUDE.md`](../../CLAUDE.md) is the agent rulebook whatever the tool; [`AGENTS.md`](../../AGENTS.md) points to it for agents that look for that file. A few notes are about Claude Code itself (its preview pane, restarting the Claude app to pick up PATH changes, the `Co-Authored-By` / "Generated with Claude Code" lines); use your own tool's equivalent. Earlier agents kept no private memory outside the repo: everything known is in these docs, the issues and the PRs.
 
-Last updated: 2026-10-16.
+Last updated: 2026-10-19.
 
 ## The project in one paragraph
 
@@ -34,18 +34,18 @@ All accounts belong to the owner. **No secrets are stored in the repo or in this
 
 Settings that exist only in dashboards, and how to redo them, are in [`deployment.md`](../deployment.md) §1 (Supabase auth URLs, SMTP, rate limits, email templates, DNS).
 
-## Current state (2026-10-16)
+## Current state (2026-10-19)
 
 **Where things are**
 - **Live site:** deployed 2026-10-16 from `main` at `64de21b` (the third on-request deploy, run 38859417843; earlier ones were `5fb615c` and `e2534a6`). Everything on `main` up to then is live, including recurring plans (#17), Google Maps locations (#73) and Fill from link (#74). Anything merged later: `git log --oneline 64de21b..origin/main`.
-- **Cloud database** (checked 2026-10-16): has every migration through `20261016050829_ai_fill_quota.sql`, nothing waiting. Check with `supabase migration list --linked` (both computers are linked).
-- **Edge Functions in the cloud** (2026-10-16): `places` and `fill-activity` deployed (version 1, `verify_jwt` on); secrets `GOOGLE_MAPS_API_KEY`, `ANTHROPIC_API_KEY` (the AIML API key) and `ANTHROPIC_BASE_URL` set (the owner used `supabase secrets set --env-file supabase/functions/.env`). Check with `supabase functions list` and `supabase secrets list` (names and hashes only). Redeploy a function whenever `supabase/functions/` changes (`deployment.md` → Deploying the functions).
-- **In flight:** #79 (Fill from link reused an unrelated label; prompt fix). Once merged, the owner runs `supabase functions deploy fill-activity`; no migration, no web deploy needed.
+- **Cloud database** (checked 2026-10-19): has every migration through `20261016050829_ai_fill_quota.sql`, nothing waiting. Check with `supabase migration list --linked` (both computers are linked).
+- **Edge Functions in the cloud** (checked 2026-10-19): `places` version 1 (2026-10-16) and `fill-activity` version 2 (redeployed 2026-10-19 with the #79 label fix), both with `verify_jwt` on; secrets `GOOGLE_MAPS_API_KEY`, `ANTHROPIC_API_KEY` (the AIML API key) and `ANTHROPIC_BASE_URL` set (the owner used `supabase secrets set --env-file supabase/functions/.env`). Check with `supabase functions list` and `supabase secrets list` (names and hashes only). Redeploy a function whenever `supabase/functions/` changes (`deployment.md` → Deploying the functions).
+- **In flight:** nothing (2026-10-19). #79 (Fill from link reused an unrelated label) is fixed, merged and its function redeployed; it needed no web deploy, since only the function changed.
 - **Deploys are on request only** (since 2026-10-15, #45): merging to `main` doesn't deploy. See "Working agreements" below.
 
 **What's built** (details per feature in [`features.md`](features.md))
 - Everything in SPEC §6 build order: accounts, groups and invites, activities with labels and type merging, search, schedules with clash checks, events, profiles, account deletion, notifications.
-- Added on 2026-10-15:
+- Added on 2026-10-15 and 2026-10-16:
   - **Group history** (#8): group page ⋮ → History. It includes activity edits made while the activity was shared there, and lines open what they're about. F10.
   - **Live updates** (#7): other people's changes appear on open screens silently, and the Alerts badge is live. It uses database broadcasts to private Realtime channels. F13. When adding a table that a screen shows, add a `broadcast_change` trigger and a `providersAffectedBy` case (CLAUDE.md rule 6).
   - **Past plans on phones** (#11): "Show earlier" on schedule lists, and plans that are over are muted. F8.
@@ -59,7 +59,7 @@ Settings that exist only in dashboards, and how to redo them, are in [`deploymen
 - **Auth emails** go through Resend, with EasyPlan templates from `supabase/templates/` (*Confirm signup*, *Reset password*, *Change email address*). The cloud copies are pasted by hand; if the dashboard and the files ever disagree, the files are the intended version.
 - **Privacy policy:** live at `/privacy.html`.
 
-**Not built yet** (`gh issue list`): store apps (#13, #14), app icon (#15), server-side search (#16), push notifications (#18).
+**Not built yet** (`gh issue list`): store apps (#13, #14), app icon (#15), server-side search (#16), push notifications (#18). Database guards still missing (found 2026-10-19): invite-link expiry (#82) and display-name length (#83).
 
 **Next priorities**
 1. `priority:high`: #5 phone smoke test together with #49 (live updates on two phones, step by step) on the live site, covering everything deployed on 2026-10-15 (#7–#12, #52, #53, the #58 fix) and 2026-10-16 (repeating plans #17, Google Maps locations #73, Fill from link #74, including a TikTok link and a screenshot from the phone, which weren't tested locally).
@@ -80,12 +80,13 @@ Settings that exist only in dashboards, and how to redo them, are in [`deploymen
   - every documented path and section link checked.
 - Status sections re-checked on 2026-10-15 after #57, #10 and #58 (#61), again after #53, #52 and #12 (#66), and after #17 (#72): deploy state, cloud migrations (`supabase migration list --linked`), open issues and PRs.
 - Audited again on 2026-10-16 with #74, before the owner moved to a different AI agent: every doc checked against the code for the two Edge Functions, the quota migration and tests; all relative links and anchors resolve; the provider setup (AIML API now, Anthropic direct later) is described the same way in `deployment.md`, this file, `CLAUDE.md`, `endpoints.md`, `features.md`, `decisions.md`, `architecture.md` and the privacy page.
+- Audited again on 2026-10-19 (#81), on the Mac, after a stretch of work on the Windows PC: every doc checked line by line against the code, migrations, Edge Functions and the local database catalog (functions, grants, policies, triggers); all relative links and anchors resolve; tool versions match CI; status matches the open issues and the cloud (functions `places` v1, `fill-activity` v2; migrations through `20261016050829_ai_fill_quota.sql`). `setup-mac.md` checked against a real (Intel) Mac. Two code gaps became issues (#82, #83).
 
 ## How to resume work
 
 1. Set up the computer ([`setup-mac.md`](../setup-mac.md) or [`setup-windows.md`](../setup-windows.md)), then `supabase start`, `supabase test db`, `cd app && flutter analyze && flutter test`.
 2. Check what's in progress: `gh pr list`, `gh issue list`, and the board.
-3. For any task: issue → `./scripts/board.sh <n> progress` → branch `fix|feature|chore/<n>-name` from `main` → PR with `Closes #<n>` → CI green → **the owner merges** → delete the branch locally and on GitHub. Details: [`development.md`](../development.md#git-workflow). The live site updates only when the owner asks for a deploy.
+3. For any task: issue → `./scripts/board.sh <n> progress` → branch `fix|feature|chore/<n>-name` from `main` → PR with `Closes #<n>` → CI green → **the owner merges** → delete the branch locally (`git branch -D <branch>`; GitHub deletes its copy on merge). Details: [`development.md`](../development.md#git-workflow). The live site updates only when the owner asks for a deploy.
 
 ## Working agreements with the owner
 
