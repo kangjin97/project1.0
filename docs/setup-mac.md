@@ -107,7 +107,7 @@ These two features call outside APIs through Edge Functions, which need keys on 
 
 ### Optional: Continue with Google
 
-Fill in the git-ignored `supabase/.env` (a template with two empty lines: the Google OAuth client ID and secret; [`deployment.md`](deployment.md#sign-in-with-google-87) says where they come from), then `supabase stop` and `supabase start` (keeps data). Without it, everything else works; the Google button just opens a Google error page.
+Create the git-ignored `supabase/.env` (git doesn't carry it, so a fresh clone has none) with two lines, `SUPABASE_AUTH_EXTERNAL_GOOGLE_CLIENT_ID=` and `SUPABASE_AUTH_EXTERNAL_GOOGLE_SECRET=`, and type in the Google OAuth client ID and secret ([`deployment.md`](deployment.md#sign-in-with-google-87) says where they come from), then `supabase stop` and `supabase start` (keeps data). Without it, everything else works; the Google button just opens a Google error page.
 
 ## Cloud access (owner only)
 

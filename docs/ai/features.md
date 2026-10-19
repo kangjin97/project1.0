@@ -17,7 +17,7 @@ Status legend: **Done** = DB + UI + tests. **DB only** = schema/RPCs/tests exist
 - UI: `app/lib/features/auth/auth_page.dart`, `welcome_page.dart` (`WelcomePage`, `usernameBase`, `usernameCandidates`); redirect in `app/lib/router.dart` (`safeNext`, `_AuthRefresh.needsUsername`). Data: `data/auth_repository.dart` (`signUp`, `signIn`, `signInWithGoogle`, `googlePhotoUrl`, `sendPasswordReset`, `setNewPassword`; `authRepositoryProvider`), `profile_repository.dart` (`needsUsername`, `copyAvatarFrom`).
 - DB: `profiles` (`needs_username`), triggers `handle_new_user`, `profiles_username_chosen`; `username_available`.
 - Setup: Google OAuth client in Google Cloud, the provider in the Supabase dashboard, and `supabase/.env` locally (`deployment.md` → Sign in with Google).
-- Tests: `core_rules.test.sql` (profile creation), `google_sign_in.test.sql`; `app/test/username_suggestion_test.dart`, `router_test.dart` (`safeNext`).
+- Tests: `core_rules.test.sql` (profile creation), `display_name_length.test.sql` (sign-up name), `google_sign_in.test.sql`; `app/test/username_suggestion_test.dart`, `router_test.dart` (`safeNext`).
 
 ## F2. Groups and membership — Done
 - Create (creator = owner, starter types seeded), rename (owner), leave (anyone), remove member (owner).
@@ -42,7 +42,7 @@ Status legend: **Done** = DB + UI + tests. **DB only** = schema/RPCs/tests exist
 - UI: `group_page.dart` (`_InviteSheet`, `_showInviteLinkDialog`, `_InviteLinksSection`, `_SentInvitationsSection`), `groups_page.dart` (invitations, "Join with code"), `join_page.dart`.
 - Data: G `searchUsers`, `invite`, `pendingInvitations`, `respond`, `createInviteLink`, `previewLink`, `joinViaLink`, `inviteLinks`, `revokeInviteLink`, `sentInvitations`, `cancelInvitation`; providers `invitationsProvider`, `inviteLinksProvider(groupId)`, `sentInvitationsProvider(groupId)`; models `InviteLink` (`isActiveAt`), `SentInvitation`.
 - DB: `group_invitations` (status `pending|accepted|declined|cancelled`), `group_invite_links`, `find_user_by_email`, `respond_to_invitation`, `cancel_invitation`, `preview_invite_link`, `join_group_via_link`, triggers `notify_invitee`, `group_invite_links_guard_revoke`, `group_invite_links_guard_insert` (7-day cap and server-picked token, #82).
-- Tests: `core_rules.test.sql`; `invite_management.test.sql` (any member revokes, non-members can't, server sets the time, no un-revoking, revoked links refuse joins, any member cancels, invitee can't, only pending ones, cancelled can't be accepted, alert shows "cancelled", history lines without codes, live broadcasts).
+- Tests: `core_rules.test.sql`; `invite_management.test.sql` (any member revokes, non-members can't, server sets the time, no un-revoking, revoked links refuse joins, any member cancels, invitee can't, only pending ones, cancelled can't be accepted, alert shows "cancelled", history lines without codes, live broadcasts); `invite_link_expiry.test.sql` (7-day link kept, missing → 7 days, longer capped, shorter kept, server-picked 64-hex token, server's use count / created / revoked, expiry can't be extended later).
 
 ## F4. Activities — Done
 - Fields: name (required), description, location, price min/max + currency (max ≥ min; 0/0 shows "Free"), link (https:// added if missing), photos, personal label.
@@ -136,7 +136,7 @@ Status legend: **Done** = DB + UI + tests. **DB only** = schema/RPCs/tests exist
 - Clock: `data/app_clock.dart` — `AppClock` (display zone; `now`, `today`, `inZone`, `at`, `offsetLabel`, `differsFromDevice`), `formatOffset`, `TimezoneController`/`timezoneProvider`, `timezoneOptionsProvider`, `localTimezone()`. Uses `package:timezone` with the full data set (`latest_all`, includes aliases such as Asia/Kuala_Lumpur). Unit tests: `app/test/app_clock_test.dart`.
 - Data: `data/profile_repository.dart` (`profile`, `update`, `usernameAvailable`, `setAvatar`, `removeAvatar`, `avatarUrl`, `sharedGroups`, `myStats`, `myTimezone`, `setTimezone`, `timezones`, `changeEmail`, `account`, `cancelEmailChange`, `changePassword`); providers `profileProvider(id)`, `accountProvider` (server copy of the signed-in user; the email tile re-reads it on app resume), `sharedGroupsProvider(id)`, `myStatsProvider`, `avatarUrlProvider(path)`. `Profile` now has `avatarPath`, `bio`, `timezone` and a `columns` select string.
 - DB: `profiles.bio`, bucket `avatars`, `shared_groups`, `my_profile_stats`; `list_schedule` participants include `avatar_path`.
-- Tests: `timezones.test.sql` (sign-up zone, validation, picker list); `cancel_email_change.test.sql` (own change cleared incl. tokens, others untouched, anon refused); `profiles.test.sql` (own edits, taken/invalid username, bio limit, can't edit others, shared groups, stats, avatar folder rules).
+- Tests: `timezones.test.sql` (sign-up zone, validation, picker list); `cancel_email_change.test.sql` (own change cleared incl. tokens, others untouched, anon refused); `profiles.test.sql` (own edits, taken/invalid username, bio limit, can't edit others, shared groups, stats, avatar folder rules); `display_name_length.test.sql` (long sign-up name cut to 50, blank → null, trimmed; 50 multi-byte characters saved, 51 refused with 23514).
 - **Time zone**: set at sign-up from the device; changeable on the profile via a searchable picker (city · region · current UTC offset, search by name or offset like "+8"; "Use this device's time zone" shortcut). The whole app shows times in this zone (`AppClock`, `timezoneProvider`); My schedule shows a note when it differs from the device.
 - Gaps: avatar picking untested in automation (file picker); email change confirmation goes to Mailpit locally (http://127.0.0.1:54324).
 
@@ -144,7 +144,7 @@ Status legend: **Done** = DB + UI + tests. **DB only** = schema/RPCs/tests exist
 - **Forgot password**: sign-in screen → email → `resetPasswordForEmail(redirectTo: <APP_URL>/reset-password)` → link opens `ResetPasswordPage` (waits for the PKCE code exchange, then "Choose a new password"; "link expired" after 10 s). The router sends any `passwordRecovery` session to `/reset-password`.
 - **Change password** (Profile → Password): asks for the current password; a **"No password yet, or forgot it? Email me a link"** button sends the same reset link to the account's own email, which is how a Google account (#87) sets its first password.
 - **Delete account**: Profile → Delete account (type username) → removes storage files (`my_storage_files`) → `delete_my_account` → local sign-out. DB: activities deleted (unshared first so plans become events), auth user deleted (cascades), groups handed over by `hand_over_ownership` trigger (also on normal "leave"), "who did it" columns `on delete set null`.
-- **Privacy policy**: `app/web/privacy.html` (last updated 16 October 2026; contact easyplanhehe@gmail.com; names Supabase (Singapore), Netlify, Resend (Japan), Google Maps Platform (location search) and AIML API / Anthropic (Fill from link)), linked from sign-up and the profile (`AppConfig.privacyPolicyUrl`).
+- **Privacy policy**: `app/web/privacy.html` (last updated 19 October 2026; contact easyplanhehe@gmail.com; names Supabase (Singapore), Netlify, Resend (Japan), Google Maps Platform (location search), Google sign-in (what Google shares; photo copied only if agreed) and AIML API / Anthropic (Fill from link)), linked from sign-up and the profile (`AppConfig.privacyPolicyUrl`).
 - **Auth emails** (sign-up confirmation, password reset, email change): Supabase custom SMTP through Resend, from `no-reply@easyplanhehe.online`; set up in the Supabase dashboard, not in the repo (`docs/deployment.md` §1). EasyPlan wording from `supabase/templates/` (`confirmation.html`, `recovery.html`, `email_change.html`; cloud copies pasted by hand). Locally they still go to Mailpit.
 - **Identity**: EasyPlan, `com.kangjin.easyplan` (Android namespace/applicationId, iOS bundle ID), web manifest/title, placeholder icon (`app/assets/icon/generate_icon.py` → `flutter_launcher_icons`).
 - **Config**: `AppConfig` reads `SUPABASE_URL`, `SUPABASE_PUBLISHABLE_KEY`, `APP_URL` (`--dart-define-from-file=env/prod.json`); release builds against the local backend show a "no server configured" screen. Path URL strategy; invite links `AppConfig.inviteLink(token)` = `<APP_URL>/join/<token>`.
@@ -215,9 +215,10 @@ Open at the time of writing:
 | Issue | Feature | Label |
 |---|---|---|
 | #5 Smoke-test the live web app on a phone | F12 | chore, priority:high |
-| #13 Android: toolchain + Play internal test build | F12 | chore |
-| #14 iOS: toolchain + TestFlight build | F12 | chore |
+| #13 Android: update the toolchain and publish a Play internal test build | F12 | chore |
+| #14 iOS: update the toolchain and publish a TestFlight build | F12 | chore |
 | #15 Replace the placeholder app icon | F12 | chore |
 | #16 Server-side search and filters for large groups | F7 | feature |
 | #18 Push notifications on phones | F9 | feature (v2) |
 | #49 Test live updates on two phones against the live site | F13 | chore |
+| #88 Sign in with Facebook | F1 | feature |
