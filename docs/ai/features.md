@@ -7,7 +7,7 @@ Status legend: **Done** = DB + UI + tests. **DB only** = schema/RPCs/tests exist
 ---
 
 ## F1. Accounts and auth — Done
-- Email + password via Supabase Auth. Sign-up requires a unique username `^[a-z0-9_]{3,30}$` (checked with `username_available`, enforced by unique constraint). Optional display name.
+- Email + password via Supabase Auth. Sign-up requires a unique username `^[a-z0-9_]{3,30}$` (checked with `username_available`, enforced by unique constraint). Optional display name (≤50; the database checks it).
 - Signed-out users are redirected to `/auth?next=<original>`; after sign-in they return there (keeps invite links working).
 - Auth emails whose links return to the site root (`/?code=` sign-up confirmation, `/?message=` first step of a secure email change, `/?error_description=` expired link) go to My schedule (or sign-in); a `?message=` or `?error_description=` note is shown as a snackbar (`?code=` has none) (`authLinkNotice`, `rootMessengerKey` in `router.dart`). Tests: `app/test/router_test.dart`.
 - UI: `app/lib/features/auth/auth_page.dart`; redirect in `app/lib/router.dart`. Data: `data/auth_repository.dart` (`signUp`, `signIn`, `sendPasswordReset`, `setNewPassword`; `authRepositoryProvider`).
@@ -123,7 +123,7 @@ Status legend: **Done** = DB + UI + tests. **DB only** = schema/RPCs/tests exist
 
 ## F11. Profiles — Done
 - **Own profile** (`/profile`, a navigation tab): picture (tap → choose photo / remove), display name, @username, bio ("Add a bio" when empty), stats (groups, activities, upcoming plans; each taps through), your groups, account (email with change → confirmation links to **both** the current and new address (Supabase secure email change; both must be opened; the snackbar, the tile's subtitle and the email itself say so; template `supabase/templates/email_change.html`; **Cancel change** while pending (`cancel_email_change`); the tile reads the user from the server and again on app resume, so a change confirmed from the mail app shows without signing in again), password change with current-password check, time zone with **Change**), **Sign out** (moved here from other screens).
-- **Edit profile**: display name (≤50), username with live "Available / That username is taken / invalid" check (same rules as sign-up), bio (≤160).
+- **Edit profile**: display name (≤50, checked by the database), username with live "Available / That username is taken / invalid" check (same rules as sign-up), bio (≤160).
 - **Other people** (`/people/:id`): picture, name, @username, bio, "Groups you share". Opened by tapping someone in a group's Members tab or a plan's "Going" list. Stats are only shown on your own profile.
 - **Avatars everywhere people are listed**: members, invite search, plan participants (`UserAvatar`, initial-letter fallback).
 - Username changes don't break history: logs store user ids and resolve names when shown.
@@ -215,4 +215,3 @@ Open at the time of writing:
 | #16 Server-side search and filters for large groups | F7 | feature |
 | #18 Push notifications on phones | F9 | feature (v2) |
 | #49 Test live updates on two phones against the live site | F13 | chore |
-| #83 Display name: enforce the 50-character limit in the database | F11 | bug |

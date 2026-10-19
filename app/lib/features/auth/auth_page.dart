@@ -122,6 +122,7 @@ class _AuthPageState extends ConsumerState<AuthPage> {
                     const SizedBox(height: 12),
                     TextFormField(
                       controller: _displayName,
+                      maxLength: 50,
                       decoration: const InputDecoration(labelText: 'Display name (optional)', border: OutlineInputBorder()),
                     ),
                     const SizedBox(height: 12),
