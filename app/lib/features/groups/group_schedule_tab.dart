@@ -8,6 +8,7 @@ import '../../widgets/async_body.dart';
 import '../schedule/entry_detail_sheet.dart';
 import '../schedule/entry_editor.dart';
 import '../schedule/schedule_widgets.dart';
+import 'itinerary_export_sheet.dart';
 
 /// The whole group's plans: ideas with no date yet, then upcoming days.
 /// Plans the user is in are highlighted.
@@ -61,6 +62,12 @@ class _GroupScheduleTabState extends ConsumerState<GroupScheduleTab> {
                       child: Text('Your plans are highlighted.',
                           style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.onSurfaceVariant)),
                     ),
+                    IconButton(
+                      tooltip: 'Export itinerary',
+                      onPressed: () => showItineraryExport(context, groupId: widget.groupId),
+                      icon: const Icon(Icons.ios_share),
+                    ),
+                    const SizedBox(width: 4),
                     FilledButton.icon(
                       onPressed: () => showEntryEditor(context, groupId: widget.groupId),
                       icon: const Icon(Icons.add),
