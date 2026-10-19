@@ -15,8 +15,12 @@ Every backend call the app makes, plus the RPCs the database exposes but the app
 
 | Dart | Call | Notes |
 |---|---|---|
-| `AuthPage._submit` (sign up): P `usernameAvailable`, then Au `signUp(email, password, username, displayName, timezone)` | `rpc username_available(p_username text) → bool`, then `auth.signUp(email, password, data: {username, display_name, timezone})` | Callable signed-out. Trigger creates `profiles` row; username lower-cased; display name trimmed, blank → null, cut to 50 characters (the sign-up field also stops at 50). Duplicate username at insert → sign-up fails. |
-| `AuthPage._submit` (sign in): Au `signIn(email, password)` | `auth.signInWithPassword(email, password)` | Email trimmed. |
+| `AuthPage._submit` (sign up): P `usernameAvailable`, then Au `signUp(email, password, username, displayName, timezone)` | `rpc username_available(p_username text) → bool`, then `auth.signUp(email, password, data: {username, display_name, timezone})` | Callable signed-out. Trigger creates `profiles` row; username lower-cased; display name trimmed, blank → null, cut to 50 characters (the sign-up field also stops at 50). Duplicate username at insert → sign-up fails. Returns true when the account must be confirmed by email (no session). A used email throws `AuthException(alreadyRegisteredMessage)`: locally Auth answers 422 `user_already_exists`; on the cloud (confirmation on) it answers with a user whose `identities` is empty. |
+| `AuthPage._submit` (sign in): Au `signIn(email, password)` | `auth.signInWithPassword(email, password)` | Email trimmed. 400 `invalid_credentials` → `wrongPasswordMessage` (mentions Google and Forgot password). |
+| `AuthPage._google`: Au `signInWithGoogle({returnTo})` | `auth.signInWithOAuth(OAuthProvider.google, redirectTo: '<APP_URL>/?next=<returnTo>')` | Leaves for Google; comes back to the root with `code` and `next` (allowed by `<APP_URL>/**`). The router follows `next` only if it's a path in the app (`safeNext`). First sign-in creates the profile with a placeholder username and `needs_username = true`. |
+| Au `googlePhotoUrl` | `auth.currentUser.userMetadata['avatar_url' / 'picture']` | Google's picture URL at 256 px, or null. |
+| `WelcomePage`: P `needsUsername()` | REST `GET profiles?select=needs_username&id=eq.<me>` | True until a Google user has picked a username; read once per user by the router. |
+| `WelcomePage._continue`: P `usernameAvailable`, `update`, `TimezoneController.change(deviceZone)`, P `copyAvatarFrom(url)` | as for Edit profile; `copyAvatarFrom` downloads the picture (Google allows cross-origin downloads) and calls `setAvatar` | Writing `username` clears `needs_username` (trigger `profiles_username_chosen`); clients can't write the flag (42501). A failed photo copy only shows a note. |
 | `ProfilePage` | `auth.signOut()` | |
 
 ## User search
@@ -167,7 +171,7 @@ Dart: `app/lib/data/profile_repository.dart` (P). `Profile.columns` = `id, usern
 | P `deleteAccount()` | `rpc my_storage_files() → [{bucket, path}]`, `storage.remove` per bucket, `rpc delete_my_account()`, `auth.signOut(local)` | self | See F12 for what is deleted or handed over. |
 | Au `sendPasswordReset(email)` (`AuthPage._forgotPassword`) | `auth.resetPasswordForEmail(email, redirectTo: <APP_URL>/reset-password)` | anyone | Same message whether or not the email exists. |
 | Au `setNewPassword(password)` (`ResetPasswordPage`) | `auth.updateUser(password)` | recovery session | Opened from the email link (PKCE `?code=`). |
-| P `changePassword(current, next)` | `auth.signInWithPassword(email, current)` then `auth.updateUser(password)` | self | Re-checks the current password first. |
+| P `changePassword(current, next)` | `auth.signInWithPassword(email, current)` then `auth.updateUser(password)` | self | Re-checks the current password first. A Google account has none: the dialog's "Email me a link" calls Au `sendPasswordReset(<own email>)` instead. |
 
 ## Schedules
 

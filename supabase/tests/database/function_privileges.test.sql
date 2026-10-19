@@ -27,7 +27,7 @@ from unnest(array[
   'public.revert_entries_to_events()', 'public.touch_updated()',
   'public.group_activity_defaults()', 'public.guard_personal_type()', 'public.refile_activity()',
   'public.refile_renamed_label()', 'public.guard_timezone()', 'public.hand_over_ownership()',
-  'public.broadcast_change()', 'public.guard_invite_link_revoke()', 'public.guard_invite_link_insert()', 'public.drop_stale_place()',
+  'public.broadcast_change()', 'public.guard_invite_link_revoke()', 'public.guard_invite_link_insert()', 'public.mark_username_chosen()', 'public.drop_stale_place()',
   'public.resolve_group_type(uuid, text)', 'public.apply_participants(uuid, uuid[], jsonb, boolean)',
   'public.series_dates(timestamp, text, date)', 'public.entry_key(public.schedule_entries, text)',
   'public.series_targets(uuid, text)', 'public.notify_series(text, uuid, uuid, uuid, uuid[], jsonb)',

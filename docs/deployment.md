@@ -17,14 +17,15 @@ Order: **1 → 2 → 3** gets friends using it on their phones via the browser. 
 | Piece | Status |
 |---|---|
 | Web app | **Live at https://easyplan-hehe.netlify.app** (Netlify project `easyplan-hehe`; `easyplan` was taken). Last deployed 2026-10-16 from `main` at `64de21b` (third on-request deploy, run 38859417843): everything on `main` up to then is live, including Fill from link (#74), Google Maps locations (#73), recurring plans (#17), past plans (#11), invite management (#9), deleting groups / handing over ownership (#10), the link/photo filters (#53), logging re-pointed merge rules (#52), drag to reschedule (#12) and the #58 notification fix |
-| Supabase cloud project | Created; linked from the Mac and the Windows PC; schema pushed with `supabase db push` (link once per computer: [`setup-windows.md`](setup-windows.md#deploying-from-windows)). Has every migration through `20261018190056_invite_link_expiry.sql` (checked 2026-10-19); `20261018190855_display_name_length.sql` (#83) waits for `supabase db push` once merged. Check any time with `supabase migration list --linked` |
+| Supabase cloud project | Created; linked from the Mac and the Windows PC; schema pushed with `supabase db push` (link once per computer: [`setup-windows.md`](setup-windows.md#deploying-from-windows)). Has every migration through `20261018190855_display_name_length.sql` (checked 2026-10-19); `20261019022546_google_sign_in.sql` (#87) waits for `supabase db push` once merged. Check any time with `supabase migration list --linked` |
 | Supabase Auth URLs | Site URL `https://easyplan-hehe.netlify.app`; redirect `https://easyplan-hehe.netlify.app/**` |
 | `app/env/prod.json` | Filled in on the owner's Mac (git-ignored) |
 | Auth emails | Sent through **Resend** from `no-reply@easyplanhehe.online` (custom SMTP in Supabase). Domain `easyplanhehe.online` at Namecheap; Resend region Tokyo, Japan (`ap-northeast-1`) |
 | Auth email templates | EasyPlan templates from `supabase/templates/` pasted into the dashboard: **Confirm signup** (`confirmation.html`), **Reset password** (`recovery.html`), **Change email address** (`email_change.html`). Magic link, invite and reauthentication aren't used |
-| Privacy policy | Live at `<APP_URL>/privacy.html`; names Supabase (Singapore), Netlify and Resend (Tokyo); Google (place search, #73) and AIML API → Anthropic ("Fill from link", #74); contact easyplanhehe@gmail.com |
+| Privacy policy | Live at `<APP_URL>/privacy.html`; names Supabase (Singapore), Netlify and Resend (Tokyo); Google (place search, #73) and AIML API → Anthropic ("Fill from link", #74); contact easyplanhehe@gmail.com; Google sign-in (#87) goes live with the next web deploy |
 | Deploys | **On request only** (since 2026-10-15): merging to `main` doesn't deploy. The owner decides when; a manual run of CI deploys `main` after the checks pass (GitHub Actions → Netlify). See [Deploying the web app](#deploying-the-web-app). |
 | Edge Functions | `places` (Google Maps place search, #73) and `fill-activity` ("Fill from link", #74): **deployed**: `places` version 1 (2026-10-16), `fill-activity` version 2 (2026-10-19, the #79 label fix). Both have `verify_jwt` on. Secrets `GOOGLE_MAPS_API_KEY`, `ANTHROPIC_API_KEY` (AIML API key) and `ANTHROPIC_BASE_URL=https://api.aimlapi.com` set with `supabase secrets set --env-file supabase/functions/.env`. Redeploy whenever `supabase/functions/` changes; check with `supabase functions list` / `supabase secrets list`. See [Edge Functions and Google Maps](#edge-functions-and-google-maps-73) |
+| Sign in with Google | Built (#87). Works on the live site only after the owner's Google OAuth client and the Supabase provider settings ([Sign in with Google](#sign-in-with-google-87)), `supabase db push` and a web deploy |
 | Still to do | Phone smoke test (#5) and the two-phone live-updates test (#49); Android (#13) and iOS (#14) store builds |
 
 The cloud database is separate from the local one: local accounts and test data don't exist there, and the local seed accounts are never pushed.
@@ -68,6 +69,29 @@ The cloud database is separate from the local one: local accounts and test data 
      - Magic link, Invite user and Reauthentication aren't used by the app; their defaults are fine.
 4. **(you)** Copy **Project URL** and the **Publishable key** (Project Settings → API keys) into `app/env/prod.json`.
 5. Plan: the free plan pauses a project after a week without activity and has small storage limits. Fine for a trial with friends; move to Pro before a public launch. Turn on backups (Pro includes daily backups).
+
+### Sign in with Google (#87)
+
+"Continue with Google" uses Supabase Auth's Google provider. It needs an OAuth client from Google, and both the cloud project and each computer need its ID and secret. All steps are **(you)**.
+
+1. **Google Cloud** (the project that already has the Maps key) → **Google Auth Platform** (APIs & Services → OAuth consent screen):
+   - **Branding:** app name `EasyPlan`, support email `easyplanhehe@gmail.com`, home page `https://easyplan-hehe.netlify.app`, privacy policy `https://easyplan-hehe.netlify.app/privacy.html`, developer contact `easyplanhehe@gmail.com`. Skip the logo: uploading one makes Google review the app first. Add any domain Google asks you to authorise.
+   - **Audience:** External, then **Publish app** (In production). While it's in Testing, only the test users you list (up to 100) can sign in.
+   - **Data access:** only the default `openid`, `…/auth/userinfo.email` and `…/auth/userinfo.profile`. These are non-sensitive, so no verification is needed.
+   - **Clients → Create client → Web application** (e.g. "EasyPlan"):
+     - Authorized JavaScript origins: `https://easyplan-hehe.netlify.app`, `http://127.0.0.1:3000`
+     - Authorized redirect URIs: `https://xxdbjszumfwbipniimbd.supabase.co/auth/v1/callback` (cloud) and `http://127.0.0.1:54321/auth/v1/callback` (local stack)
+     - Keep the **Client ID** and **Client secret** (the secret is shown once; never paste it into chat or git).
+2. **Supabase dashboard → Authentication → Sign In / Providers → Google:** turn it on, paste the Client ID and Client secret, save. The callback URL it shows must match the cloud redirect URI above. **URL Configuration** needs no change: Google sends people back to `<APP_URL>/?next=…`, which `https://easyplan-hehe.netlify.app/**` already allows. Keep **Allow manual linking** off; Supabase links a Google sign-in to an existing account with the same verified email by itself.
+3. **Each computer:** fill in the git-ignored `supabase/.env` (template on the Mac; create it on Windows with the same two lines), then `supabase stop` and `supabase start` (keeps data):
+   ```
+   SUPABASE_AUTH_EXTERNAL_GOOGLE_CLIENT_ID=<client id>
+   SUPABASE_AUTH_EXTERNAL_GOOGLE_SECRET=<client secret>
+   ```
+   `supabase/config.toml` (`[auth.external.google]`) reads them. Without them the button opens a Google error page.
+4. **Release:** `supabase db push` (adds `20261019022546_google_sign_in.sql`), then deploy the web app.
+
+Phone apps (#13, #14) need their own Google client IDs later, and the iOS app will also need Sign in with Apple once it offers Google (App Store rule).
 
 ### Edge Functions and Google Maps (#73)
 

@@ -16,4 +16,12 @@ void main() {
     expect(authLinkNotice(Uri.parse('/?code=abc123')), isNull);
     expect(authLinkNotice(Uri.parse('/')), isNull);
   });
+
+  test('after Google sign-in, only paths inside the app are followed', () {
+    expect(safeNext('/join/abc'), '/join/abc');
+    expect(safeNext(Uri.parse('/?next=%2Fjoin%2Fabc&code=x').queryParameters['next']), '/join/abc');
+    expect(safeNext(null), '/schedule');
+    expect(safeNext('https://evil.example'), '/schedule');
+    expect(safeNext('//evil.example'), '/schedule');
+  });
 }
