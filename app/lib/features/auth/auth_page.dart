@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../../config.dart';
@@ -50,19 +51,40 @@ class _AuthPageState extends ConsumerState<AuthPage> {
           setState(() => _error = 'That username is taken.');
           return;
         }
-        await ref.read(authRepositoryProvider).signUp(
+        final mustConfirm = await ref.read(authRepositoryProvider).signUp(
           email: _email.text,
           password: _password.text,
           username: username,
           displayName: _displayName.text,
           timezone: AppClock.deviceZone,
         );
+        if (mustConfirm && mounted) {
+          showMessage(context, 'Check ${_email.text.trim()} for a link to confirm your account, then sign in.');
+          setState(() => _signUp = false);
+        }
       } else {
         await ref.read(authRepositoryProvider).signIn(email: _email.text, password: _password.text);
       }
       // The router redirects once the session changes.
     } catch (e) {
       setState(() => _error = friendlyError(e));
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
+  }
+
+  Future<void> _google() async {
+    setState(() {
+      _busy = true;
+      _error = null;
+    });
+    try {
+      // Keep an invite link (or any page the person was heading to) through Google.
+      final next = GoRouterState.of(context).uri.queryParameters['next'];
+      await ref.read(authRepositoryProvider).signInWithGoogle(returnTo: next ?? '/schedule');
+      // The browser now leaves for Google; nothing else to do here.
+    } catch (e) {
+      if (mounted) setState(() => _error = friendlyError(e));
     } finally {
       if (mounted) setState(() => _busy = false);
     }
@@ -154,6 +176,24 @@ class _AuthPageState extends ConsumerState<AuthPage> {
                       child: _busy
                           ? const SizedBox.square(dimension: 20, child: CircularProgressIndicator(strokeWidth: 2))
                           : Text(_signUp ? 'Create account' : 'Sign in'),
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  Row(children: [
+                    const Expanded(child: Divider()),
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 12),
+                      child: Text('or', style: theme.textTheme.bodySmall),
+                    ),
+                    const Expanded(child: Divider()),
+                  ]),
+                  const SizedBox(height: 12),
+                  OutlinedButton.icon(
+                    onPressed: _busy ? null : _google,
+                    icon: const Text('G', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18)),
+                    label: const Padding(
+                      padding: EdgeInsets.symmetric(vertical: 12),
+                      child: Text('Continue with Google'),
                     ),
                   ),
                   if (_signUp)

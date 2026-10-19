@@ -105,6 +105,10 @@ These two features call outside APIs through Edge Functions, which need keys on 
    supabase functions serve --env-file supabase/functions/.env
    ```
 
+### Optional: Continue with Google
+
+Fill in the git-ignored `supabase/.env` (a template with two empty lines: the Google OAuth client ID and secret; [`deployment.md`](deployment.md#sign-in-with-google-87) says where they come from), then `supabase stop` and `supabase start` (keeps data). Without it, everything else works; the Google button just opens a Google error page.
+
 ## Cloud access (owner only)
 
 Needed only for the owner's release steps: `supabase db push`, `supabase functions deploy`, `supabase migration list --linked`. Once per computer:

@@ -6,13 +6,18 @@ Status legend: **Done** = DB + UI + tests. **DB only** = schema/RPCs/tests exist
 
 ---
 
-## F1. Accounts and auth — Done
+## F1. Accounts and auth — Done (Google sign-in #87; Facebook #88 to come)
 - Email + password via Supabase Auth. Sign-up requires a unique username `^[a-z0-9_]{3,30}$` (checked with `username_available`, enforced by unique constraint). Optional display name (≤50; the database checks it).
+- **Continue with Google** (#87) on the sign-in and sign-up pages (Supabase Auth's Google provider). Google sends the browser back to `<APP_URL>/?next=<path>`, so invite links survive it too.
+  - First Google sign-in: Google gives no username, so the profile starts with a placeholder (`user_<hex>`) and `needs_username`; the router sends the person to **`/welcome`** before anything else. It suggests a username from their name or email (`usernameBase`, `usernameCandidates`, first free one), shows their Google name, and offers "Use your Google photo" (ticked; copied once into the avatars bucket, only when they have no picture). Continue saves the username (which clears the flag in the database), sets the device's time zone and copies the photo.
+  - Owner's rules (2026-10-19): a Google account signs in with Google; registering with a used email says "already registered"; a Google account has no password until the person sets one with **Forgot password?**, after which email + password works too; an existing email-and-password account that uses Google with the same email becomes one account (Supabase links verified emails).
+  - Sign-up says "This email is already registered…" for a used email (on the cloud Auth returns no error for it, so `signUp` checks for a user without identities), and asks the person to check their inbox when the account needs confirming. A wrong password points Google users to Google or Forgot password.
 - Signed-out users are redirected to `/auth?next=<original>`; after sign-in they return there (keeps invite links working).
 - Auth emails whose links return to the site root (`/?code=` sign-up confirmation, `/?message=` first step of a secure email change, `/?error_description=` expired link) go to My schedule (or sign-in); a `?message=` or `?error_description=` note is shown as a snackbar (`?code=` has none) (`authLinkNotice`, `rootMessengerKey` in `router.dart`). Tests: `app/test/router_test.dart`.
-- UI: `app/lib/features/auth/auth_page.dart`; redirect in `app/lib/router.dart`. Data: `data/auth_repository.dart` (`signUp`, `signIn`, `sendPasswordReset`, `setNewPassword`; `authRepositoryProvider`).
-- DB: `profiles`, trigger `handle_new_user`, `username_available`.
-- Tests: `core_rules.test.sql` (profile creation).
+- UI: `app/lib/features/auth/auth_page.dart`, `welcome_page.dart` (`WelcomePage`, `usernameBase`, `usernameCandidates`); redirect in `app/lib/router.dart` (`safeNext`, `_AuthRefresh.needsUsername`). Data: `data/auth_repository.dart` (`signUp`, `signIn`, `signInWithGoogle`, `googlePhotoUrl`, `sendPasswordReset`, `setNewPassword`; `authRepositoryProvider`), `profile_repository.dart` (`needsUsername`, `copyAvatarFrom`).
+- DB: `profiles` (`needs_username`), triggers `handle_new_user`, `profiles_username_chosen`; `username_available`.
+- Setup: Google OAuth client in Google Cloud, the provider in the Supabase dashboard, and `supabase/.env` locally (`deployment.md` → Sign in with Google).
+- Tests: `core_rules.test.sql` (profile creation), `google_sign_in.test.sql`; `app/test/username_suggestion_test.dart`, `router_test.dart` (`safeNext`).
 
 ## F2. Groups and membership — Done
 - Create (creator = owner, starter types seeded), rename (owner), leave (anyone), remove member (owner).
@@ -137,6 +142,7 @@ Status legend: **Done** = DB + UI + tests. **DB only** = schema/RPCs/tests exist
 
 ## F12. Account lifecycle and release readiness — Done
 - **Forgot password**: sign-in screen → email → `resetPasswordForEmail(redirectTo: <APP_URL>/reset-password)` → link opens `ResetPasswordPage` (waits for the PKCE code exchange, then "Choose a new password"; "link expired" after 10 s). The router sends any `passwordRecovery` session to `/reset-password`.
+- **Change password** (Profile → Password): asks for the current password; a **"No password yet, or forgot it? Email me a link"** button sends the same reset link to the account's own email, which is how a Google account (#87) sets its first password.
 - **Delete account**: Profile → Delete account (type username) → removes storage files (`my_storage_files`) → `delete_my_account` → local sign-out. DB: activities deleted (unshared first so plans become events), auth user deleted (cascades), groups handed over by `hand_over_ownership` trigger (also on normal "leave"), "who did it" columns `on delete set null`.
 - **Privacy policy**: `app/web/privacy.html` (last updated 16 October 2026; contact easyplanhehe@gmail.com; names Supabase (Singapore), Netlify, Resend (Japan), Google Maps Platform (location search) and AIML API / Anthropic (Fill from link)), linked from sign-up and the profile (`AppConfig.privacyPolicyUrl`).
 - **Auth emails** (sign-up confirmation, password reset, email change): Supabase custom SMTP through Resend, from `no-reply@easyplanhehe.online`; set up in the Supabase dashboard, not in the repo (`docs/deployment.md` §1). EasyPlan wording from `supabase/templates/` (`confirmation.html`, `recovery.html`, `email_change.html`; cloud copies pasted by hand). Locally they still go to Mailpit.

@@ -1,6 +1,7 @@
 import 'dart:typed_data';
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:http/http.dart' as http;
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import 'models.dart';
@@ -39,6 +40,15 @@ class ProfileRepository {
     }).eq('id', _me);
   }
 
+  /// True until someone who signed up with Google has picked a username (#87).
+  /// Null when signed out or the profile can't be read yet.
+  Future<bool?> needsUsername() async {
+    final user = _db.auth.currentUser;
+    if (user == null) return null;
+    final row = await _db.from('profiles').select('needs_username').eq('id', user.id).maybeSingle();
+    return row?['needs_username'] as bool?;
+  }
+
   Future<bool> usernameAvailable(String username) async =>
       await _db.rpc('username_available', params: {'p_username': username}) as bool;
 
@@ -54,6 +64,16 @@ class ProfileRepository {
         );
     await _db.from('profiles').update({'avatar_path': path}).eq('id', _me);
     if (previousPath != null) await _db.storage.from(avatarBucket).remove([previousPath]);
+  }
+
+  /// Copies a picture from the web (Google's, on first sign-in) into the avatars
+  /// bucket. Google's image server allows cross-origin downloads, so this works
+  /// on the web too.
+  Future<void> copyAvatarFrom(String url) async {
+    final res = await http.get(Uri.parse(url));
+    if (res.statusCode != 200 || res.bodyBytes.isEmpty) throw Exception('Picture download failed (${res.statusCode})');
+    final png = (res.headers['content-type'] ?? '').contains('png');
+    await setAvatar(res.bodyBytes, extension: png ? 'png' : 'jpg');
   }
 
   Future<void> removeAvatar(String path) async {

@@ -46,7 +46,7 @@ The Supabase CLI may be at `~/.local/bin/supabase` rather than on `PATH`. The ow
 6. **After every mutation, invalidate the affected providers** (`invalidateActivity`, `invalidateLabels`, or specific `ref.invalidate(...)`). Otherwise screens show stale data. Other people's changes arrive through Realtime: a new table that a screen shows needs a `broadcast_change` trigger and a case in `providersAffectedBy` (`data/realtime_repository.dart`), or it won't update live.
 7. Before finishing: `flutter analyze` must be clean and `supabase test db` must pass. If you changed behaviour, update `docs/ai/features.md`, `docs/ai/endpoints.md` and, where relevant, `docs/database.md`, `SPEC.md` and `docs/ai/decisions.md`.
 8. Don't commit or push unless asked.
-9. **Never commit secrets or signing material:** `app/env/prod.json`, `app/android/key.properties`, `*.jks` and `supabase/functions/.env` (API keys for Edge Functions) are git-ignored; keep it that way. Never ask for or print an API key; the owner types keys into `.env` or `supabase secrets set` themselves. Never change the app ID `com.kangjin.easyplan`.
+9. **Never commit secrets or signing material:** `app/env/prod.json`, `app/android/key.properties`, `*.jks`, `supabase/functions/.env` (API keys for Edge Functions) and `supabase/.env` (Google sign-in client) are git-ignored; keep it that way. Never ask for or print an API key; the owner types keys into `.env` or `supabase secrets set` themselves. Never change the app ID `com.kangjin.easyplan`.
 10. New migrations reach production only via `supabase db push` (owner runs it). **Merging to `main` does not deploy**; the web app deploys only when the owner asks (`docs/deployment.md` → Deploying the web app). Migrations must be pushed to the cloud *before* the deploy that needs them; say so in the PR.
 
 ## Gotchas (each has bitten this project)
@@ -71,6 +71,7 @@ The Supabase CLI may be at `~/.local/bin/supabase` rather than on `PATH`. The ow
 - `touch_updated` only stamps `updated_by` for users that still exist (needed during account deletion).
 - Supabase auth emails link back to the site root with query parameters (`/?code=`, `/?message=`, `/?error_description=`); the router redirects `/` and shows the message (`authLinkNotice`). Keep that redirect.
 - Email templates in `supabase/templates/` only apply to the local stack (`config.toml`). The cloud copy is pasted by hand in the dashboard (`docs/deployment.md` §1); say so in the PR whenever a template changes. Don't use `supabase config push`: it would also push local-only settings such as `site_url`.
+- Google sign-in (#87) reads its client from the git-ignored `supabase/.env` through `config.toml` `env(...)`; changes need `supabase stop` + `supabase start`. A Google user's first sign-in has no username: `profiles.needs_username` makes the router show `/welcome`. To test without Google, create a password-less user with Google-style `user_metadata` (`full_name`, `avatar_url`) through the local admin API, set a password with Forgot password (Mailpit), and sign in; delete it afterwards.
 - Mac: current Dart needs macOS ≥ 14.
 - Each computer (Mac, Windows) has its own local database; data made on one isn't on the other.
 - Windows: Docker Desktop needs WSL 2; the `supabase_vector` container restart-loops there, which is harmless.

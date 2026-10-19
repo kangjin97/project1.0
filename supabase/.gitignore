@@ -9,3 +9,6 @@
 
 # Edge Function secrets for local testing (API keys); never commit
 functions/.env
+
+# Google OAuth client for local sign-in (#87); never commit
+.env

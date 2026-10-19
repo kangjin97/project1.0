@@ -7,6 +7,7 @@ import 'package:url_launcher/url_launcher.dart';
 
 import '../../config.dart';
 import '../../data/app_clock.dart';
+import '../../data/auth_repository.dart';
 import '../../data/groups_repository.dart';
 import '../../data/models.dart';
 import '../../data/profile_repository.dart';
@@ -481,13 +482,37 @@ class _ChangePasswordDialogState extends ConsumerState<_ChangePasswordDialog> {
     } on AuthException catch (e) {
       setState(() {
         _busy = false;
-        _error = e.message.toLowerCase().contains('invalid') ? 'Your current password is wrong.' : e.message;
+        _error = e.message.toLowerCase().contains('invalid')
+            ? 'Your current password is wrong. Signed up with Google and never set one? Use the link below.'
+            : e.message;
       });
     } catch (e) {
       setState(() {
         _busy = false;
         _error = friendlyError(e);
       });
+    }
+  }
+
+  /// Accounts made with Google have no password to type here (#87); the reset
+  /// link sets one, the same way Forgot password does.
+  Future<void> _emailLink() async {
+    final email = Supabase.instance.client.auth.currentUser?.email;
+    if (email == null) return;
+    setState(() => _busy = true);
+    try {
+      await ref.read(authRepositoryProvider).sendPasswordReset(email);
+      if (mounted) {
+        Navigator.pop(context);
+        showMessage(context, 'We’ve emailed $email a link to set a new password.');
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _busy = false;
+          _error = friendlyError(e);
+        });
+      }
     }
   }
 
@@ -525,6 +550,14 @@ class _ChangePasswordDialogState extends ConsumerState<_ChangePasswordDialog> {
               const SizedBox(height: 12),
               Text(_error!, style: TextStyle(color: Theme.of(context).colorScheme.error)),
             ],
+            const SizedBox(height: 8),
+            Align(
+              alignment: Alignment.centerLeft,
+              child: TextButton(
+                onPressed: _busy ? null : _emailLink,
+                child: const Text('No password yet, or forgot it? Email me a link'),
+              ),
+            ),
           ],
         ),
       ),

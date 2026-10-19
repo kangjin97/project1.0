@@ -45,7 +45,8 @@ There is no custom server of our own. The Flutter app talks to Supabase directly
 |---|---|---|
 | `/` | (none) | Redirects to `/schedule`. Auth emails land here with `?code=`, `?message=` or `?error_description=`; the message is shown as a snackbar. |
 | `/reset-password` | `ResetPasswordPage` | Opened from a password-reset email; any `passwordRecovery` session is redirected here. |
-| `/auth?next=` | `AuthPage` | Sign in or sign up. Signed-out users are redirected here with `next`, so invite links survive sign-in. |
+| `/auth?next=` | `AuthPage` | Sign in or sign up, with email or **Continue with Google**. Signed-out users are redirected here with `next`, so invite links survive sign-in. Google comes back to `/?next=<path>&code=…`; the root redirect follows `next` when it's a path in the app (`safeNext`). |
+| `/welcome?next=` | `WelcomePage` | First Google sign-in: pick a username, check the name, take the Google photo. While the profile's `needs_username` is true, every page redirects here (`_AuthRefresh.needsUsername`, read once per user); Continue returns to `next`. |
 | `/join/:token` | `JoinPage` | Previews and joins a group from an invite link. Outside the shell. |
 | `/schedule` | `MySchedulePage` | List / Week / Month switch on all sizes; phones default to List, wide screens to Week. |
 | `/groups` | `GroupsPage` | Groups list and pending invitations. |
