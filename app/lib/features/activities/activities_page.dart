@@ -3,11 +3,14 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../data/activities_repository.dart';
+import '../../data/geo.dart';
 import '../../data/models.dart';
+import '../../data/places_repository.dart';
 import '../../widgets/async_body.dart';
 import '../../widgets/dialogs.dart';
 import 'activity_form_page.dart';
 import 'activity_widgets.dart';
+import 'near_filter.dart';
 
 enum _Sort { newest, name, priceLow }
 
@@ -28,10 +31,16 @@ class _ActivitiesPageState extends ConsumerState<ActivitiesPage> {
   double? _maxBudget;
   bool _withLink = false;
   bool _withPhotos = false;
+  NearFilter? _near;
   _Sort _sort = _Sort.newest;
 
   bool get _filtering =>
-      _labels.isNotEmpty || _sharing != _Sharing.all || _maxBudget != null || _withLink || _withPhotos;
+      _labels.isNotEmpty ||
+      _sharing != _Sharing.all ||
+      _maxBudget != null ||
+      _withLink ||
+      _withPhotos ||
+      _near != null;
 
   Future<void> _create() async {
     final id = await showActivityForm(context);
@@ -80,6 +89,11 @@ class _ActivitiesPageState extends ConsumerState<ActivitiesPage> {
   @override
   Widget build(BuildContext context) {
     final labels = ref.watch(labelsProvider).value ?? const <PersonalType>[];
+    // Distances for the "Near…" filter: the places of all your activities, looked up once.
+    final coordinates = _near == null
+        ? null
+        : ref.watch(placeCoordinatesProvider(
+            placeKey((ref.watch(myActivitiesProvider).value ?? const <Activity>[]).map((a) => a.placeId))));
     return Scaffold(
       appBar: AppBar(
         title: const Text('My activities'),
@@ -121,7 +135,15 @@ class _ActivitiesPageState extends ConsumerState<ActivitiesPage> {
                 ],
               );
             }
-            final list = _apply(all);
+            var list = _apply(all);
+            final distances = <String, double>{};
+            var unmeasured = const <Activity>[];
+            if (_near != null) {
+              final near = applyNear(list, _near!, coordinates?.value?.byPlace ?? const {}, (a) => a.placeId);
+              list = [for (final (a, _) in near.within) a];
+              distances.addAll({for (final (a, km) in near.within) a.id: km});
+              unmeasured = near.unmeasured;
+            }
             return ListView(
               padding: const EdgeInsets.only(bottom: 96),
               children: [
@@ -179,6 +201,8 @@ class _ActivitiesPageState extends ConsumerState<ActivitiesPage> {
                         ),
                       ),
                       const SizedBox(width: 8),
+                      NearFilterChip(value: _near, onChanged: (v) => setState(() => _near = v)),
+                      const SizedBox(width: 8),
                       FilterChip(
                         label: Text(_maxBudget == null ? 'Budget' : 'Up to ${_maxBudget!.toStringAsFixed(0)}'),
                         selected: _maxBudget != null,
@@ -216,6 +240,7 @@ class _ActivitiesPageState extends ConsumerState<ActivitiesPage> {
                             _maxBudget = null;
                             _withLink = false;
                             _withPhotos = false;
+                            _near = null;
                           }),
                           child: const Text('Clear'),
                         ),
@@ -223,11 +248,17 @@ class _ActivitiesPageState extends ConsumerState<ActivitiesPage> {
                     ],
                   ),
                 ),
-                if (list.isEmpty) const EmptyState(icon: Icons.search_off, message: 'Nothing matches.'),
+                if (coordinates != null) NearNote(coordinates: coordinates, unmeasured: unmeasured),
+                if (list.isEmpty && !(coordinates?.isLoading ?? false))
+                  EmptyState(
+                    icon: Icons.search_off,
+                    message: _near == null ? 'Nothing matches.' : 'Nothing within ${formatDistance(_near!.km)} of ${_near!.label}.',
+                  ),
                 for (final a in list)
                   ActivityCard(
                     activity: a,
                     typeName: a.personalTypeName,
+                    distanceKm: distances[a.id],
                     footer: switch (a.sharedGroupCount ?? 0) {
                       0 => 'Private',
                       1 => 'In 1 group',

@@ -24,7 +24,7 @@ Order: **1 → 2 → 3** gets friends using it on their phones via the browser. 
 | Auth email templates | EasyPlan templates from `supabase/templates/` pasted into the dashboard: **Confirm signup** (`confirmation.html`), **Reset password** (`recovery.html`), **Change email address** (`email_change.html`). Magic link, invite and reauthentication aren't used |
 | Privacy policy | Live at `<APP_URL>/privacy.html`; names Supabase (Singapore), Netlify and Resend (Tokyo); Google (place search, #73) and AIML API → Anthropic ("Fill from link", #74); contact easyplanhehe@gmail.com; Google sign-in (#87); last updated 19 October 2026 |
 | Deploys | **On request only** (since 2026-10-15): merging to `main` doesn't deploy. The owner decides when; a manual run of CI deploys `main` after the checks pass (GitHub Actions → Netlify). See [Deploying the web app](#deploying-the-web-app). |
-| Edge Functions | `places` (Google Maps place search, #73) and `fill-activity` ("Fill from link", #74): **deployed**: `places` version 1 (2026-10-16), `fill-activity` version 2 (2026-10-19, the #79 label fix). Both have `verify_jwt` on. Secrets `GOOGLE_MAPS_API_KEY`, `ANTHROPIC_API_KEY` (AIML API key) and `ANTHROPIC_BASE_URL=https://api.aimlapi.com` set with `supabase secrets set --env-file supabase/functions/.env`. Redeploy whenever `supabase/functions/` changes; check with `supabase functions list` / `supabase secrets list`. See [Edge Functions and Google Maps](#edge-functions-and-google-maps-73) |
+| Edge Functions | `place-coordinates` (distances for "Near…", #94): **not deployed yet**; deploy it with the next web deploy. `places` (Google Maps place search, #73) and `fill-activity` ("Fill from link", #74): **deployed**: `places` version 1 (2026-10-16), `fill-activity` version 2 (2026-10-19, the #79 label fix). Both have `verify_jwt` on. Secrets `GOOGLE_MAPS_API_KEY`, `ANTHROPIC_API_KEY` (AIML API key) and `ANTHROPIC_BASE_URL=https://api.aimlapi.com` set with `supabase secrets set --env-file supabase/functions/.env`. Redeploy whenever `supabase/functions/` changes; check with `supabase functions list` / `supabase secrets list`. See [Edge Functions and Google Maps](#edge-functions-and-google-maps-73) |
 | Sign in with Google | Built (#87). Google OAuth client and consent screen (EasyPlan, In production) set up by the owner on 2026-10-19; Google provider **on** in the cloud project (checked 2026-10-19); the Mac's `supabase/.env` filled in (the Windows PC still needs it). **Live since 2026-10-19 and checked by the owner on a phone**: Continue with Google works end to end, and signing up with an email that already has an account says "already registered". See [Sign in with Google](#sign-in-with-google-87) |
 | Still to do | The phone smoke test (#5) and the two-phone live-updates test (#49); Android (#13) and iOS (#14) store builds |
 
@@ -116,6 +116,8 @@ Place search runs in the `places` Edge Function (`supabase/functions/places/inde
   ```
   Type it straight into your terminal. `supabase secrets list` shows the name, never the value.
 
+**Distances (#94):** the `place-coordinates` function uses the same key for **Place Details** (only the `location` field), which is part of Places API (New), so the key's restriction already covers it (checked 2026-10-19). Coordinates are cached for at most 30 days (Google's limit) and each person can trigger 200 lookups a day. The cache is written with the service role key that Supabase gives every function; nothing to set.
+
 ### Claude for "Fill from link" (#74)
 
 The `fill-activity` function calls Claude Haiku 5.5 (`claude-haiku-5-5`) through the official Anthropic SDK. It also uses the Google key above to match places. Two settings choose where the request goes:
@@ -158,8 +160,9 @@ Owner, whenever `supabase/functions/` changes (including `_shared/`), before the
 ```bash
 supabase functions deploy places
 supabase functions deploy fill-activity
+supabase functions deploy place-coordinates
 ```
-`verify_jwt = true` for both comes from `supabase/config.toml`, so only signed-in users can call them. Without their secrets they answer "… isn't set up yet." `supabase functions serve --env-file supabase/functions/.env` serves all of them locally.
+`verify_jwt = true` for all three comes from `supabase/config.toml`, so only signed-in users can call them. Without their secrets they answer "… isn't set up yet." `supabase functions serve --env-file supabase/functions/.env` serves all of them locally.
 
 ## 2. Production config
 

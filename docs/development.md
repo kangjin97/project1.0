@@ -58,7 +58,7 @@ flutter run -d <ios-simulator-or-android-device>
 - **Production builds:** use `./scripts/build.sh` with `app/env/prod.json`; see [`deployment.md`](deployment.md).
 - **Hosted Supabase project:**
   `flutter run --dart-define=SUPABASE_URL=https://<ref>.supabase.co --dart-define=SUPABASE_PUBLISHABLE_KEY=<key>`
-- **Edge Functions** (`supabase/functions/`: `places` for Google place search, `fill-activity` for "Fill from link"): put the keys (`GOOGLE_MAPS_API_KEY`, `ANTHROPIC_API_KEY`, `ANTHROPIC_BASE_URL`) in `supabase/functions/.env` (git-ignored; see `deployment.md` → Edge Functions and Google Maps, and → Claude for "Fill from link"), then run
+- **Edge Functions** (`supabase/functions/`: `places` for Google place search, `fill-activity` for "Fill from link", `place-coordinates` for the "Near…" filter): put the keys (`GOOGLE_MAPS_API_KEY`, `ANTHROPIC_API_KEY`, `ANTHROPIC_BASE_URL`) in `supabase/functions/.env` (git-ignored; see `deployment.md` → Edge Functions and Google Maps, and → Claude for "Fill from link"), then run
   `supabase functions serve --env-file supabase/functions/.env`
   alongside the stack; the app reaches them at `:54321/functions/v1/<name>`. Without a key, that feature answers "isn't set up yet" and the form still works by hand.
 - **Two people at once** (for anything shared, e.g. live updates or invitations): tabs on one address share a sign-in, and the debug server only runs the app in one tab. So start a second server as a profile build on another port:

@@ -9,13 +9,25 @@ import '../../data/places_repository.dart';
 /// type and keeps the picked place's ID. Free text still works; editing the
 /// text after a pick drops the place (the database does the same).
 class PlaceField extends ConsumerStatefulWidget {
-  const PlaceField({super.key, required this.controller, required this.placeId, required this.onPlaceChanged});
+  const PlaceField({
+    super.key,
+    required this.controller,
+    required this.placeId,
+    required this.onPlaceChanged,
+    this.label = 'Location',
+    this.hint,
+  });
 
   final TextEditingController controller;
 
   /// The place picked for the current text, or null for free text.
   final String? placeId;
   final ValueChanged<String?> onPlaceChanged;
+
+  /// The field's label and, when given, its helper text (the "Near…" filter
+  /// reuses the field to pick a starting point).
+  final String label;
+  final String? hint;
 
   @override
   ConsumerState<PlaceField> createState() => _PlaceFieldState();
@@ -129,7 +141,7 @@ class _PlaceFieldState extends ConsumerState<PlaceField> {
           onChanged: _onChanged,
           textCapitalization: TextCapitalization.words,
           decoration: InputDecoration(
-            labelText: 'Location',
+            labelText: widget.label,
             prefixIcon: const Icon(Icons.place_outlined),
             suffixIcon: _searching
                 ? const Padding(
@@ -142,7 +154,7 @@ class _PlaceFieldState extends ConsumerState<PlaceField> {
                         child: Icon(Icons.check_circle, color: theme.colorScheme.primary),
                       )
                     : null,
-            helperText: picked ? 'Exact place from Google Maps' : 'Type to search Google Maps, or write any place',
+            helperText: widget.hint ?? (picked ? 'Exact place from Google Maps' : 'Type to search Google Maps, or write any place'),
             border: const OutlineInputBorder(),
           ),
         ),

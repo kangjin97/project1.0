@@ -3,11 +3,14 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../data/activities_repository.dart';
+import '../../data/geo.dart';
 import '../../data/groups_repository.dart';
 import '../../data/models.dart';
+import '../../data/places_repository.dart';
 import '../../widgets/async_body.dart';
 import '../../widgets/dialogs.dart';
 import '../activities/activity_widgets.dart';
+import '../activities/near_filter.dart';
 import '../activities/share_activity_sheet.dart';
 
 enum _Sort { newest, name, priceLow }
@@ -29,9 +32,11 @@ class _GroupActivitiesTabState extends ConsumerState<GroupActivitiesTab> {
   String? _addedBy;
   bool _withLink = false;
   bool _withPhotos = false;
+  NearFilter? _near;
   _Sort _sort = _Sort.newest;
 
-  bool get _filtering => _types.isNotEmpty || _maxBudget != null || _addedBy != null || _withLink || _withPhotos;
+  bool get _filtering =>
+      _types.isNotEmpty || _maxBudget != null || _addedBy != null || _withLink || _withPhotos || _near != null;
 
   List<GroupActivity> _apply(List<GroupActivity> all) {
     final q = _query.trim().toLowerCase();
@@ -76,6 +81,11 @@ class _GroupActivitiesTabState extends ConsumerState<GroupActivitiesTab> {
     final groupId = widget.groupId;
     final types = ref.watch(typesProvider(groupId)).value ?? const [];
     final members = ref.watch(membersProvider(groupId)).value ?? const [];
+    // Distances for the "Near…" filter: the places of the group's activities, looked up once.
+    final coordinates = _near == null
+        ? null
+        : ref.watch(placeCoordinatesProvider(placeKey(
+            (ref.watch(groupActivitiesProvider(groupId)).value ?? const <GroupActivity>[]).map((ga) => ga.activity.placeId))));
 
     return RefreshIndicator(
       onRefresh: () async {
@@ -85,7 +95,15 @@ class _GroupActivitiesTabState extends ConsumerState<GroupActivitiesTab> {
       child: AsyncBody(
         value: ref.watch(groupActivitiesProvider(groupId)),
         builder: (all) {
-          final list = _apply(all);
+          var list = _apply(all);
+          final distances = <String, double>{};
+          var unmeasured = const <GroupActivity>[];
+          if (_near != null) {
+            final near = applyNear(list, _near!, coordinates?.value?.byPlace ?? const {}, (ga) => ga.activity.placeId);
+            list = [for (final (ga, _) in near.within) ga];
+            distances.addAll({for (final (ga, km) in near.within) ga.activityId: km});
+            unmeasured = near.unmeasured;
+          }
           return ListView(
             padding: const EdgeInsets.only(bottom: 48),
             children: [
@@ -133,6 +151,8 @@ class _GroupActivitiesTabState extends ConsumerState<GroupActivitiesTab> {
                         }),
                       ),
                     ),
+                    const SizedBox(width: 8),
+                    NearFilterChip(value: _near, onChanged: (v) => setState(() => _near = v)),
                     const SizedBox(width: 8),
                     FilterChip(
                       label: Text(_maxBudget == null ? 'Budget' : 'Up to ${_maxBudget!.toStringAsFixed(0)}'),
@@ -185,6 +205,7 @@ class _GroupActivitiesTabState extends ConsumerState<GroupActivitiesTab> {
                           _addedBy = null;
                           _withLink = false;
                           _withPhotos = false;
+                          _near = null;
                         }),
                         child: const Text('Clear'),
                       ),
@@ -192,18 +213,26 @@ class _GroupActivitiesTabState extends ConsumerState<GroupActivitiesTab> {
                   ],
                 ),
               ),
+              if (coordinates != null && all.isNotEmpty)
+                NearNote(coordinates: coordinates, unmeasured: [for (final ga in unmeasured) ga.activity]),
               if (all.isEmpty)
                 const EmptyState(
                   icon: Icons.local_activity_outlined,
                   message: 'No activities in this group yet.\nTap Add to share one of yours or create a new one.',
                 )
-              else if (list.isEmpty)
-                const EmptyState(icon: Icons.filter_alt_off_outlined, message: 'Nothing matches these filters.')
+              else if (list.isEmpty && !(coordinates?.isLoading ?? false))
+                EmptyState(
+                  icon: Icons.filter_alt_off_outlined,
+                  message: _near == null
+                      ? 'Nothing matches these filters.'
+                      : 'Nothing within ${formatDistance(_near!.km)} of ${_near!.label}.',
+                )
               else
                 for (final ga in list)
                   ActivityCard(
                     activity: ga.activity,
                     typeName: ga.typeName,
+                    distanceKm: distances[ga.activityId],
                     footer: ga.sharedByUsername == null ? null : 'by @${ga.sharedByUsername}',
                     onTap: () => context.push('/activities/${ga.activityId}'),
                   ),

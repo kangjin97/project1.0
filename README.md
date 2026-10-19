@@ -82,7 +82,7 @@ app/                            Flutter app
 supabase/
   config.toml                   Local stack config
   migrations/                   Schema, RLS, triggers, RPCs (source of truth)
-  functions/                    Edge Functions (Deno): places (Google place search), fill-activity (AI fill); shared code in _shared/; keys in a git-ignored .env
+  functions/                    Edge Functions (Deno): places (Google place search), fill-activity (AI fill), place-coordinates (distances); shared code in _shared/; keys in a git-ignored .env
   seed.sql                      Local test accounts
   templates/                    Auth email templates (local; cloud copy pasted by hand)
   tests/database/               pgTAP tests

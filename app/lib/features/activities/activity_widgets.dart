@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../data/activities_repository.dart';
+import '../../data/geo.dart';
 import '../../data/models.dart';
 
 /// A photo from the private bucket, loaded through a signed URL.
@@ -27,13 +28,24 @@ class ActivityPhotoImage extends ConsumerWidget {
 
 /// List card for an activity: thumbnail, name, location, price and optional type.
 class ActivityCard extends StatelessWidget {
-  const ActivityCard({super.key, required this.activity, this.typeName, this.footer, this.onTap, this.trailing});
+  const ActivityCard({
+    super.key,
+    required this.activity,
+    this.typeName,
+    this.footer,
+    this.onTap,
+    this.trailing,
+    this.distanceKm,
+  });
 
   final Activity activity;
   final String? typeName;
   final String? footer;
   final VoidCallback? onTap;
   final Widget? trailing;
+
+  /// Shown when the "Near…" filter is on (#94).
+  final double? distanceKm;
 
   @override
   Widget build(BuildContext context) {
@@ -93,6 +105,8 @@ class ActivityCard extends StatelessWidget {
                       runSpacing: 4,
                       crossAxisAlignment: WrapCrossAlignment.center,
                       children: [
+                        if (distanceKm != null)
+                          _Pill(text: formatDistance(distanceKm!), color: theme.colorScheme.primaryContainer),
                         if (typeName != null) _Pill(text: typeName!, color: theme.colorScheme.secondaryContainer),
                         if (price != null) _Pill(text: price, color: theme.colorScheme.tertiaryContainer),
                         if (footer != null) Text(footer!, style: muted),

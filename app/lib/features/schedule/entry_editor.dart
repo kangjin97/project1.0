@@ -5,11 +5,14 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../data/activities_repository.dart';
 import '../../data/app_clock.dart';
+import '../../data/geo.dart';
 import '../../data/groups_repository.dart';
 import '../../data/models.dart';
+import '../../data/places_repository.dart';
 import '../../data/schedule_models.dart';
 import '../../data/schedule_repository.dart';
 import '../../widgets/dialogs.dart';
+import '../activities/near_filter.dart';
 import 'schedule_widgets.dart';
 
 enum _What { activity, event }
@@ -69,6 +72,9 @@ class _EntryEditorPageState extends ConsumerState<EntryEditorPage> {
   late TimeOfDay _end;
   late final Set<String> _people = {_me};
   bool _saving = false;
+
+  /// "Near…" (#94): nearby activities first in the picker, with their distance.
+  NearFilter? _near;
 
   /// New plans only: repeat, and until when (default three months on).
   RepeatFreq? _repeat;
@@ -276,7 +282,17 @@ class _EntryEditorPageState extends ConsumerState<EntryEditorPage> {
   }
 
   Widget _whatPicker() {
-    final activities = ref.watch(groupActivitiesProvider(_groupId!)).value ?? const <GroupActivity>[];
+    var activities = ref.watch(groupActivitiesProvider(_groupId!)).value ?? const <GroupActivity>[];
+    final coordinates =
+        _near == null ? null : ref.watch(placeCoordinatesProvider(placeKey(activities.map((ga) => ga.activity.placeId))));
+    final distances = <String, double>{};
+    if (_near != null) {
+      // Nearby ones first, nearest first; the rest stay pickable after them.
+      final near = applyNear(activities, _near!, coordinates?.value?.byPlace ?? const {}, (ga) => ga.activity.placeId);
+      distances.addAll({for (final (ga, km) in near.within) ga.activityId: km});
+      final nearby = [for (final (ga, _) in near.within) ga];
+      activities = [...nearby, ...activities.where((ga) => !distances.containsKey(ga.activityId))];
+    }
     return _section('What', [
       SegmentedButton<_What>(
         segments: const [
@@ -290,6 +306,24 @@ class _EntryEditorPageState extends ConsumerState<EntryEditorPage> {
         }),
       ),
       const SizedBox(height: 12),
+      if (_what == _What.activity && activities.isNotEmpty) ...[
+        Align(
+          alignment: Alignment.centerLeft,
+          child: NearFilterChip(value: _near, onChanged: (v) => setState(() => _near = v)),
+        ),
+        if (coordinates?.isLoading ?? false) const LinearProgressIndicator(),
+        if (_near != null && !(coordinates?.isLoading ?? true))
+          Padding(
+            padding: const EdgeInsets.only(top: 4),
+            child: Text(
+              distances.isEmpty
+                  ? 'None within ${formatDistance(_near!.km)} of ${_near!.label}.'
+                  : '${distances.length} within ${formatDistance(_near!.km)} of ${_near!.label}, listed first.',
+              style: Theme.of(context).textTheme.bodySmall,
+            ),
+          ),
+        const SizedBox(height: 8),
+      ],
       if (_what == _What.activity)
         activities.isEmpty
             ? const Text('This group has no activities yet. Add one in the group’s Activities tab, or plan an event.')
@@ -302,7 +336,11 @@ class _EntryEditorPageState extends ConsumerState<EntryEditorPage> {
                     DropdownMenuItem(
                       value: ga.activityId,
                       child: Text(
-                        ga.typeName == null ? ga.activity.name : '${ga.activity.name} · ${ga.typeName}',
+                        [
+                          ga.activity.name,
+                          ?ga.typeName,
+                          if (distances[ga.activityId] case final km?) formatDistance(km),
+                        ].join(' · '),
                         overflow: TextOverflow.ellipsis,
                       ),
                     ),
