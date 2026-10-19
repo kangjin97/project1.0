@@ -57,6 +57,7 @@ A web and mobile app for friends to plan things to do together: collect activity
 ### 2.4 Search & filter
 - **My activities:** text search on name, description, location, label; filters: label, private/shared, max budget, has a link, has photos.
 - **Group activities:** text search on name, description, location, type; filters: type, max budget, added by, has a link, has photos.
+- **Near…** (both lists, and the activity picker when adding to a schedule): activities within a chosen straight-line distance (1–20 km) of your location or a searched place, nearest first with the distance shown. Only activities with a place picked from Google Maps can be measured; the others are counted in a note with a way to fix them. Your device location stays on the device.
 - Sort: newest, name, price (cheapest first).
 
 ### 2.5 Schedules

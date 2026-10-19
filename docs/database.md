@@ -27,6 +27,7 @@ Source of truth: `supabase/migrations/`. Test coverage: `supabase/tests/database
 | `20261018190056_invite_link_expiry.sql` | Invite links last at most 7 days, and the server picks the token and bookkeeping columns (trigger `group_invite_links_guard_insert` → `guard_invite_link_insert`, #82); caps any existing longer link |
 | `20261018190855_display_name_length.sql` | `display_name` at most 50 characters (check `profiles_display_name_length`, #83); `handle_new_user` trims a sign-up name, stores a blank one as null and cuts a long one to 50; shortens any existing long name |
 | `20261019022546_google_sign_in.sql` | Sign in with Google (#87): `profiles.needs_username`; `handle_new_user` takes Google's `full_name`/`name` as the display name and flags sign-ups without a username; trigger `profiles_username_chosen` (`mark_username_chosen`) clears the flag when the username is written |
+| `20261019114043_place_coordinates.sql` | Distance filter (#94): `place_coordinates` cache (no client access; written by the `place-coordinates` Edge Function with the service role); `pg_cron` job `expire-place-coordinates` deletes rows older than 30 days daily; `consume_api_quota` gains `place_coords` (200 a day) |
 
 ## Tables
 
@@ -80,8 +81,11 @@ Access:
 
 Access: the owner, plus members of any group it's shared into, can read and update the editable columns. Nobody can delete rows directly.
 
+### `place_coordinates`
+Where Google places are, for the "Near…" filter (#94). `place_id` (primary key; same format check as `activities.place_id`), `lat`, `lng` (range checks), `fetched_at`. One row per place, shared by every activity with that place. Google allows keeping coordinates for at most 30 days, so the `pg_cron` job **`expire-place-coordinates`** (daily, 19:17 UTC) deletes rows older than that, and the Edge Function ignores them. RLS on with no policies, and no grants for `anon`/`authenticated`: only the `place-coordinates` Edge Function reads and writes it, with the service role.
+
 ### `api_usage`
-Daily per-user counters for paid outside APIs called by Edge Functions: `places` (#73, 100 a day) and `ai_fill` (#74, 30 a day). One row per `(user_id, kind, day)`, with `count`; `day` is the user's date in their profile time zone. Cascades with the profile. Clients can't read or write it at all (RLS on, no policies, privileges revoked); only `consume_api_quota` touches it.
+Daily per-user counters for paid outside APIs called by Edge Functions: `places` (#73, 100 a day), `ai_fill` (#74, 30 a day) and `place_coords` (#94, 200 a day). One row per `(user_id, kind, day)`, with `count`; `day` is the user's date in their profile time zone. Cascades with the profile. Clients can't read or write it at all (RLS on, no policies, privileges revoked); only `consume_api_quota` touches it.
 
 ### `activity_photos`
 `storage_path` (`<activity_id>/<file>` in the `activity-photos` bucket) and `position`. Anyone who can access the activity can add, remove or reorder its photos.
@@ -184,7 +188,7 @@ See [`ai/endpoints.md`](ai/endpoints.md) for parameters, return shapes and error
 | `join_group_via_link(token)` / `preview_invite_link(token)` | Invite links |
 | `respond_to_invitation(id, accept)` | Accept or decline |
 | `cancel_invitation(id)` | Any member cancels a pending invitation from their group |
-| `consume_api_quota(kind)` | Counts one paid outside-API call for the caller today and refuses past the daily limit (`places`: 100, `ai_fill`: 30) with PT429 / HTTP 429. Called by Edge Functions with the user's token |
+| `consume_api_quota(kind)` | Counts one paid outside-API call for the caller today and refuses past the daily limit (`places`: 100, `ai_fill`: 30, `place_coords`: 200) with PT429 / HTTP 429. Called by Edge Functions with the user's token |
 | `group_deletion_summary(group)` | Owner only: members, upcoming plans, undated ideas, for the delete confirmation |
 | `delete_group(group, confirm_name)` | Owner only; the name must match. Notifies members and plan participants (`group_deleted`), then deletes the group (cascades: members, invites, types, group activities, plans and participants; activities stay) |
 | `transfer_ownership(group, new_owner)` | Owner only, to another current member. Swaps roles, logs it (`group_member` `updated`), notifies the new owner |

@@ -451,3 +451,9 @@ verify_jwt = true
 # and `supabase secrets set` in the cloud.
 [functions.fill-activity]
 verify_jwt = true
+
+# Distance filter (#94): coordinates of Google places for signed-in users, cached
+# for at most 30 days (Google's limit) in public.place_coordinates. Uses the same
+# GOOGLE_MAPS_API_KEY; writes the cache with the service role.
+[functions.place-coordinates]
+verify_jwt = true
