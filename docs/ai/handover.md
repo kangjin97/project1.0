@@ -37,10 +37,10 @@ Settings that exist only in dashboards, and how to redo them, are in [`deploymen
 ## Current state (2026-10-19)
 
 **Where things are**
-- **Live site:** deployed 2026-10-16 from `main` at `64de21b` (the third on-request deploy, run 38859417843; earlier ones were `5fb615c` and `e2534a6`). Everything on `main` up to then is live, including recurring plans (#17), Google Maps locations (#73) and Fill from link (#74). Merged since and **waiting for the next web deploy**: the sign-up name counter (#83) and Sign in with Google with its welcome step and sign-up / password messages (#87); their database parts are already in the cloud. Check with `git log --oneline 64de21b..origin/main`.
+- **Live site:** deployed **2026-10-19** from `main` at `4891b08` (the fourth on-request deploy, run 39236267132; earlier ones were `64de21b`, `e2534a6` and `5fb615c`). Everything on `main` up to then is live, including Sign in with Google (#87), the sign-up name counter (#83), recurring plans (#17), Google Maps locations (#73) and Fill from link (#74). Anything merged later: `git log --oneline 4891b08..origin/main`.
 - **Cloud database** (checked 2026-10-19): has every migration through `20261019022546_google_sign_in.sql`, nothing waiting. Check with `supabase migration list --linked` (both computers are linked).
 - **Edge Functions in the cloud** (checked 2026-10-19): `places` version 1 (2026-10-16) and `fill-activity` version 2 (redeployed 2026-10-19 with the #79 label fix), both with `verify_jwt` on; secrets `GOOGLE_MAPS_API_KEY`, `ANTHROPIC_API_KEY` (the AIML API key) and `ANTHROPIC_BASE_URL` set (the owner used `supabase secrets set --env-file supabase/functions/.env`). Check with `supabase functions list` and `supabase secrets list` (names and hashes only). Redeploy a function whenever `supabase/functions/` changes (`deployment.md` → Deploying the functions).
-- **In flight:** nothing (2026-10-19). Next step: a web deploy when the owner asks. **Google sign-in** is set up: Google OAuth client (consent screen EasyPlan, In production), Google provider on in the cloud project (checked 2026-10-19), Mac `supabase/.env` filled in; the Windows PC still needs its own `supabase/.env` (`deployment.md` → Sign in with Google).
+- **In flight:** nothing (2026-10-19). **Google sign-in** is set up and live: Google OAuth client (consent screen EasyPlan, In production), Google provider on in the cloud project, Mac `supabase/.env` filled in; the Windows PC still needs its own `supabase/.env` (`deployment.md` → Sign in with Google). The owner checked on a phone (2026-10-19) that Continue with Google works and that signing up with a used email says "already registered".
 - **Deploys are on request only** (since 2026-10-15, #45): merging to `main` doesn't deploy. See "Working agreements" below.
 
 **What's built** (details per feature in [`features.md`](features.md))
@@ -59,17 +59,16 @@ Settings that exist only in dashboards, and how to redo them, are in [`deploymen
 - Added on 2026-10-19:
   - **Fill from link** reuses one of the person's labels only when it really fits (#79; `fill-activity` version 2).
   - **Database guards:** invite links last at most 7 days and get a server-picked token (#82); display names at most 50 characters, also on the sign-up form (#83).
-  - **Sign in with Google** (#87): "Continue with Google"; a required welcome step on the first sign-in (username suggestion, Google name, Google photo copied once, device time zone); "already registered" for a used email; Google accounts have no password until set with Forgot password or "Email me a link" in Change password. F1. Tested locally with the owner's real Google account. Facebook (#88) waits until friends ask.
+  - **Sign in with Google** (#87): "Continue with Google"; a required welcome step on the first sign-in (username suggestion, Google name, Google photo copied once, device time zone); "already registered" for a used email; Google accounts have no password until set with Forgot password or "Email me a link" in Change password. F1. Tested locally with the owner's real Google account, then on the live site from the owner's phone (2026-10-19). Facebook (#88) waits until friends ask.
 - **Auth emails** go through Resend, with EasyPlan templates from `supabase/templates/` (*Confirm signup*, *Reset password*, *Change email address*). The cloud copies are pasted by hand; if the dashboard and the files ever disagree, the files are the intended version.
 - **Privacy policy:** live at `/privacy.html`.
 
 **Not built yet** (`gh issue list`): store apps (#13, #14), app icon (#15), server-side search (#16), push notifications (#18), Sign in with Facebook (#88).
 
 **Next priorities**
-1. **Web deploy** (when the owner asks), then on the live site: Google sign-in on a phone, and signing up with an email that's already registered (the cloud signals it differently from the local stack; only the local path was tested).
-2. `priority:high`: #5 phone smoke test together with #49 (live updates on two phones, step by step) on the live site, covering everything deployed on 2026-10-15 (#7–#12, #52, #53, the #58 fix) and 2026-10-16 (repeating plans #17, Google Maps locations #73, Fill from link #74, including a TikTok link and a screenshot from the phone, which weren't tested locally).
-3. The backlog: #15 the app icon (needs the owner's direction), then the store apps (#13, #14) or v2 items (#16 server-side search, #18 push).
-4. **When the AIML API credits run out** (fills start failing; check the balance on aimlapi.com): suggest the owner moves to a direct Anthropic API key, which is cheaper. Steps, including the privacy page change: [`deployment.md`](../deployment.md#claude-for-fill-from-link-74).
+1. `priority:high`: #5 phone smoke test together with #49 (live updates on two phones, step by step) on the live site, covering everything deployed on 2026-10-15 (#7–#12, #52, #53, the #58 fix) and 2026-10-16 (repeating plans #17, Google Maps locations #73, Fill from link #74, including a TikTok link and a screenshot from the phone, which weren't tested locally). Google sign-in and "already registered" were already checked on a phone on 2026-10-19.
+2. The backlog: #15 the app icon (needs the owner's direction), then the store apps (#13, #14) or v2 items (#16 server-side search, #18 push).
+3. **When the AIML API credits run out** (fills start failing; check the balance on aimlapi.com): suggest the owner moves to a direct Anthropic API key, which is cheaper. Steps, including the privacy page change: [`deployment.md`](../deployment.md#claude-for-fill-from-link-74).
 
 **Computers**
 - Both the Mac and the Windows 11 PC are set up ([`setup-mac.md`](../setup-mac.md), [`setup-windows.md`](../setup-windows.md)).

@@ -17,6 +17,7 @@ Status legend: **Done** = DB + UI + tests. **DB only** = schema/RPCs/tests exist
 - UI: `app/lib/features/auth/auth_page.dart`, `welcome_page.dart` (`WelcomePage`, `usernameBase`, `usernameCandidates`); redirect in `app/lib/router.dart` (`safeNext`, `_AuthRefresh.needsUsername`). Data: `data/auth_repository.dart` (`signUp`, `signIn`, `signInWithGoogle`, `googlePhotoUrl`, `sendPasswordReset`, `setNewPassword`; `authRepositoryProvider`), `profile_repository.dart` (`needsUsername`, `copyAvatarFrom`).
 - DB: `profiles` (`needs_username`), triggers `handle_new_user`, `profiles_username_chosen`; `username_available`.
 - Setup: Google OAuth client in Google Cloud, the provider in the Supabase dashboard, and `supabase/.env` locally (`deployment.md` → Sign in with Google).
+- Live since 2026-10-19; the owner checked on a phone that Continue with Google works end to end and that a used email gets "already registered" on the cloud.
 - Tests: `core_rules.test.sql` (profile creation), `display_name_length.test.sql` (sign-up name), `google_sign_in.test.sql`; `app/test/username_suggestion_test.dart`, `router_test.dart` (`safeNext`).
 
 ## F2. Groups and membership — Done
