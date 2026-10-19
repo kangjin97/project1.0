@@ -65,7 +65,7 @@ flutter run -d <ios-simulator-or-android-device>
   `flutter run --profile -d web-server --web-hostname 127.0.0.1 --web-port 3001`
   Sign in as `dev_alice` on :3000 and `dev_bob` on :3001. Release builds refuse the local backend; profile builds don't. Neither server hot-reloads when an agent starts it in the background: restart after Dart changes.
 
-URLs are clean paths (`http://127.0.0.1:3000/groups/...`), not `#/...`. Password-reset emails land in Mailpit; their links redirect to `/reset-password` (allowed in `supabase/config.toml` → `additional_redirect_urls`).
+URLs are clean paths (`http://127.0.0.1:3000/groups/...`), not `#/...`. Password-reset emails land in Mailpit; their links redirect to `/reset-password` (allowed in `supabase/config.toml` → `additional_redirect_urls`). Continue with Google returns to `http://127.0.0.1:3000/?next=…`, also allowed there; the :3001 profile build isn't listed, so Google sign-in there lands on :3000 instead.
 
 Test accounts (from [`supabase/seed.sql`](../supabase/seed.sql)): `alice@dev.test` (`dev_alice`) and `bob@dev.test` (`dev_bob`).
 

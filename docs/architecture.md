@@ -34,7 +34,7 @@ There is no custom server of our own. The Flutter app talks to Supabase directly
 | Config | `config.dart` | `SUPABASE_URL`, `SUPABASE_PUBLISHABLE_KEY`, `APP_URL` (defaults to the page's origin on web, `http://127.0.0.1:3000` elsewhere; `--dart-define-from-file=env/prod.json` for releases); invite and privacy links |
 | Routing | `router.dart` | `go_router` routes, auth redirect, `ShellRoute` with the navigation shell |
 | Data | `data/models.dart`, `data/schedule_models.dart` | Plain immutable models with `fromJson`, plus select-column strings; schedule entries, timing and date helpers |
-| Data | `data/*_repository.dart` | Every Supabase call (`auth_repository.dart` for sign-up, sign-in and password resets), plus `FutureProvider`s exposing them. `friendlyError` lives in `groups_repository.dart`. Elsewhere the app only reads local session state (`currentUser`, `onAuthStateChange`) and calls `signOut` |
+| Data | `data/*_repository.dart` | Every Supabase call (`auth_repository.dart` for sign-up, sign-in, Google sign-in and password resets), plus `FutureProvider`s exposing them. `friendlyError` lives in `groups_repository.dart`. Elsewhere the app only reads local session state (`currentUser`, `onAuthStateChange`) and calls `signOut` |
 | Data | `data/app_clock.dart` | `AppClock` (display time zone) and `TimezoneController`, which loads and saves the profile's zone through `ProfileRepository` |
 | Features | `features/<area>/` | Screens, sheets and widgets for one area |
 | Shared UI | `widgets/` | `AsyncBody`, `EmptyState` (`async_body.dart`); prompt and confirm dialogs, `showMessage`, `showError` (`dialogs.dart`); `UserAvatar` (`user_avatar.dart`) |
@@ -43,7 +43,7 @@ There is no custom server of our own. The Flutter app talks to Supabase directly
 
 | Path | Screen | Notes |
 |---|---|---|
-| `/` | (none) | Redirects to `/schedule`. Auth emails land here with `?code=`, `?message=` or `?error_description=`; the message is shown as a snackbar. |
+| `/` | (none) | Redirects to `next` when it's a path in the app (`safeNext`; Google sign-in returns as `/?next=…&code=…`), otherwise `/schedule`. Auth emails land here with `?code=`, `?message=` or `?error_description=`; the message is shown as a snackbar. |
 | `/reset-password` | `ResetPasswordPage` | Opened from a password-reset email; any `passwordRecovery` session is redirected here. |
 | `/auth?next=` | `AuthPage` | Sign in or sign up, with email or **Continue with Google**. Signed-out users are redirected here with `next`, so invite links survive sign-in. Google comes back to `/?next=<path>&code=…`; the root redirect follows `next` when it's a path in the app (`safeNext`). |
 | `/welcome?next=` | `WelcomePage` | First Google sign-in: pick a username, check the name, take the Google photo. While the profile's `needs_username` is true, every page redirects here (`_AuthRefresh.needsUsername`, read once per user); Continue returns to `next`. |

@@ -96,15 +96,15 @@ Every change is recorded with who made it and when, so it's always traceable who
 Users can view the log per activity, per schedule entry, and per group. A group's log shows everything done in the group, plus edits to an activity made while it was shared there; the owner's private edits from before sharing, and labels, stay private.
 
 ### 2.9 Profiles
-- Everyone has a profile page: picture, display name, @username, and a short bio (≤160 characters).
-- Users can change their picture, display name, bio, and username (if the new one isn't taken; same rules as sign-up). Account settings: change email (confirmed by links sent to both the current and the new address; a pending change can be cancelled, which voids the links) and password (current password required); sign out.
+- Everyone has a profile page: picture, display name (≤50 characters), @username, and a short bio (≤160 characters).
+- Users can change their picture, display name, bio, and username (if the new one isn't taken; same rules as sign-up). Account settings: change email (confirmed by links sent to both the current and the new address; a pending change can be cancelled, which voids the links) and password (current password required, or "Email me a link" to set one, e.g. for a Google account); sign out.
 - Tapping someone in a group's members list or a plan's "who's going" opens their profile: picture, names, bio, and the groups you share.
 - Your own profile also shows your counts: groups, activities, upcoming plans.
 - **Forgot password:** request a reset link by email from the sign-in screen; the link opens a page to set a new password.
 - **Continue with Google** (sign-in and sign-up): a Google account signs in with Google. The first time, the person picks a username (a suggestion from their name is filled in) and can use their Google photo. Signing up with an email that already has an account says it's already registered. A Google account has no password until the person sets one with Forgot password; then email and password work too. An existing account that uses Google with the same email becomes one account. Facebook may follow (#88).
 - **Delete account** (Profile → Delete account, confirm by typing your username): deletes your profile, pictures, labels and activities; plans that used your activities stay as events; groups you own pass to their longest-standing member (empty groups are deleted); history shows "a deleted user". When any group owner leaves, ownership passes the same way.
 - A privacy policy page is published with the web app and linked from sign-up and the profile.
-- **Time zone**: set automatically at sign-up from the device; changeable later on the profile from a searchable list, where each zone shows its city, region and current UTC offset (e.g. "Singapore · Asia · UTC+08:00"). All times and calendar days in the app use the chosen zone.
+- **Time zone**: set automatically from the device at sign-up (for Google, on the first-sign-in step); changeable later on the profile from a searchable list, where each zone shows its city, region and current UTC offset (e.g. "Singapore · Asia · UTC+08:00"). All times and calendar days in the app use the chosen zone.
 
 ---
 
@@ -160,7 +160,7 @@ Notes:
 
 While the app is open, screens update by themselves within a second or two when other people change something (no banners or pop-ups); the Alerts badge counts up live.
 
-1. **Auth:** sign up (pick a unique username), log in
+1. **Auth:** sign up (pick a unique username) or log in, with email and password or **Continue with Google**; a first Google sign-in goes to a **Welcome** step to pick a username
 2. **Home / My Schedule:** list (agenda), week and month views across all groups; clash badges. The list starts today and can show earlier weeks; plans that are over are muted (the group Schedule tab works the same).
 3. **My Activities:** private and shared activities; create/edit; share to a group
 4. **Activity detail:** fields, photos, groups it's in, change history

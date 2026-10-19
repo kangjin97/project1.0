@@ -19,7 +19,8 @@ Every backend call the app makes, plus the RPCs the database exposes but the app
 | `AuthPage._submit` (sign in): Au `signIn(email, password)` | `auth.signInWithPassword(email, password)` | Email trimmed. 400 `invalid_credentials` → `wrongPasswordMessage` (mentions Google and Forgot password). |
 | `AuthPage._google`: Au `signInWithGoogle({returnTo})` | `auth.signInWithOAuth(OAuthProvider.google, redirectTo: '<APP_URL>/?next=<returnTo>')` | Leaves for Google; comes back to the root with `code` and `next` (allowed by `<APP_URL>/**`). The router follows `next` only if it's a path in the app (`safeNext`). First sign-in creates the profile with a placeholder username and `needs_username = true`. |
 | Au `googlePhotoUrl` | `auth.currentUser.userMetadata['avatar_url' / 'picture']` | Google's picture URL at 256 px, or null. |
-| `WelcomePage`: P `needsUsername()` | REST `GET profiles?select=needs_username&id=eq.<me>` | True until a Google user has picked a username; read once per user by the router. |
+| Router `_AuthRefresh.needsUsername`: P `needsUsername()` | REST `GET profiles?select=needs_username&id=eq.<me>` | True until a Google user has picked a username; read once per user. |
+| `WelcomePage._load`: P `profile(me)`, P `usernameAvailable` per candidate | as for profiles | Fills the first free suggestion from `usernameCandidates(usernameBase(displayName, email))`; offers Au `googlePhotoUrl` only when `avatar_path` is null. |
 | `WelcomePage._continue`: P `usernameAvailable`, `update`, `TimezoneController.change(deviceZone)`, P `copyAvatarFrom(url)` | as for Edit profile; `copyAvatarFrom` downloads the picture (Google allows cross-origin downloads) and calls `setAvatar` | Writing `username` clears `needs_username` (trigger `profiles_username_chosen`); clients can't write the flag (42501). A failed photo copy only shows a note. |
 | `ProfilePage` | `auth.signOut()` | |
 

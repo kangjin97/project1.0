@@ -24,7 +24,7 @@ Source of truth: `supabase/migrations/`. Test coverage: `supabase/tests/database
 | `20261015083759_recurring_history.sql` | `list_group_history` folds one action across a series into one row (`repeat_count`) |
 | `20261016044829_place_search.sql` | Google Maps locations (#73): `activities.place_id` (format check, needs location text), trigger `activities_drop_stale_place`; `api_usage` + `consume_api_quota` (daily per-user quota for paid outside APIs) |
 | `20261016050829_ai_fill_quota.sql` | `consume_api_quota` gains the `ai_fill` kind (30 a day) for "Fill from link" (#74) |
-| `20261018190056_invite_link_expiry.sql` | Invite links last at most 7 days, and the server picks the token and bookkeeping columns (`guard_invite_link_insert`, `mark_username_chosen`, #82); caps any existing longer link |
+| `20261018190056_invite_link_expiry.sql` | Invite links last at most 7 days, and the server picks the token and bookkeeping columns (trigger `group_invite_links_guard_insert` → `guard_invite_link_insert`, #82); caps any existing longer link |
 | `20261018190855_display_name_length.sql` | `display_name` at most 50 characters (check `profiles_display_name_length`, #83); `handle_new_user` trims a sign-up name, stores a blank one as null and cuts a long one to 50; shortens any existing long name |
 | `20261019022546_google_sign_in.sql` | Sign in with Google (#87): `profiles.needs_username`; `handle_new_user` takes Google's `full_name`/`name` as the display name and flags sign-ups without a username; trigger `profiles_username_chosen` (`mark_username_chosen`) clears the flag when the username is written |
 
@@ -40,8 +40,8 @@ One per auth user, created by the `on_auth_user_created` trigger from sign-up me
 | `display_name` | Optional, at most 50 characters (check `profiles_display_name_length`) |
 | `avatar_path` | Optional; `<user_id>/<file>` in the `avatars` bucket |
 | `bio` | Optional, ≤ 160 characters |
-| `needs_username` | True for a Google sign-up until a username is chosen (#87). No client grant; the `profiles_username_chosen` trigger clears it whenever `username` is written. The app's router reads it to show `/welcome`. |
-| `timezone` | IANA name. Set at sign-up from the device (`timezone` in sign-up metadata, falls back to `UTC`); afterwards changed only by the user. Validated by the `profiles_guard_timezone` trigger (22023 for unknown names). Used for all-day clashes and as the app's display zone. |
+| `needs_username` | True for a Google sign-up until a username is chosen (#87). Clients can read it but not update it (no column grant; 42501); the `profiles_username_chosen` trigger clears it whenever `username` is written. The app's router reads it to show `/welcome`. |
+| `timezone` | IANA name. Set at sign-up from the device (`timezone` in sign-up metadata, falls back to `UTC`; a Google sign-up starts at UTC and the `/welcome` step sets the device zone); afterwards changed only by the user. Validated by the `profiles_guard_timezone` trigger (22023 for unknown names). Used for all-day clashes and as the app's display zone. |
 
 Access: any signed-in user can read; users update their own row (`username`, `display_name`, `avatar_path`, `bio`, `timezone`).
 
@@ -223,7 +223,7 @@ Used by RLS policies and RPCs. Signed-in users can call the read-only access hel
 
 Not executable by clients (`function_privileges.test.sql` checks all of this):
 - Internal helpers `resolve_group_type`, `apply_participants`, `entry_range`, `series_dates`, `entry_key`, `series_targets`, `notify_series` (only called inside `security definer` RPCs).
-- Every trigger function: `handle_new_user`, `handle_new_group`, `log_change`, `notify_invitee`, `revert_entries_to_events`, `touch_updated`, `group_activity_defaults`, `guard_personal_type`, `refile_activity`, `refile_renamed_label`, `guard_timezone`, `hand_over_ownership`, `broadcast_change`, `guard_invite_link_revoke`, `guard_invite_link_insert`, `drop_stale_place`. Postgres doesn't check `execute` when firing a trigger.
+- Every trigger function: `handle_new_user`, `handle_new_group`, `log_change`, `notify_invitee`, `revert_entries_to_events`, `touch_updated`, `group_activity_defaults`, `guard_personal_type`, `refile_activity`, `refile_renamed_label`, `guard_timezone`, `hand_over_ownership`, `broadcast_change`, `guard_invite_link_revoke`, `guard_invite_link_insert`, `mark_username_chosen`, `drop_stale_place`. Postgres doesn't check `execute` when firing a trigger.
 - Still callable by signed-in users because policies or invoker triggers use them: `try_uuid` (storage policies), `is_valid_timezone` (`guard_timezone`); and `list_timezones` (the picker).
 - Signed-out (`anon`) callers can execute only `username_available`.
 - Every function in `public` sets `search_path` (`= ''` and fully qualified names).
@@ -232,7 +232,7 @@ Not executable by clients (`function_privileges.test.sql` checks all of this):
 
 | Table | Trigger | Does |
 |---|---|---|
-| `auth.users` | `on_auth_user_created` | Creates the profile, with the time zone from sign-up metadata |
+| `auth.users` | `on_auth_user_created` | Creates the profile, with the time zone from sign-up metadata; flags `needs_username` when the metadata has no username (Google) |
 | `profiles` | `profiles_guard_timezone` | Rejects unknown time zone names (22023) |
 | `profiles` | `profiles_username_chosen` | Before an update that writes `username`: clears `needs_username` (#87) |
 | `groups` | `on_group_created` | Owner membership and starter types |

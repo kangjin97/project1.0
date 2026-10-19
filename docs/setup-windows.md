@@ -107,6 +107,8 @@ Open http://127.0.0.1:3000. In the `flutter run` window: `r` hot-reloads, `R` re
 
 Place search and Fill from link also need `supabase/functions/.env` with your keys on this PC and `supabase functions serve`; the steps are the same as on the Mac ([`setup-mac.md`](setup-mac.md#optional-place-search-and-fill-from-link)).
 
+Continue with Google also needs the git-ignored `supabase/.env` on this PC (two lines: the Google OAuth client ID and secret), then `supabase stop` and `supabase start`; the steps are the same as on the Mac ([`setup-mac.md`](setup-mac.md#optional-continue-with-google)).
+
 ## Which terminal
 
 | Terminal | Use it for | Watch out for |
