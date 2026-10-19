@@ -15,7 +15,7 @@ Every backend call the app makes, plus the RPCs the database exposes but the app
 
 | Dart | Call | Notes |
 |---|---|---|
-| `AuthPage._submit` (sign up): P `usernameAvailable`, then Au `signUp(email, password, username, displayName, timezone)` | `rpc username_available(p_username text) → bool`, then `auth.signUp(email, password, data: {username, display_name, timezone})` | Callable signed-out. Trigger creates `profiles` row; username lower-cased. Duplicate username at insert → sign-up fails. |
+| `AuthPage._submit` (sign up): P `usernameAvailable`, then Au `signUp(email, password, username, displayName, timezone)` | `rpc username_available(p_username text) → bool`, then `auth.signUp(email, password, data: {username, display_name, timezone})` | Callable signed-out. Trigger creates `profiles` row; username lower-cased; display name trimmed, blank → null, cut to 50 characters (the sign-up field also stops at 50). Duplicate username at insert → sign-up fails. |
 | `AuthPage._submit` (sign in): Au `signIn(email, password)` | `auth.signInWithPassword(email, password)` | Email trimmed. |
 | `ProfilePage` | `auth.signOut()` | |
 
@@ -154,7 +154,7 @@ Dart: `app/lib/data/profile_repository.dart` (P). `Profile.columns` = `id, usern
 | Dart | Call | Who | Notes |
 |---|---|---|---|
 | P `profile(id)` | REST `GET profiles?select=<columns>,bio,timezone&id=eq` (single) | signed in | Any profile is readable; the UI only links to people you share a group with. |
-| P `update(username, displayName, bio)` | REST `PATCH profiles?id=eq.<me> {username, display_name, bio}` | self | Username trimmed and lower-cased; blank display name or bio → null. 23505 taken username; 23514 invalid username or bio > 160. |
+| P `update(username, displayName, bio)` | REST `PATCH profiles?id=eq.<me> {username, display_name, bio}` | self | Username trimmed and lower-cased; blank display name or bio → null. Display name over 50 characters → 23514 (check; the field stops at 50). 23505 taken username; 23514 invalid username or bio > 160. |
 | P `usernameAvailable(name)` | `rpc username_available(p_username)` | anyone | Same RPC as sign-up. |
 | P `setAvatar(bytes, {required extension, previousPath})` | `storage.from('avatars').uploadBinary('<me>/<ts>.<ext>')`, `PATCH profiles {avatar_path}`, remove previous file | self | Writes only allowed in your own folder. |
 | P `removeAvatar(path)` | `PATCH profiles {avatar_path: null}`, `storage.remove([path])` | self | |

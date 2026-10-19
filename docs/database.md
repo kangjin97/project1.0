@@ -25,17 +25,18 @@ Source of truth: `supabase/migrations/`. Test coverage: `supabase/tests/database
 | `20261016044829_place_search.sql` | Google Maps locations (#73): `activities.place_id` (format check, needs location text), trigger `activities_drop_stale_place`; `api_usage` + `consume_api_quota` (daily per-user quota for paid outside APIs) |
 | `20261016050829_ai_fill_quota.sql` | `consume_api_quota` gains the `ai_fill` kind (30 a day) for "Fill from link" (#74) |
 | `20261018190056_invite_link_expiry.sql` | Invite links last at most 7 days, and the server picks the token and bookkeeping columns (`guard_invite_link_insert`, #82); caps any existing longer link |
+| `20261018190855_display_name_length.sql` | `display_name` at most 50 characters (check `profiles_display_name_length`, #83); `handle_new_user` trims a sign-up name, stores a blank one as null and cuts a long one to 50; shortens any existing long name |
 
 ## Tables
 
 ### `profiles`
-One per auth user, created by the `on_auth_user_created` trigger from sign-up metadata (`username`, `display_name`). Without a username in the metadata it becomes `user_<first 12 hex characters of the id>`.
+One per auth user, created by the `on_auth_user_created` trigger from sign-up metadata (`username`, `display_name`; the name is trimmed, blank → null, cut to 50 characters). Without a username in the metadata it becomes `user_<first 12 hex characters of the id>`.
 
 | Column | Notes |
 |---|---|
 | `id` | = `auth.users.id` |
 | `username` | Unique; `^[a-z0-9_]{3,30}$`, lower-cased on creation |
-| `display_name` | Optional |
+| `display_name` | Optional, at most 50 characters (check `profiles_display_name_length`) |
 | `avatar_path` | Optional; `<user_id>/<file>` in the `avatars` bucket |
 | `bio` | Optional, ≤ 160 characters |
 | `timezone` | IANA name. Set at sign-up from the device (`timezone` in sign-up metadata, falls back to `UTC`); afterwards changed only by the user. Validated by the `profiles_guard_timezone` trigger (22023 for unknown names). Used for all-day clashes and as the app's display zone. |
