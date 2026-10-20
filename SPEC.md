@@ -125,7 +125,8 @@ The full, current schema is documented in [`docs/database.md`](docs/database.md)
 | `activity_types`, `type_merges` | Per-group types and merge rules |
 | `group_activities` | Activity shared into a group, with its type and `source_type_name` |
 | `schedule_entries`, `schedule_participants`, `schedule_series` | Plans/events, who's in them, and repeating-plan series |
-| `api_usage` | Per-user daily counts for paid outside APIs (place searches, AI fills) |
+| `api_usage` | Per-user daily counts for paid outside APIs (place searches, AI fills, distance lookups) |
+| `place_coordinates` | Cache of Google place coordinates for "Near…" (kept at most 30 days; Edge Function only) |
 | `change_log`, `notifications` | Audit trail and in-app notifications |
 
 Notes:
@@ -165,11 +166,11 @@ While the app is open, screens update by themselves within a second or two when 
 
 1. **Auth:** sign up (pick a unique username) or log in, with email and password or **Continue with Google**; a first Google sign-in goes to a **Welcome** step to pick a username
 2. **Home / My Schedule:** list (agenda), week and month views across all groups; clash badges. The list starts today and can show earlier weeks; plans that are over are muted (the group Schedule tab works the same).
-3. **My Activities:** private and shared activities; create/edit; share to a group
+3. **My Activities:** private and shared activities; create/edit; share to a group; "Near…" filter by distance
 4. **Activity detail:** fields, photos, groups it's in, change history
 5. **Groups list:** create group, pending invitations
-6. **Group home:** tabs for Activities (search/filter), Schedule (with unscheduled events as "Ideas"), Members (invite people or create a link; active invite links with Revoke; invitations "Waiting for an answer" with Cancel; the member list, where the owner can remove people or make another member the owner), Types; **History** (the group's change log) from the group's menu.
-7. **Schedule entry sheet:** pick activity or name an event, all-day or a time range, pick members, then the clash confirmation dialog
+6. **Group home:** tabs for Activities (search/filter, incl. "Near…"), Schedule (with unscheduled events as "Ideas"; **Export itinerary**), Members (invite people or create a link; active invite links with Revoke; invitations "Waiting for an answer" with Cancel; the member list, where the owner can remove people or make another member the owner), Types; **History** (the group's change log) from the group's menu.
+7. **Schedule entry sheet:** pick activity or name an event, all-day or a time range, pick members, then the clash confirmation dialog; a plan's detail sheet has **Add to Google Calendar**
 8. **Replace event:** pick an activity from the group to fill the placeholder
 9. **Invite:** copy link, or search by username/email
 10. **Notifications** ("Alerts" tab with an unread badge): invitations, added to a plan or a repeating plan, clash alerts, group deleted, made the group's owner. "Event replaced" isn't written by the database yet.
@@ -188,7 +189,7 @@ While the app is open, screens update by themselves within a second or two when 
 | 3 | Groups, membership, invites | Done |
 | 4 | Activities, photos, sharing, per-group types | Done |
 | 4a | Personal labels and type merging | Done |
-| 5 | Search & filter (my activities and group) | Done |
+| 5 | Search & filter (my activities and group); "Near…" distance filter (#94) | Done |
 | 6 | Schedules: entries, participants, clash detection | Done |
 | 7 | Events and replacement | Done |
 | 8 | Change-log views, notifications and live updates | Done: activity, entry and group history; notifications screen; live updates (#7) |

@@ -105,7 +105,7 @@ flutter run -d web-server --web-hostname 127.0.0.1 --web-port 3000
 
 Open http://127.0.0.1:3000. In the `flutter run` window: `r` hot-reloads, `R` restarts, `q` quits. **Docker Desktop must be running** whenever you use the app or the database tests.
 
-Place search and Fill from link also need `supabase/functions/.env` with your keys on this PC and `supabase functions serve`; the steps are the same as on the Mac ([`setup-mac.md`](setup-mac.md#optional-place-search-and-fill-from-link)).
+Place search, "Near…" distances and Fill from link also need `supabase/functions/.env` with your keys on this PC and `supabase functions serve`; the steps are the same as on the Mac ([`setup-mac.md`](setup-mac.md#optional-place-search-and-fill-from-link)).
 
 Continue with Google also needs the git-ignored `supabase/.env` on this PC (two lines: the Google OAuth client ID and secret), then `supabase stop` and `supabase start`; the steps are the same as on the Mac ([`setup-mac.md`](setup-mac.md#optional-continue-with-google)).
 

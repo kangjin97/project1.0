@@ -18,7 +18,7 @@ EasyPlan (repo: group-planner) is a web and mobile app for friends to plan thing
 | Activities: create/edit/delete, price range, link, photos, history; locations picked from Google Maps; "Fill from link" with AI | Done |
 | Sharing activities into groups, per-group activity types | Done |
 | Personal labels and group type merging | Done |
-| Search and filters (My activities, group activities): text, label/type, sharing, budget, added by, has a link, has photos | Done |
+| Search and filters (My activities, group activities): text, label/type, sharing, budget, added by, has a link, has photos; "Near…" by distance from your location or a place | Done ("Near…" live with the next web deploy) |
 | Schedules: my schedule (agenda / week / month, earlier weeks, past plans muted, drag to reschedule on wide screens), group schedule, clash warnings, events | Done |
 | Profiles: picture, username, display name, bio, others' profiles, stats, email/password, changeable time zone | Done |
 | Account deletion, forgot password, privacy policy page | Done |
@@ -28,6 +28,7 @@ EasyPlan (repo: group-planner) is a web and mobile app for friends to plan thing
 | Notifications | Done: Alerts tab with a live unread badge |
 | Group history: who did what in a group, with links to the activity, plan or person | Done |
 | Live updates: other people's changes appear without refreshing | Done (Supabase Realtime broadcasts) |
+| Itinerary export (Excel, PDF timetable, image, chat text) and Google Calendar (per-plan button, .ics file) | Done (live with the next web deploy) |
 
 See [`docs/ai/features.md`](docs/ai/features.md) for the detailed feature map. The backlog and bugs live in [GitHub Issues](https://github.com/kangjin97/project1.0/issues); see [`docs/development.md`](docs/development.md#git-workflow) for the issue → branch → pull request workflow.
 
@@ -71,7 +72,7 @@ app/                            Flutter app
   lib/main.dart                 Entry point (Supabase init, ProviderScope)
   lib/config.dart               Supabase URL/key and APP_URL (dart-define overridable); invite and privacy links
   lib/router.dart               go_router routes and auth redirect
-  lib/data/                     Models, repositories (Supabase access), AppClock
+  lib/data/                     Models, repositories (Supabase access), AppClock; distances (geo.dart), itinerary and calendar builders, export/ (file saving)
   lib/features/<area>/          Screens and widgets per feature
   lib/widgets/                  Shared widgets and dialogs
   test/                         Dart unit tests
