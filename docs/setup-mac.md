@@ -91,7 +91,7 @@ Open http://127.0.0.1:3000. In the `flutter run` window: `r` hot-reloads, `R` re
 
 ### Optional: place search and Fill from link
 
-These two features call outside APIs through Edge Functions, which need keys on each computer. Without them the app still works; those two features answer "isn't set up yet".
+These features (and the "Near…" distances) call outside APIs through Edge Functions, which need keys on each computer. Without them the app still works; they say they aren't set up yet.
 
 1. Create `supabase/functions/.env` (git-ignored) with:
    ```

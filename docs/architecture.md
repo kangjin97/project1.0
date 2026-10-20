@@ -17,12 +17,13 @@ flowchart LR
   ST -- "policies call can_access_activity()" --> DB
   R -- "functions.invoke (user token)" --> EF[Edge Functions: places, fill-activity, place-coordinates]
   EF -- "consume_api_quota (as the user)" --> DB
+  EF -- "service role: place_coordinates cache" --> DB
   EF -- "secret key" --> GP[Google Places API]
   EF -- "secret key" --> CL["Claude API (via AIML API)"]
   EF -- "official previews" --> WEB[TikTok / YouTube oEmbed, page preview tags]
 ```
 
-There is no custom server of our own. The Flutter app talks to Supabase directly. The one exception is Supabase **Edge Functions** (`supabase/functions/`) for calls that need a secret key: Google place search (`places`, #73), where places are for the "Near…" filter (`place-coordinates`, #94: Google Place Details, cached 30 days) and "Fill from link" (`fill-activity`, #74: official link previews + Claude, currently bought through the reseller AIML API). They run as the signed-in user, check their daily quota in the database, and keep the keys out of the browser. Otherwise, **every rule is enforced in Postgres** through Row Level Security, column-level grants, triggers, and `security definer` functions (RPCs). The app does no access control of its own; at most it hides buttons that the database would reject anyway.
+There is no custom server of our own. The Flutter app talks to Supabase directly. The one exception is Supabase **Edge Functions** (`supabase/functions/`) for calls that need a secret key: Google place search (`places`, #73), coordinates for the "Near…" filter (`place-coordinates`, #94: Google Place Details, cached at most 30 days in `place_coordinates`) and "Fill from link" (`fill-activity`, #74: official link previews + Claude, currently bought through the reseller AIML API). They run as the signed-in user, check their daily quota in the database, and keep the keys out of the browser; `place-coordinates` also reads and writes its cache table with the service role, since clients have no access to it. Otherwise, **every rule is enforced in Postgres** through Row Level Security, column-level grants, triggers, and `security definer` functions (RPCs). The app does no access control of its own; at most it hides buttons that the database would reject anyway.
 
 ## Flutter app
 
@@ -36,6 +37,7 @@ There is no custom server of our own. The Flutter app talks to Supabase directly
 | Data | `data/models.dart`, `data/schedule_models.dart` | Plain immutable models with `fromJson`, plus select-column strings; schedule entries, timing and date helpers |
 | Data | `data/*_repository.dart` | Every Supabase call (`auth_repository.dart` for sign-up, sign-in, Google sign-in and password resets), plus `FutureProvider`s exposing them. `friendlyError` lives in `groups_repository.dart`. Elsewhere the app only reads local session state (`currentUser`, `onAuthStateChange`) and calls `signOut` |
 | Data | `data/itinerary.dart`, `data/calendar_export.dart`, `data/export/save_file.dart` | Itinerary export (#96) and calendars (#97: Google Calendar links, .ics files): builds a group's plans for a date range into chat text and an Excel workbook; hands files to the person (download on web, share sheet on phones; conditional import `save_file_web.dart` / `save_file_io.dart`). The timetable picture is drawn in `features/schedule/itinerary_timetable.dart` |
+| Data | `data/geo.dart` | "Near…" (#94): `GeoPoint`, `distanceKm` (haversine), `formatDistance`, `NearFilter`, `applyNear`; coordinates come from `PlacesRepository.coordinates`, the device position from `PlacesRepository.currentPosition` (`geolocator`) |
 | Data | `data/app_clock.dart` | `AppClock` (display time zone) and `TimezoneController`, which loads and saves the profile's zone through `ProfileRepository` |
 | Features | `features/<area>/` | Screens, sheets and widgets for one area |
 | Shared UI | `widgets/` | `AsyncBody`, `EmptyState` (`async_body.dart`); prompt and confirm dialogs, `showMessage`, `showError` (`dialogs.dart`); `UserAvatar` (`user_avatar.dart`) |
@@ -89,7 +91,7 @@ Repositories throw `PostgrestException`, `AuthException` or `StorageException`. 
 | `AuthException` | Its message (from Supabase Auth) |
 | Anything else, including `StorageException` | "Something went wrong. Please try again." |
 
-Edge Function calls are different: `PlacesRepository` and `AiFillRepository` turn a `FunctionException` into `PlaceSearchException` / `AiFillException` carrying the function's `{error}` text, and the place field and the Fill-from-link sheet show that text directly.
+Edge Function calls are different: `PlacesRepository` and `AiFillRepository` turn a `FunctionException` into `PlaceSearchException` / `AiFillException` carrying the function's `{error}` text, and the place field and the Fill-from-link sheet show that text directly. `PlacesRepository.coordinates` is the exception: it never throws and returns the text in `PlaceCoordinates.error`, which `NearNote` shows under the list.
 
 ## Backend security model
 

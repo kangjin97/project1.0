@@ -82,7 +82,7 @@ GitHub is the single source of truth. Neither computer is special; either one ca
   | `app/env/prod.json` | Manual release builds (`scripts/build.sh`) | CI builds web releases from GitHub secrets, so web deploys don't need it |
   | `app/android/key.properties` + upload keystore (`*.jks`) | Android release builds | Copy by hand (USB drive, password manager), never through git or chat |
   | `supabase/.env` | Continue with Google locally (`config.toml` → `[auth.external.google]`) | Google OAuth client ID and secret, typed in on each computer ([`deployment.md`](deployment.md#sign-in-with-google-87)); restart the stack after changing it |
-  | `supabase/functions/.env` | Place search and Fill from link locally (`supabase functions serve`) | Type the keys in on each computer ([`setup-mac.md`](setup-mac.md#optional-place-search-and-fill-from-link)); never through git or chat |
+  | `supabase/functions/.env` | Place search, "Near…" distances and Fill from link locally (`supabase functions serve`) | Type the keys in on each computer ([`setup-mac.md`](setup-mac.md#optional-place-search-and-fill-from-link)); never through git or chat |
   | `supabase/.temp` (from `supabase link`) | `supabase db push`, `supabase functions deploy`, `supabase migration list --linked` | Run `supabase login` and `supabase link --project-ref <ref>` once on whichever computer does those |
 
 - **Scripts:** `./scripts/*.sh` are bash. On Windows, run them in Git Bash ([`setup-windows.md`](setup-windows.md#which-terminal)).
