@@ -67,7 +67,8 @@ A web and mobile app for friends to plan things to do together: collect activity
 - Selected members are **added automatically** — no accept step — subject to the clash check (§2.6).
 - Any participant can remove themselves from an entry. Any group member can remove an entry from the group schedule.
 - On wide screens, a timed plan can be dragged to another time or day in the week view (same clash check; Undo afterwards).
-- **Export an itinerary** (group Schedule tab): the group's plans for chosen days as an Excel itinerary (every detail and a cost summary), a PDF timetable (days as columns, plans as blocks), an image of that timetable, or a day-by-day text to paste into a chat.
+- **Export an itinerary** (group Schedule tab): the group's plans for chosen days as an Excel itinerary (every detail and a cost summary), a PDF timetable (days as columns, plans as blocks), an image of that timetable, a day-by-day text to paste into a chat, or a calendar file (.ics) to add the plans to Google Calendar, Apple Calendar or Outlook.
+- **Add to Google Calendar** on a plan: opens Google Calendar with the plan filled in. Calendar copies don't follow later changes.
 
 ### 2.6 Clash detection
 - Before saving an entry (or changing its time or participants), check every selected member's schedule for overlaps.
@@ -195,7 +196,7 @@ While the app is open, screens update by themselves within a second or two when 
 | 10 | Schedule extras: past plans, drag to reschedule, repeating plans (#11, #12, #17) | Done |
 | 11 | Google Maps locations and Fill from link with AI (#73, #74) | Done |
 | 12 | Store builds and app icon (#13, #14, #15) | Not started |
-| 13 | Itinerary export (#96) and Google Calendar (#97) | Export done; calendar next |
+| 13 | Itinerary export (#96) and Google Calendar (#97) | Done |
 
 Details and backlog: [`docs/ai/features.md`](docs/ai/features.md).
 

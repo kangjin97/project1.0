@@ -120,4 +120,17 @@ void main() {
     expect(itineraryFileName('A/B: "trip"?', sat, sat, 'pdf'), 'A B trip itinerary 2026-10-24.pdf');
     expect(itineraryFileName('///', sat, sat, 'png'), 'EasyPlan itinerary 2026-10-24.png');
   });
+
+  test('the place skips a first part that repeats the plan name', () {
+    ItineraryItem item(String title, String? location) => ItineraryItem.from(
+        plan('x', title: title, date: sat),
+        location == null ? null : shared('ax', title, location: location));
+    final gardens = item('Gardens by the Bay', 'Gardens by the Bay, Marina Gardens Drive, Singapore');
+    expect(gardens.placeDetail, 'Marina Gardens Drive, Singapore');
+    expect(gardens.shortPlace, 'Marina Gardens Drive');
+    expect(item('Lunch at Lau Pa Sat', 'Lau Pa Sat, Raffles Quay, Singapore').shortPlace, 'Raffles Quay');
+    expect(item('Kayaking', 'Pasir Ris Park, Singapore').placeDetail, 'Pasir Ris Park, Singapore');
+    expect(item('Gardens by the Bay', 'Gardens by the Bay').placeDetail, isNull);
+    expect(item('Beach day', null).placeDetail, isNull);
+  });
 }

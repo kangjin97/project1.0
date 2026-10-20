@@ -136,7 +136,7 @@ Dart: `app/lib/data/places_repository.dart` (Pl). Function: `supabase/functions/
 
 ## Itinerary export (no server calls of its own)
 
-`features/groups/itinerary_export_sheet.dart` reads the group with G `group(id)`, the plans with S `list((from, to, groupId, includeUnscheduled: false))` (`list_schedule`) and the details with `groupActivitiesProvider(groupId)`, then builds everything in the app (`data/itinerary.dart`, `features/schedule/itinerary_timetable.dart`). Nothing is uploaded or saved on the server.
+`features/groups/itinerary_export_sheet.dart` reads the group with G `group(id)`, the plans with S `list((from, to, groupId, includeUnscheduled: false))` (`list_schedule`) and the details with `groupActivitiesProvider(groupId)`, then builds everything in the app (`data/itinerary.dart`, `data/calendar_export.dart`, `features/schedule/itinerary_timetable.dart`). Nothing is uploaded or saved on the server. "Add to Google Calendar" on a plan reads `groupActivitiesProvider(groupId)` for the details and opens `https://calendar.google.com/calendar/render?action=TEMPLATE&text=…&dates=<UTC start>/<UTC end>&details=…&location=…` (all-day: `YYYYMMDD/YYYYMMDD+1`).
 
 ## Fill from link (Edge Function)
 

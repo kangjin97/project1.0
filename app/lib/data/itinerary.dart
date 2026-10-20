@@ -7,6 +7,18 @@ import 'schedule_models.dart';
 
 /// One plan in an exported itinerary (#96), with what its activity adds.
 class ItineraryItem {
+  /// A plan with its activity's details ([ga] is null for events and for
+  /// activities no longer shared in the group).
+  factory ItineraryItem.from(ScheduleEntry e, GroupActivity? ga) => ItineraryItem(
+        entry: e,
+        title: e.displayTitle,
+        typeName: ga?.typeName,
+        location: ga?.activity.location,
+        placeId: ga?.activity.placeId,
+        activity: ga?.activity,
+        people: [for (final p in e.participants) p.label],
+      );
+
   ItineraryItem({
     required this.entry,
     required this.title,
@@ -35,6 +47,21 @@ class ItineraryItem {
   String? get price => activity?.priceLabel;
   String? get url => (activity?.url?.trim().isEmpty ?? true) ? null : activity!.url!.trim();
   String? get description => (activity?.description?.trim().isEmpty ?? true) ? null : activity!.description!.trim();
+
+  /// The location without a first part that only repeats the plan's name:
+  /// "Gardens by the Bay, Marina Gardens Drive, Singapore" for the plan "Gardens
+  /// by the Bay" is "Marina Gardens Drive, Singapore". Null when nothing's left.
+  String? get placeDetail {
+    final parts = [
+      for (final p in (location ?? '').split(','))
+        if (p.trim().isNotEmpty) p.trim(),
+    ];
+    if (parts.isNotEmpty && title.toLowerCase().contains(parts.first.toLowerCase())) parts.removeAt(0);
+    return parts.isEmpty ? null : parts.join(', ');
+  }
+
+  /// The place in a few words, for tight spaces: the first part of [placeDetail].
+  String? get shortPlace => placeDetail?.split(',').first;
 
   /// Google Maps link for the location (the exact place when one was picked).
   Uri? get mapsUri => location == null ? null : googleMapsUri(location!, placeId: placeId);
@@ -106,7 +133,7 @@ class Itinerary {
     for (var d = dateOnly(from); !d.isAfter(to); d = addDays(d, 1)) {
       final items = [
         for (final e in entries)
-          if (!e.isUnscheduled && e.occursOn(d)) _item(e, byActivity[e.activityId]),
+          if (!e.isUnscheduled && e.occursOn(d)) ItineraryItem.from(e, byActivity[e.activityId]),
       ]..sort((a, b) {
           if (a.allDay != b.allDay) return a.allDay ? -1 : 1;
           if (a.allDay) return a.title.toLowerCase().compareTo(b.title.toLowerCase());
@@ -117,16 +144,6 @@ class Itinerary {
     return Itinerary(groupName: groupName, from: dateOnly(from), to: dateOnly(to), days: days);
   }
 
-  static ItineraryItem _item(ScheduleEntry e, GroupActivity? ga) => ItineraryItem(
-        entry: e,
-        title: e.displayTitle,
-        typeName: ga?.typeName,
-        location: ga?.activity.location,
-        placeId: ga?.activity.placeId,
-        activity: ga?.activity,
-        people: [for (final p in e.participants) p.label],
-      );
-
   /// A day-by-day summary to paste into a group chat. Days without plans are
   /// skipped.
   String chatText() {
@@ -136,7 +153,7 @@ class Itinerary {
       b.write('\n*${DateFormat('EEE d MMM').format(day.date)}*\n');
       for (final i in day.items) {
         b.write('• ${i.timeLabel(day.date)} ${i.title}');
-        if (i.location != null) b.write(' — ${i.location}');
+        if (i.placeDetail != null) b.write(' — ${i.placeDetail}');
         if (i.price != null) b.write(' (${i.price})');
         b.write('\n');
       }

@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -5,6 +7,7 @@ import 'package:intl/intl.dart';
 
 import '../../data/activities_repository.dart';
 import '../../data/app_clock.dart';
+import '../../data/calendar_export.dart';
 import '../../data/export/save_file.dart';
 import '../../data/groups_repository.dart';
 import '../../data/itinerary.dart';
@@ -18,6 +21,8 @@ enum ItineraryFormat {
       Icons.table_chart_outlined),
   pdf('PDF timetable', 'A printable picture of the days, with each plan as a block. Minimal text.', Icons.picture_as_pdf_outlined),
   png('Image', 'The timetable as one picture, for sending in a chat.', Icons.image_outlined),
+  ics('Calendar file', 'Add these plans to Google Calendar, Apple Calendar or Outlook in one go. They’re copies: later changes don’t follow.',
+      Icons.event_outlined),
   text('Text for a chat', 'A day-by-day summary copied for you to paste.', Icons.chat_outlined);
 
   const ItineraryFormat(this.label, this.description, this.icon);
@@ -118,6 +123,8 @@ class _ExportSheetState extends ConsumerState<_ExportSheet> {
           await saveFile(await timetablePdf(it), name: name('pdf'), mimeType: 'application/pdf');
         case ItineraryFormat.png:
           await saveFile(await timetablePng(it), name: name('png'), mimeType: 'image/png');
+        case ItineraryFormat.ics:
+          await saveFile(Uint8List.fromList(utf8.encode(toIcs(it))), name: name('ics'), mimeType: 'text/calendar');
         case ItineraryFormat.text:
           await Clipboard.setData(ClipboardData(text: it.chatText()));
       }
@@ -127,7 +134,9 @@ class _ExportSheetState extends ConsumerState<_ExportSheet> {
           context,
           _format == ItineraryFormat.text
               ? 'Copied ${it.planCount} plans. Paste them into your chat.'
-              : 'Exported ${it.planCount} plans.');
+              : _format == ItineraryFormat.ics
+                  ? 'Exported ${it.planCount} plans. Open the file to add them, or in Google Calendar on a computer use Settings → Import.'
+                  : 'Exported ${it.planCount} plans.');
     } catch (e) {
       if (mounted) setState(() => _note = friendlyError(e));
     } finally {

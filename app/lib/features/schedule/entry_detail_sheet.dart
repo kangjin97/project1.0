@@ -3,10 +3,13 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 import '../../data/activities_repository.dart';
 import '../../data/app_clock.dart';
+import '../../data/calendar_export.dart';
 import '../../data/groups_repository.dart';
+import '../../data/itinerary.dart';
 import '../../data/models.dart';
 import '../../data/schedule_models.dart';
 import '../../data/schedule_repository.dart';
@@ -271,6 +274,12 @@ class _EntryDetail extends ConsumerWidget {
                 icon: const Icon(Icons.open_in_new),
                 label: const Text('View activity'),
               ),
+            if (!e.isUnscheduled)
+              OutlinedButton.icon(
+                onPressed: () => _addToGoogleCalendar(context, ref, e),
+                icon: const Icon(Icons.event_available_outlined),
+                label: const Text('Add to Google Calendar'),
+              ),
           ],
         ),
         const Divider(height: 32),
@@ -341,6 +350,22 @@ class _EntryDetail extends ConsumerWidget {
         _History(entry: e),
       ],
     );
+  }
+}
+
+/// Opens Google Calendar with the plan filled in (#97); the person saves it
+/// there. It's a copy: later changes to the plan don't follow.
+Future<void> _addToGoogleCalendar(BuildContext context, WidgetRef ref, ScheduleEntry e) async {
+  try {
+    final activities = await ref.read(groupActivitiesProvider(e.groupId).future);
+    final ga = activities.where((a) => a.activityId == e.activityId).firstOrNull;
+    final uri = googleCalendarUri(ItineraryItem.from(e, ga));
+    if (uri == null) return;
+    if (!await launchUrl(uri, mode: LaunchMode.externalApplication) && context.mounted) {
+      showMessage(context, 'Couldn’t open Google Calendar.');
+    }
+  } catch (err) {
+    if (context.mounted) showError(context, err);
   }
 }
 
