@@ -4,7 +4,7 @@ Read this first if you're picking EasyPlan up without the history of earlier ses
 
 **Using an AI agent other than Claude Code?** The rules still apply. [`CLAUDE.md`](../../CLAUDE.md) is the agent rulebook whatever the tool; [`AGENTS.md`](../../AGENTS.md) points to it for agents that look for that file. A few notes are about Claude Code itself (its preview pane, restarting the Claude app to pick up PATH changes, the `Co-Authored-By` / "Generated with Claude Code" lines); use your own tool's equivalent. Earlier agents kept no private memory outside the repo: everything known is in these docs, the issues and the PRs.
 
-Last updated: 2026-10-20.
+Last updated: 2026-10-21.
 
 ## The project in one paragraph
 
@@ -34,13 +34,13 @@ All accounts belong to the owner. **No secrets are stored in the repo or in this
 
 Settings that exist only in dashboards, and how to redo them, are in [`deployment.md`](../deployment.md) §1 (Supabase auth URLs, SMTP, rate limits, email templates, DNS).
 
-## Current state (2026-10-20)
+## Current state (2026-10-21)
 
 **Where things are**
-- **Live site:** deployed **2026-10-19** from `main` at `4891b08` (the fourth on-request deploy, run 39236267132; earlier ones were `64de21b`, `e2534a6` and `5fb615c`). Everything on `main` up to then is live, including Sign in with Google (#87), the sign-up name counter (#83), recurring plans (#17), Google Maps locations (#73) and Fill from link (#74). Merged since and **waiting for the next web deploy**: the "Near…" filter (#94), the itinerary export (#96), Google Calendar (#97) and the export fixes (#99); their database and function parts are already in the cloud. Check with `git log --oneline 4891b08..origin/main`.
+- **Live site:** deployed **2026-10-20** from `main` at `2027967` (the fifth on-request deploy, run 39376082876; earlier ones were `4891b08`, `64de21b`, `e2534a6` and `5fb615c`). Everything on `main` up to then is live, including "Near…" (#94), the itinerary export (#96), Google Calendar (#97, #99), Sign in with Google (#87), recurring plans (#17), Google Maps locations (#73) and Fill from link (#74). Anything merged later: `git log --oneline 2027967..origin/main`.
 - **Cloud database** (checked 2026-10-20): has every migration through `20261019114043_place_coordinates.sql` (which also enabled `pg_cron` for the daily `expire-place-coordinates` job), nothing waiting. Check with `supabase migration list --linked` (both computers are linked).
 - **Edge Functions in the cloud** (checked 2026-10-20): `places` version 1 (2026-10-16), `fill-activity` version 2 (redeployed 2026-10-19 with the #79 label fix) and `place-coordinates` version 1 (2026-10-19, #94), all with `verify_jwt` on; secrets `GOOGLE_MAPS_API_KEY`, `ANTHROPIC_API_KEY` (the AIML API key) and `ANTHROPIC_BASE_URL` set (the owner used `supabase secrets set --env-file supabase/functions/.env`). Check with `supabase functions list` and `supabase secrets list` (names and hashes only). Redeploy a function whenever `supabase/functions/` changes (`deployment.md` → Deploying the functions).
-- **In flight:** nothing (2026-10-20). Next step: a web deploy when the owner asks (it ships #94, #96, #97 and #99; nothing to push or deploy first). Google sign-in is live; the Windows PC still needs its own `supabase/.env`.
+- **In flight:** nothing (2026-10-21). The owner checked on a phone (2026-10-21) that "Near… → Use my location", Add to Google Calendar → save, and opening an exported calendar file work; earlier (2026-10-19) Google sign-in and "already registered". The Windows PC still needs its own `supabase/.env`.
 - **Deploys are on request only** (since 2026-10-15, #45): merging to `main` doesn't deploy. See "Working agreements" below.
 
 **What's built** (details per feature in [`features.md`](features.md))
@@ -60,7 +60,7 @@ Settings that exist only in dashboards, and how to redo them, are in [`deploymen
   - **Fill from link** reuses one of the person's labels only when it really fits (#79; `fill-activity` version 2).
   - **Database guards:** invite links last at most 7 days and get a server-picked token (#82); display names at most 50 characters, also on the sign-up form (#83).
   - **Sign in with Google** (#87): "Continue with Google"; a required welcome step on the first sign-in (username suggestion, Google name, Google photo copied once, device time zone); "already registered" for a used email; Google accounts have no password until set with Forgot password or "Email me a link" in Change password. F1. Tested locally with the owner's real Google account, then on the live site from the owner's phone (2026-10-19). Facebook (#88) waits until friends ask.
-- Added on 2026-10-19 and 2026-10-20 (merged; live after the next web deploy):
+- Added on 2026-10-19 and 2026-10-20 (live since the 2026-10-20 deploy; checked on a phone):
   - **"Near…" distance filter** (#94) on My activities, the group Activities tab and the Add to schedule picker: from your location or a searched place, 1–20 km, nearest first with distances. Coordinates come from the `place-coordinates` Edge Function, cached at most 30 days (Google's limit; daily `pg_cron` cleanup). F7.
   - **Itinerary export** (#96) from a group's Schedule tab: Excel (detail and costs), PDF timetable, image, text for a chat. F14.
   - **Google Calendar** (#97): "Add to Google Calendar" on a plan, and a calendar file (.ics) in the export. Copies only. F14.
@@ -71,10 +71,9 @@ Settings that exist only in dashboards, and how to redo them, are in [`deploymen
 **Not built yet** (`gh issue list`): store apps (#13, #14), app icon (#15), server-side search (#16), push notifications (#18), Sign in with Facebook (#88).
 
 **Next priorities**
-1. **Web deploy** (when the owner asks), then on a phone: "Near… → Use my location" (only simulated in the preview pane), Add to Google Calendar → save, and opening an exported calendar file (real calendars weren't tested).
-2. `priority:high`: #5 phone smoke test together with #49 (live updates on two phones, step by step) on the live site, covering everything deployed on 2026-10-15 (#7–#12, #52, #53, the #58 fix) and 2026-10-16 (repeating plans #17, Google Maps locations #73, Fill from link #74, including a TikTok link and a screenshot from the phone, which weren't tested locally). Google sign-in and "already registered" were already checked on a phone on 2026-10-19.
-3. The backlog: #15 the app icon (needs the owner's direction), then the store apps (#13, #14) or v2 items (#16 server-side search, #18 push).
-4. **When the AIML API credits run out** (fills start failing; check the balance on aimlapi.com): suggest the owner moves to a direct Anthropic API key, which is cheaper. Steps, including the privacy page change: [`deployment.md`](../deployment.md#claude-for-fill-from-link-74).
+1. `priority:high`: #5 phone smoke test together with #49 (live updates on two phones, step by step) on the live site, covering everything deployed on 2026-10-15 (#7–#12, #52, #53, the #58 fix) and 2026-10-16 (repeating plans #17, Google Maps locations #73, Fill from link #74, including a TikTok link and a screenshot from the phone, which weren't tested locally). Already checked on a phone: Google sign-in and "already registered" (2026-10-19); "Near…" with real location, Add to Google Calendar and the calendar file (2026-10-21).
+2. The backlog: #15 the app icon (needs the owner's direction), then the store apps (#13, #14) or v2 items (#16 server-side search, #18 push).
+3. **When the AIML API credits run out** (fills start failing; check the balance on aimlapi.com): suggest the owner moves to a direct Anthropic API key, which is cheaper. Steps, including the privacy page change: [`deployment.md`](../deployment.md#claude-for-fill-from-link-74).
 
 **Computers**
 - Both the Mac and the Windows 11 PC are set up ([`setup-mac.md`](../setup-mac.md), [`setup-windows.md`](../setup-windows.md)).
