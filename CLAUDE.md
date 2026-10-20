@@ -72,6 +72,7 @@ The Supabase CLI may be at `~/.local/bin/supabase` rather than on `PATH`. The ow
 - Supabase auth emails link back to the site root with query parameters (`/?code=`, `/?message=`, `/?error_description=`); the router redirects `/` and shows the message (`authLinkNotice`). Keep that redirect.
 - Email templates in `supabase/templates/` only apply to the local stack (`config.toml`). The cloud copy is pasted by hand in the dashboard (`docs/deployment.md` §1); say so in the PR whenever a template changes. Don't use `supabase config push`: it would also push local-only settings such as `site_url`.
 - Google sign-in (#87) reads its client from the git-ignored `supabase/.env` through `config.toml` `env(...)`; changes need `supabase stop` + `supabase start`. A Google user's first sign-in has no username: `profiles.needs_username` makes the router show `/welcome`. To test without Google, create a password-less user with Google-style `user_metadata` (`full_name`, `avatar_url`) through the local admin API, set a password with Forgot password (Mailpit), and sign in; delete it afterwards.
+- The `excel` package's `save()` also triggers a browser download on the web; use `encode()` for the bytes (`data/itinerary.dart`). Files leave the app through `data/export/save_file.dart` only.
 - Mac: current Dart needs macOS ≥ 14.
 - Each computer (Mac, Windows) has its own local database; data made on one isn't on the other.
 - Windows: Docker Desktop needs WSL 2; the `supabase_vector` container restart-loops there, which is harmless.

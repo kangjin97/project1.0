@@ -134,6 +134,10 @@ Dart: `app/lib/data/places_repository.dart` (Pl). Function: `supabase/functions/
 | Pl `coordinates(placeIds)` → `placeCoordinatesProvider(placeKey(ids))` | `functions.invoke('place-coordinates', body: {placeIds})` (50 per call) → `{coordinates: {<placeId>: {lat, lng}}, error?}` | signed in (`verify_jwt = true`) | **#94.** Invalid IDs are ignored; more than 50 → **400**. Answers from `place_coordinates` when fetched in the last 30 days; otherwise, per missing place, `consume_api_quota('place_coords')` (200 a day) then Google `GET places.googleapis.com/v1/places/<id>` with field mask `location` (same `GOOGLE_MAPS_API_KEY`), cached with the service role. Past the quota it stops and returns what it has with `error` "You've used today's distance lookups…"; without the key, `error` "Distances aren't set up yet."; a place Google can't find is left out. **401** not signed in, **502** cache unreadable, **405** not a POST. |
 | Pl `currentPosition()` | `Geolocator.getCurrentPosition` (low accuracy, 15 s) | device | "Use my location". Asks permission; throws `LocationException` when location is off or not allowed. Never sent anywhere. |
 
+## Itinerary export (no server calls of its own)
+
+`features/groups/itinerary_export_sheet.dart` reads the group with G `group(id)`, the plans with S `list((from, to, groupId, includeUnscheduled: false))` (`list_schedule`) and the details with `groupActivitiesProvider(groupId)`, then builds everything in the app (`data/itinerary.dart`, `features/schedule/itinerary_timetable.dart`). Nothing is uploaded or saved on the server.
+
 ## Fill from link (Edge Function)
 
 Dart: `app/lib/data/ai_fill_repository.dart` (AI). Function: `supabase/functions/fill-activity/index.ts` (shared code in `supabase/functions/_shared/`).
