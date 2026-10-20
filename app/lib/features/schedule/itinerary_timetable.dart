@@ -21,7 +21,7 @@ const _margin = 32.0, _axis = 44.0, _dayHeader = 30.0, _top = 92.0, _footer = 26
 const _ink = Color(0xFF1B1B1F), _muted = Color(0xFF5B5D67), _line = Color(0xFFDADCE4);
 const _palette = [
   Color(0xFFD7E3FF), Color(0xFFFFE0B2), Color(0xFFD5F5E3), Color(0xFFF8D7E8),
-  Color(0xFFE6DEFF), Color(0xFFD9F2F7), Color(0xFFFFF4C2), Color(0xFFE8E8E8),
+  Color(0xFFE6DEFF), Color(0xFFD9F2F7), Color(0xFFFFF4C2), Color(0xFFE3F2C9),
 ];
 
 /// One PNG per page of up to 7 days.
@@ -145,8 +145,7 @@ Future<ui.Image> _drawPage(Itinerary it, List<ItineraryDay> days) async {
       final laneW = (colW - 6) / lanes;
       final r = Rect.fromLTRB(gridLeft + c * colW + 3 + lane * laneW, top + 1, gridLeft + c * colW + 3 + (lane + 1) * laneW - 2,
           min(bottom - 1, gridBottom));
-      final place = item.location?.split(',').first.trim();
-      _block(canvas, r, item, [item.title, item.timeLabel(day.date), ?place], textScale: textScale);
+      _block(canvas, r, item, [item.title, item.timeLabel(day.date), ?item.shortPlace], textScale: textScale);
     }
   }
 
@@ -194,26 +193,36 @@ void _block(Canvas canvas, Rect r, ItineraryItem item, List<String> lines, {doub
   canvas.clipRRect(rr);
   var y = r.top + 3;
   for (var i = 0; i < lines.length; i++) {
+    // The title always shows (clipped if it must); other lines only when they fit whole.
     final h = _text(canvas, lines[i], Offset(r.left + 5, y),
         size: (i == 0 ? 11.5 : 10) * textScale, weight: i == 0 ? FontWeight.w600 : FontWeight.w400,
-        colour: i == 0 ? _ink : _muted, maxWidth: r.width - 10);
+        colour: i == 0 ? _ink : _muted, maxWidth: r.width - 10, bottom: i == 0 ? null : r.bottom - 2);
+    if (h == 0) break;
     y += h;
-    if (y > r.bottom - 8) break;
   }
   canvas.restore();
 }
 
-/// Draws one line of text (ellipsis when too wide) and returns its height.
+/// Draws one line of text (ellipsis when too wide) and returns its height, or
+/// draws nothing and returns 0 when it would end below [bottom].
 double _text(Canvas canvas, String text, Offset at,
-    {double size = 12, FontWeight weight = FontWeight.w400, Color colour = _ink, double maxWidth = 400}) {
+    {double size = 12,
+    FontWeight weight = FontWeight.w400,
+    Color colour = _ink,
+    double maxWidth = 400,
+    double? bottom}) {
   final painter = TextPainter(
     text: TextSpan(text: text, style: TextStyle(fontSize: size, fontWeight: weight, color: colour, height: 1.25)),
     textDirection: ui.TextDirection.ltr,
     maxLines: 1,
     ellipsis: '…',
   )..layout(maxWidth: max(0, maxWidth));
-  painter.paint(canvas, at);
   final h = painter.height;
+  if (bottom != null && at.dy + h > bottom) {
+    painter.dispose();
+    return 0;
+  }
+  painter.paint(canvas, at);
   painter.dispose();
   return h;
 }
