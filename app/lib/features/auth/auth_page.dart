@@ -63,7 +63,7 @@ class _AuthPageState extends ConsumerState<AuthPage> {
           setState(() => _signUp = false);
         }
       } else {
-        await ref.read(authRepositoryProvider).signIn(email: _email.text, password: _password.text);
+        await ref.read(authRepositoryProvider).signIn(login: _email.text, password: _password.text);
       }
       // The router redirects once the session changes.
     } catch (e) {
@@ -96,7 +96,7 @@ class _AuthPageState extends ConsumerState<AuthPage> {
       title: 'Reset password',
       label: 'Your email',
       action: 'Send link',
-      initial: _email.text.trim(),
+      initial: isEmailLogin(_email.text) ? _email.text.trim() : '',
     );
     if (email == null || !email.contains('@') || !mounted) return;
     try {
@@ -151,10 +151,17 @@ class _AuthPageState extends ConsumerState<AuthPage> {
                   ],
                   TextFormField(
                     controller: _email,
-                    decoration: const InputDecoration(labelText: 'Email', border: OutlineInputBorder()),
+                    // Signing in also takes a username (#107); signing up needs the email.
+                    decoration: InputDecoration(
+                        labelText: _signUp ? 'Email' : 'Email or username', border: const OutlineInputBorder()),
                     keyboardType: TextInputType.emailAddress,
                     autocorrect: false,
-                    validator: (v) => (v ?? '').contains('@') ? null : 'Enter your email',
+                    validator: (v) {
+                      final value = (v ?? '').trim();
+                      if (isEmailLogin(value)) return null;
+                      if (_signUp) return 'Enter your email';
+                      return _usernamePattern.hasMatch(value.toLowerCase()) ? null : 'Enter your email or username';
+                    },
                   ),
                   const SizedBox(height: 12),
                   TextFormField(

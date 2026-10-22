@@ -12,7 +12,7 @@ EasyPlan (repo: group-planner) is a web and mobile app for friends to plan thing
 
 | Area | State |
 |---|---|
-| Sign up / sign in (email + password, unique username; Continue with Google #87) | Done (Google live since 2026-10-19) |
+| Sign up / sign in (email or username + password, unique username; Continue with Google #87) | Done (Google live since 2026-10-19) |
 | Groups: create, rename, leave, members, remove member, delete group, hand over ownership | Done |
 | Invites: by username/email search, by invite link or code; members can see and revoke links and cancel pending invitations | Done |
 | Activities: create/edit/delete, price range, link, photos, history; locations picked from Google Maps; "Fill from link" with AI | Done |
@@ -83,7 +83,7 @@ app/                            Flutter app
 supabase/
   config.toml                   Local stack config
   migrations/                   Schema, RLS, triggers, RPCs (source of truth)
-  functions/                    Edge Functions (Deno): places (Google place search), fill-activity (AI fill), place-coordinates (distances); shared code in _shared/; keys in a git-ignored .env
+  functions/                    Edge Functions (Deno): places (Google place search), fill-activity (AI fill), place-coordinates (distances), username-sign-in; shared code in _shared/; keys in a git-ignored .env
   seed.sql                      Local test accounts
   templates/                    Auth email templates (local; cloud copy pasted by hand)
   tests/database/               pgTAP tests

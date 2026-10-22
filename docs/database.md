@@ -28,6 +28,7 @@ Source of truth: `supabase/migrations/`. Test coverage: `supabase/tests/database
 | `20261018190855_display_name_length.sql` | `display_name` at most 50 characters (check `profiles_display_name_length`, #83); `handle_new_user` trims a sign-up name, stores a blank one as null and cuts a long one to 50; shortens any existing long name |
 | `20261019022546_google_sign_in.sql` | Sign in with Google (#87): `profiles.needs_username`; `handle_new_user` takes Google's `full_name`/`name` as the display name and flags sign-ups without a username; trigger `profiles_username_chosen` (`mark_username_chosen`) clears the flag when the username is written |
 | `20261019114043_place_coordinates.sql` | Distance filter (#94): `place_coordinates` cache (no client access; written by the `place-coordinates` Edge Function with the service role); `pg_cron` job `expire-place-coordinates` deletes rows older than 30 days daily; `consume_api_quota` gains `place_coords` (200 a day) |
+| `20261022115126_username_sign_in.sql` | Sign in with a username (#107): `username_sign_in_failures`; `email_for_username` (PT429 after 10 failures in 15 minutes), `record_username_sign_in_failure`, `clear_username_sign_in_failures`, all for the service role only; `pg_cron` job `expire-username-sign-in-failures` |
 
 ## Tables
 
@@ -83,6 +84,9 @@ Access: the owner, plus members of any group it's shared into, can read and upda
 
 ### `place_coordinates`
 Where Google places are, for the "Near…" filter (#94). `place_id` (primary key; same format check as `activities.place_id`), `lat`, `lng` (range checks), `fetched_at`. One row per place, shared by every activity with that place. Google allows keeping coordinates for at most 30 days, so the `pg_cron` job **`expire-place-coordinates`** (daily, 19:17 UTC) deletes rows older than that, and the Edge Function ignores them. RLS on with no policies, and no grants for `anon`/`authenticated`: only the `place-coordinates` Edge Function reads and writes it, with the service role.
+
+### `username_sign_in_failures`
+One row per failed username sign-in (#107): `username` (lower-cased), `attempted_at`. Written and read only by the service-role functions below, for the `username-sign-in` Edge Function; RLS on with no policies and no client grants. Ten rows for a username within 15 minutes pause username sign-in for it; a success deletes its rows; the `pg_cron` job **`expire-username-sign-in-failures`** (daily, 19:23 UTC) deletes rows older than a day.
 
 ### `api_usage`
 Daily per-user counters for paid outside APIs called by Edge Functions: `places` (#73, 100 a day), `ai_fill` (#74, 30 a day) and `place_coords` (#94, 200 a day). One row per `(user_id, kind, day)`, with `count`; `day` is the user's date in their profile time zone. Cascades with the profile. Clients can't read or write it at all (RLS on, no policies, privileges revoked); only `consume_api_quota` touches it.
@@ -229,6 +233,7 @@ Not executable by clients (`function_privileges.test.sql` checks all of this):
 - Internal helpers `resolve_group_type`, `apply_participants`, `entry_range`, `series_dates`, `entry_key`, `series_targets`, `notify_series` (only called inside `security definer` RPCs).
 - Every trigger function: `handle_new_user`, `handle_new_group`, `log_change`, `notify_invitee`, `revert_entries_to_events`, `touch_updated`, `group_activity_defaults`, `guard_personal_type`, `refile_activity`, `refile_renamed_label`, `guard_timezone`, `hand_over_ownership`, `broadcast_change`, `guard_invite_link_revoke`, `guard_invite_link_insert`, `mark_username_chosen`, `drop_stale_place`. Postgres doesn't check `execute` when firing a trigger.
 - Still callable by signed-in users because policies or invoker triggers use them: `try_uuid` (storage policies), `is_valid_timezone` (`guard_timezone`); and `list_timezones` (the picker).
+- Service role only (the `username-sign-in` Edge Function, #107): `email_for_username` (the email for a username, any case; null if none; PT429 after 10 failures in 15 minutes, unknown usernames included), `record_username_sign_in_failure`, `clear_username_sign_in_failures`.
 - Signed-out (`anon`) callers can execute only `username_available`.
 - Every function in `public` sets `search_path` (`= ''` and fully qualified names).
 

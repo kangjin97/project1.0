@@ -14,7 +14,10 @@ const alreadyRegisteredMessage =
 
 /// Shown for a wrong email or password; a Google account has no password until one is set.
 const wrongPasswordMessage =
-    'Wrong email or password. If you signed up with Google, continue with Google or use “Forgot password?” to set a password.';
+    'Wrong username, email or password. If you signed up with Google, continue with Google or use “Forgot password?” to set a password.';
+
+/// Whether a sign-in entry is an email (it has an @) rather than a username.
+bool isEmailLogin(String login) => login.contains('@');
 
 class AuthRepository {
   /// The trigger `handle_new_user` creates the profile from this metadata.
@@ -48,13 +51,34 @@ class AuthRepository {
     return res.session == null;
   }
 
-  Future<void> signIn({required String email, required String password}) async {
+  /// Signs in with an email or, without an @, a username (#107).
+  Future<void> signIn({required String login, required String password}) async {
+    if (!isEmailLogin(login)) return _signInWithUsername(login, password);
     try {
-      await _db.auth.signInWithPassword(email: email.trim(), password: password);
+      await _db.auth.signInWithPassword(email: login.trim(), password: password);
     } on AuthException catch (e) {
       if (e.code == 'invalid_credentials') throw AuthException(wrongPasswordMessage, code: e.code);
       rethrow;
     }
+  }
+
+  /// Auth signs in by email only, so the `username-sign-in` Edge Function looks
+  /// the email up and signs in for us; it answers with just a refresh token, so
+  /// the account's email never reaches the app.
+  Future<void> _signInWithUsername(String username, String password) async {
+    const unavailable = 'Signing in is unavailable right now. Try your email.';
+    final FunctionResponse res;
+    try {
+      res = await _db.functions.invoke('username-sign-in', body: {'username': username.trim(), 'password': password});
+    } on FunctionException catch (e) {
+      final details = e.details;
+      final code = details is Map ? details['code'] as String? : null;
+      if (code == 'invalid_credentials') throw const AuthException(wrongPasswordMessage, code: 'invalid_credentials');
+      throw AuthException((details is Map ? details['error'] as String? : null) ?? unavailable, code: code);
+    }
+    final token = (res.data as Map?)?['refresh_token'] as String?;
+    if (token == null) throw const AuthException(unavailable);
+    await _db.auth.setSession(token);
   }
 
   /// Leaves the app for Google's sign-in page; Google sends the browser back to
