@@ -19,10 +19,10 @@ EasyPlan (repo: group-planner) is a web and mobile app for friends to plan thing
 | Sharing activities into groups, per-group activity types | Done |
 | Personal labels and group type merging | Done |
 | Search and filters (My activities, group activities): text, label/type, sharing, budget, added by, has a link, has photos; "Near…" by distance from your location or a place | Done |
-| Schedules: my schedule (agenda / week / month, earlier weeks, past plans muted, drag to reschedule on wide screens), group schedule, clash warnings, events | Done |
+| Schedules: my schedule (agenda / week / month, earlier weeks, past plans muted, drag to reschedule on wide screens), repeating plans (weekly, every 2 weeks, monthly), group schedule, clash warnings, events | Done |
 | Profiles: picture, username, display name, bio, others' profiles, stats, email/password, changeable time zone | Done |
 | Account deletion, forgot password, privacy policy page | Done |
-| Release setup: app ID `com.kangjin.easyplan`, icon, Android signing, Netlify, build script | Done; see [`docs/deployment.md`](docs/deployment.md) |
+| Release setup: app ID `com.kangjin.easyplan`, placeholder icon (designed one: #15), Android signing, Netlify, build script | Done; see [`docs/deployment.md`](docs/deployment.md) |
 | Web app deployed (Netlify + Supabase cloud) | Live at https://easyplan-hehe.netlify.app; deployed from `main` on request ([`docs/deployment.md`](docs/deployment.md#deploying-the-web-app)) |
 | Android / iOS store apps | Not yet built; see [`docs/deployment.md`](docs/deployment.md) |
 | Notifications | Done: Alerts tab with a live unread badge |
@@ -39,7 +39,7 @@ Requires Flutter 3.47.6, Docker and Supabase CLI 2.119.0 (the versions CI uses).
 ```bash
 supabase start              # local Postgres, Auth, Storage on :54321 (first run pulls Docker images)
 cd app && flutter pub get
-flutter run -d chrome       # or: flutter run -d web-server --web-port 3000
+flutter run -d chrome       # or: flutter run -d web-server --web-hostname 127.0.0.1 --web-port 3000
 ```
 
 Sign in with a seeded test account (`alice@dev.test` or `bob@dev.test`; the password is in [`supabase/seed.sql`](supabase/seed.sql)), or create a new account.
@@ -54,7 +54,7 @@ supabase test db
 
 ```text
 SPEC.md                         Product rules and decisions
-CLAUDE.md, AGENTS.md            Steering notes for AI coding agents (start of docs/ai/handover.md)
+CLAUDE.md, AGENTS.md            Steering notes for AI coding agents (read first, then docs/ai/handover.md)
 .claude/launch.json             Preview config for the Claude desktop app (attaches to :3000)
 .github/                        Issue forms, PR template, CI workflow (analyze, tests, pgTAP)
 netlify.toml                    Web hosting config (publishes app/build/web)

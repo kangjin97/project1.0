@@ -30,6 +30,15 @@ gh auth login -h github.com -s project
 
 The `project` scope lets `scripts/board.sh` move cards on the board.
 
+Commits are authored as `Ng Kang Jin <kangjin_97@hotmail.com>`. Git doesn't copy settings into a clone, so inside the clone run:
+
+```bash
+git config user.email kangjin_97@hotmail.com
+git config user.name "Ng Kang Jin"
+```
+
+(Or keep a different global name and commit with `git -c user.name="Ng Kang Jin" commit …`, which is what agents do.)
+
 ### 2. Flutter (pinned to CI's version)
 
 ```bash
@@ -99,7 +108,7 @@ These features (and the "Near…" distances) call outside APIs through Edge Func
    ANTHROPIC_API_KEY=
    ANTHROPIC_BASE_URL=https://api.aimlapi.com
    ```
-   Type the keys in yourself, the same ones the other computer uses ([`deployment.md`](deployment.md#edge-functions-and-google-maps-73) says where each comes from). Never paste them into chat or commit them.
+   Type the keys in yourself, the same ones the other computer uses (a developer other than the owner doesn't get these: leave the features off, or create your own key with your own billing, following the Google Cloud steps in `deployment.md`; never share keys through chat or git) ([`deployment.md`](deployment.md#edge-functions-and-google-maps-73) says where each comes from). Never paste them into chat or commit them.
 2. Run the functions alongside the stack. They read `.env` only when they start, so restart them after changing it:
    ```bash
    supabase functions serve --env-file supabase/functions/.env
@@ -115,7 +124,7 @@ Needed only for the owner's release steps: `supabase db push`, `supabase functio
 
 ```bash
 supabase login
-supabase link --project-ref <project-ref>    # stored in git-ignored supabase/.temp
+supabase link --project-ref xxdbjszumfwbipniimbd    # the ID in the Project URL; asks for the database password (owner); stored in git-ignored supabase/.temp
 ```
 
 Web deploys don't run on your computer: `gh workflow run ci.yml --ref main` starts one on GitHub Actions ([`deployment.md`](deployment.md#deploying-the-web-app)). iOS builds need this Mac or a cloud build service ([`deployment.md`](deployment.md) §5).

@@ -172,7 +172,7 @@ Status legend: **Done** = DB + UI + tests. **DB only** = schema/RPCs/tests exist
 - **Config**: `AppConfig` reads `SUPABASE_URL`, `SUPABASE_PUBLISHABLE_KEY`, `APP_URL` (`--dart-define-from-file=env/prod.json`); release builds against the local backend show a "no server configured" screen. Path URL strategy; invite links `AppConfig.inviteLink(token)` = `<APP_URL>/join/<token>`.
 - **Build/deploy**: `deploy-web` job in `.github/workflows/ci.yml` (manual run on `main` only, after CI; settings from GitHub secrets/variables), `scripts/build.sh web|android|ios`, `netlify.toml`, `app/web/_redirects`, Android release signing from `key.properties`, Android App Links intent filter (`appLinkHost` placeholder from `APP_URL`), `.well-known` templates in `app/deploy/well-known/`. Guide: `docs/deployment.md`.
 - UI: `features/auth/auth_page.dart` (`_forgotPassword`, privacy link), `features/auth/reset_password_page.dart`, `features/profile/profile_page.dart` (`_DeleteAccountDialog`, privacy link). Data: `ProfileRepository.deleteAccount`.
-- Tests: `delete_account.test.sql` (hand-over on leave, deletion cascade, events kept, others untouched, history kept). Forgot-password and deletion were exercised end to end in the browser with a throwaway local account.
+- Tests: `delete_account.test.sql` (hand-over on leave, deletion cascade, events kept, others untouched, history kept). Forgot-password and deletion were exercised end to end in the browser with a throwaway local account.; `function_privileges.test.sql` (every public function sets `search_path`; `anon` may execute only `username_available`; `try_uuid`, `is_valid_timezone` and `list_timezones` still work after the grant changes)
 - **Deployed:** the web app is live at https://easyplan-hehe.netlify.app against the Supabase cloud project. Merging to `main` doesn't deploy; the owner asks for a deploy, which runs CI manually on `main` (`deploy-web` job; `docs/deployment.md` → Deploying the web app).
 - Not done yet: store builds (#13 Android, #14 iOS) and a designed icon (#15). iOS Associated Domains must be added in Xcode; `.well-known` files need the Play signing SHA-256 and Apple Team ID; store listings are manual.
 
@@ -241,6 +241,6 @@ Open at the time of writing:
 | #14 iOS: update the toolchain and publish a TestFlight build | F12 | chore |
 | #15 Replace the placeholder app icon | F12 | chore |
 | #16 Server-side search and filters for large groups | F7 | feature |
-| #18 Push notifications on phones | F9 | feature (v2) |
+| #18 Push notifications on phones | F9 (v2) | feature |
 | #49 Test live updates on two phones against the live site | F13 | chore |
 | #88 Sign in with Facebook | F1 | feature |

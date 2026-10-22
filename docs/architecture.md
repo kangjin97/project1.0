@@ -9,7 +9,7 @@ flowchart LR
     P --> R["Repositories (data/*)"]
   end
   R -- "PostgREST (tables, RPCs)" --> DB[(Postgres + RLS)]
-  R -- "Auth (email/password)" --> AUTH[Supabase Auth]
+  R -- "Auth (email/password, Google)" --> AUTH[Supabase Auth]
   R -- "Storage (signed URLs)" --> ST[Storage: activity-photos, avatars]
   DB -- "triggers broadcast 'changed'" --> RT[Realtime: private channels]
   RT -- "group:id / user:id" --> R
@@ -35,7 +35,7 @@ There is no custom server of our own. The Flutter app talks to Supabase directly
 | Config | `config.dart` | `SUPABASE_URL`, `SUPABASE_PUBLISHABLE_KEY`, `APP_URL` (defaults to the page's origin on web, `http://127.0.0.1:3000` elsewhere; `--dart-define-from-file=env/prod.json` for releases); invite and privacy links |
 | Routing | `router.dart` | `go_router` routes, auth redirect, `ShellRoute` with the navigation shell |
 | Data | `data/models.dart`, `data/schedule_models.dart` | Plain immutable models with `fromJson`, plus select-column strings; schedule entries, timing and date helpers |
-| Data | `data/*_repository.dart` | Every Supabase call (`auth_repository.dart` for sign-up, sign-in, Google sign-in and password resets), plus `FutureProvider`s exposing them. `friendlyError` lives in `groups_repository.dart`. Elsewhere the app only reads local session state (`currentUser`, `onAuthStateChange`) and calls `signOut` |
+| Data | `data/*_repository.dart` | Every Supabase call (`auth_repository.dart` for sign-up, sign-in, Google sign-in and password resets), plus `FutureProvider`s exposing them. `friendlyError` lives in `groups_repository.dart`. Elsewhere the app only reads local session state (`currentUser`, `currentSession`, `onAuthStateChange`) and calls `signOut` |
 | Data | `data/itinerary.dart`, `data/calendar_export.dart`, `data/export/save_file.dart` | Itinerary export (#96) and calendars (#97: Google Calendar links, .ics files): builds a group's plans for a date range into chat text and an Excel workbook; hands files to the person (download on web, share sheet on phones; conditional import `save_file_web.dart` / `save_file_io.dart`). The timetable picture is drawn in `features/schedule/itinerary_timetable.dart` |
 | Data | `data/geo.dart` | "Near…" (#94): `GeoPoint`, `distanceKm` (haversine), `formatDistance`, `NearFilter`, `applyNear`; coordinates come from `PlacesRepository.coordinates`, the device position from `PlacesRepository.currentPosition` (`geolocator`) |
 | Data | `data/app_clock.dart` | `AppClock` (display time zone) and `TimezoneController`, which loads and saves the profile's zone through `ProfileRepository` |
@@ -142,7 +142,7 @@ When `activities.personal_type_id` or `personal_types.name` changes, a trigger r
 
 `create_schedule_entry(..., p_force)` first calls `find_clashes` for the chosen people.
 - **Clashes and `p_force = false`:** it returns `{status: 'clash', clashes}` and saves nothing.
-- **Otherwise:** it inserts the entry, marks clashing participants `status = 'clash'`, notifies them, and logs a `clash_override`.
+- **Otherwise** (no clashes, or `p_force = true`): it inserts the entry and adds the participants, marking clashing ones `status = 'clash'`. Everyone added except the caller is notified (`added_to_entry`, or `schedule_clash` for those with a clash). When it saves despite clashes, it also logs a `clash_override`.
 
 All-day entries cover the whole day in each participant's `profiles.timezone`. Titles of entries in groups the caller isn't in come back as "Busy".
 

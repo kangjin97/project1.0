@@ -38,7 +38,7 @@ The cloud database is separate from the local one: local accounts and test data 
 2. Push the schema. This creates every table, rule, function and storage bucket from `supabase/migrations/`. It does **not** send `seed.sql`, so the test accounts stay local.
    ```bash
    supabase login        # the CLI may be at ~/.local/bin/supabase
-   supabase link --project-ref <project-ref>
+   supabase link --project-ref xxdbjszumfwbipniimbd
    supabase db push
    ```
    Later migrations: run `supabase db push` again after merging them.
@@ -199,7 +199,7 @@ Friends can now use EasyPlan from the browser or the home-screen icon.
 
 ## 4. Android: Google Play (Stage B and C)
 
-Toolchain first. `flutter doctor` currently reports Android SDK 30; Flutter needs SDK 36:
+Toolchain first. On the Mac (2026-10), `flutter doctor` reports Android SDK 30; Flutter needs SDK 36:
 - Install Android Studio, then open SDK Manager → install Android SDK Platform 36 and the latest Build-Tools and Command-line Tools.
 - Run `flutter doctor --android-licenses`.
 
@@ -246,13 +246,14 @@ Toolchain first:
 Deploys happen **only when the owner asks**: typically at the end of a day of work, or whenever the live app needs the latest `main`. Every production deploy costs Netlify credits, so merging a pull request doesn't deploy (until 2026-10-15 it did, and several merges a day used the credits up too fast). Develop and test on the local stack; merge to `main` as often as you like.
 
 **To deploy** (the owner, or an agent when the owner says so):
-1. If anything merged since the last deploy adds migrations, run `supabase db push` on the cloud project **first** (owner). `supabase migration list --linked` shows which migrations the cloud has. If it changed an Edge Function (`supabase/functions/`), also run `supabase functions deploy <name>` (owner), after setting any new secret ([Edge Functions and Google Maps](#edge-functions-and-google-maps-73)).
+1. Check what merged since the last deploy: `git diff --name-only <last-deploy-sha>..origin/main -- supabase/migrations supabase/functions supabase/templates` (the SHA is in "Current state" at the top of this file). If it adds migrations, run `supabase db push` on the cloud project **first** (owner). `supabase migration list --linked` shows which migrations the cloud has. If it changed an Edge Function (`supabase/functions/`), also run `supabase functions deploy <name>` (owner), after setting any new secret ([Edge Functions and Google Maps](#edge-functions-and-google-maps-73)).
 2. Start the deploy:
    ```bash
    gh workflow run ci.yml --ref main
    ```
    or GitHub → Actions → CI → **Run workflow** on `main`.
-3. Watch it: `gh run watch` (or the Actions tab). It takes a few minutes.
+3. Watch it: `gh run list --workflow ci.yml --event workflow_dispatch --limit 1` for the run ID, then `gh run watch <id> --exit-status` (or the Actions tab). It takes a few minutes.
+4. Afterwards, record it: a `documentation` issue and PR that update the date, `main` SHA, run ID and what went live in "Current state" at the top of this file, `docs/ai/handover.md` → Current state and the README status table, after re-checking `supabase migration list --linked` and `supabase functions list`.
 
 `.github/workflows/ci.yml` has a **Deploy web (Netlify)** job that runs only on that manual run, on `main`, after the **App** and **Database** checks pass. It then:
 1. writes `app/env/prod.json` from GitHub settings;
