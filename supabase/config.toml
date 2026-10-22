@@ -457,3 +457,9 @@ verify_jwt = true
 # GOOGLE_MAPS_API_KEY; writes the cache with the service role.
 [functions.place-coordinates]
 verify_jwt = true
+
+# Sign in with a username (#107). Called before signing in, so there's no user
+# token to check; it uses the service role to look the email up and limits
+# failed attempts per username in the database.
+[functions.username-sign-in]
+verify_jwt = false
