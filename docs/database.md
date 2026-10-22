@@ -212,7 +212,7 @@ See [`ai/endpoints.md`](ai/endpoints.md) for parameters, return shapes and error
 
 ### Internal helpers
 
-Used by RLS policies and RPCs. Signed-in users can call the read-only access helpers (all but `entry_range`, which is internal), but they only answer about the caller.
+Used by RLS policies and RPCs. Signed-in users can call all of them except `entry_range`, which is internal. The `is_*`/`shares_*`/`can_*` helpers only answer about the caller; `entry_group` returns any plan's group id; `try_uuid` and `is_valid_timezone` are pure checks.
 
 | Function | Returns |
 |---|---|

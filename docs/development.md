@@ -74,7 +74,7 @@ Test accounts (from [`supabase/seed.sql`](../supabase/seed.sql)): `alice@dev.tes
 GitHub is the single source of truth. Neither computer is special; either one can do everything except iOS builds (Mac only).
 
 - **Pull before you start; push your branch before switching computers.** Code, issues, the board, CI, deploy settings and deploys all live on GitHub. Nothing else syncs.
-- **Each computer has its own local database.** Accounts and test data made on one aren't on the other. Shared test data belongs in `supabase/seed.sql`. The rules are the same on both: `supabase migration up`, and `supabase db reset` only when you mean to wipe that computer's data.
+- **Each computer has its own local database.** Accounts and test data made on one aren't on the other. Shared test data belongs in `supabase/seed.sql`. The rules are the same on both: `supabase migration up`, and `supabase db reset` only when you mean to wipe that computer's data (agents: only after the owner says yes in chat; CLAUDE.md rule 1).
 - **A few git-ignored files exist only where they're needed.** You normally don't need them at all:
 
   | File | Needed for | Notes |
@@ -83,7 +83,7 @@ GitHub is the single source of truth. Neither computer is special; either one ca
   | `app/android/key.properties` + upload keystore (`*.jks`) | Android release builds | Copy by hand (USB drive, password manager), never through git or chat |
   | `supabase/.env` | Continue with Google locally (`config.toml` → `[auth.external.google]`) | Google OAuth client ID and secret, typed in on each computer ([`deployment.md`](deployment.md#sign-in-with-google-87)); restart the stack after changing it |
   | `supabase/functions/.env` | Place search, "Near…" distances and Fill from link locally (`supabase functions serve`) | Type the keys in on each computer ([`setup-mac.md`](setup-mac.md#optional-place-search-and-fill-from-link)); never through git or chat |
-  | `supabase/.temp` (from `supabase link`) | `supabase db push`, `supabase functions deploy`, `supabase migration list --linked` | Run `supabase login` and `supabase link --project-ref <ref>` once on whichever computer does those |
+  | `supabase/.temp` (from `supabase link`) | `supabase db push`, `supabase functions deploy`, `supabase migration list --linked` | Run `supabase login` and `supabase link --project-ref xxdbjszumfwbipniimbd` once on whichever computer does those |
 
 - **Scripts:** `./scripts/*.sh` are bash. On Windows, run them in Git Bash ([`setup-windows.md`](setup-windows.md#which-terminal)).
 - Git converts line endings on Windows automatically (`core.autocrlf`), so commits from either computer look the same.
@@ -136,15 +136,15 @@ rollback;
 
 Work is tracked in **GitHub Issues** (https://github.com/kangjin97/project1.0/issues) and on the **EasyPlan project board** (https://github.com/users/kangjin97/projects/3), with columns **Todo → In Progress → Done**.
 
-1. **Raise an issue.** Use the **Bug** or **Feature or change** form (`.github/ISSUE_TEMPLATE/`), or a blank issue for chores. Labels: `bug`, `feature`, `chore`, optionally `priority:high`. GitHub numbers it automatically, and the card appears in **Todo**.
+1. **Raise an issue.** Use the **Bug** or **Feature or change** form (`.github/ISSUE_TEMPLATE/`), or a blank issue for chores. Labels: `bug`, `feature`, `chore` or `documentation` (docs only), optionally `priority:high`. GitHub numbers it automatically, and the card appears in **Todo**.
 2. **Start work:** move the card to **In Progress** with `./scripts/board.sh <n> progress`, or drag it on the board. Then **branch from `main`**, named after the issue: `fix/<n>-short-name`, `feature/<n>-short-name`, `chore/<n>-short-name`.
 3. **Open a pull request** into `main` (`gh pr create --base main`). The template starts with `Closes #<n>`, so merging closes the issue.
 4. **CI must be green.** `.github/workflows/ci.yml` runs on every PR and push to `main`:
    - **App:** `flutter analyze` and `flutter test` (Flutter 3.47.6).
    - **Database:** `supabase start` without the UI services, then `supabase test db`.
-5. **Test locally, review, merge,** then delete the branch locally (`git branch -D <branch>`; GitHub deletes its copy automatically on merge). Merging closes the issue and the board moves its card to **Done**. Merging does **not** deploy: the live site stays as it is until the owner asks for a deploy, usually at the end of the day ([`deployment.md`](deployment.md#deploying-the-web-app)). If merged PRs add migrations, run `supabase db push` on the cloud project **before** that deploy.
+5. **Test locally; the owner reviews and merges** (an agent merges only when the owner says so in chat), then delete the branch locally (`git branch -D <branch>`; GitHub deletes its copy automatically on merge). Merging closes the issue and the board moves its card to **Done**. Merging does **not** deploy: the live site stays as it is until the owner asks for a deploy, usually at the end of the day ([`deployment.md`](deployment.md#deploying-the-web-app)). If merged PRs add migrations, run `supabase db push` on the cloud project **before** that deploy; changed Edge Functions need `supabase functions deploy <name>` and changed email templates a paste in the dashboard. Commits are authored as `Ng Kang Jin <kangjin_97@hotmail.com>` ([`setup-mac.md`](setup-mac.md#1-git-and-github-cli)).
 
-Never commit `app/env/prod.json`, `app/android/key.properties` or keystores (`*.jks`); they're git-ignored.
+Never commit `app/env/prod.json`, `app/android/key.properties`, keystores (`*.jks`), `supabase/.env` or `supabase/functions/.env`; they're git-ignored.
 
 ### Project board
 

@@ -66,6 +66,7 @@ A web and mobile app for friends to plan things to do together: collect activity
 - Entries are created **within a group**: pick an activity (or create an event), a date/time, and which group members take part (defaults to the creator).
 - Selected members are **added automatically** — no accept step — subject to the clash check (§2.6).
 - Any participant can remove themselves from an entry. Any group member can remove an entry from the group schedule.
+- **Repeating plans:** a dated plan can repeat weekly, every 2 weeks or monthly until a date at most a year after the first (monthly on the 31st falls back to a shorter month's last day; at least two dates). Every date is an ordinary plan and is clash-checked. Changes ask "this date only" or "this and later dates". Each person gets one notification per series. A series can be extended (again at most a year ahead).
 - On wide screens, a timed plan can be dragged to another time or day in the week view (same clash check; Undo afterwards).
 - **Export an itinerary** (group Schedule tab): the group's plans for chosen days as an Excel itinerary (every detail and a cost summary), a PDF timetable (days as columns, plans as blocks), an image of that timetable, a day-by-day text to paste into a chat, or a calendar file (.ics) to add the plans to Google Calendar, Apple Calendar or Outlook.
 - **Add to Google Calendar** on a plan: opens Google Calendar with the plan filled in. Calendar copies don't follow later changes.
@@ -207,6 +208,6 @@ Details and backlog: [`docs/ai/features.md`](docs/ai/features.md).
 
 - Decisions made so far (including assumptions awaiting confirmation) are logged in [`docs/ai/decisions.md`](docs/ai/decisions.md).
 - Assumed, awaiting the owner's confirmation (see `decisions.md`): any member can unshare an activity (logged); labels match by name, ignoring case and surrounding spaces (no fuzzy "similar" matching).
-- Recurring entries (e.g. weekly game night): built (#17). Weekly, every 2 weeks or monthly, ending on a date at most a year ahead; edits apply to one date or that date and later ones; one notification per series.
+- Recurring entries (e.g. weekly game night): built (#17); rules in §2.5.
 - Push notifications on phones: in-app only for v1; tracked as #18.
 - Time zones: stored in UTC (`timestamptz`), shown in each user's **profile** time zone (not the device's).

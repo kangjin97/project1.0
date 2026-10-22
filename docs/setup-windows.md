@@ -32,6 +32,15 @@ Open a **new** terminal, then sign in. The `project` scope lets `scripts/board.s
 gh auth login -h github.com -s project
 ```
 
+Commits are authored as `Ng Kang Jin <kangjin_97@hotmail.com>`. Git doesn't copy settings into a clone, so inside the clone run:
+
+```powershell
+git config user.email kangjin_97@hotmail.com
+git config user.name "Ng Kang Jin"
+```
+
+(Or keep a different global name and commit with `git -c user.name="Ng Kang Jin" commit …`, which is what agents do.)
+
 ### 2. Flutter (pinned to CI's version)
 
 Clone the release tag rather than a channel, so this PC matches CI exactly:
@@ -109,6 +118,24 @@ Place search, "Near…" distances and Fill from link also need `supabase/functio
 
 Continue with Google also needs the git-ignored `supabase/.env` on this PC (two lines: the Google OAuth client ID and secret), then `supabase stop` and `supabase start`; the steps are the same as on the Mac ([`setup-mac.md`](setup-mac.md#optional-continue-with-google)).
 
+## Checking an existing setup
+
+After time away from the PC, check it still matches CI before working. One command per line (PowerShell has no `&&`):
+
+```powershell
+git pull
+flutter --version              # 3.47.6, as in .github/workflows/ci.yml
+supabase --version             # 2.119.0
+docker info                    # Docker Desktop must be running
+supabase start
+supabase migration up          # catches up on migrations merged from the other computer; keeps data
+supabase test db
+cd app
+flutter pub get
+flutter analyze
+flutter test
+```
+
 ## Which terminal
 
 | Terminal | Use it for | Watch out for |
@@ -130,7 +157,7 @@ Deploys don't run on your PC: GitHub Actions builds and publishes the web app on
 | Step | On Windows |
 |---|---|
 | Web app to Netlify | **Same.** Merging doesn't deploy; when you want the live site updated, run `gh workflow run ci.yml --ref main` and the `deploy-web` job deploys after the checks pass ([`deployment.md`](deployment.md#deploying-the-web-app)). |
-| Database migrations to the cloud | **Same commands**, once per PC: `supabase login`, then `supabase link --project-ref <project-ref>` (stored in git-ignored `supabase/.temp`). After that, `supabase db push` before deploying app code that needs new migrations. |
+| Database migrations to the cloud | **Same commands**, once per PC: `supabase login`, then `supabase link --project-ref xxdbjszumfwbipniimbd` (asks for the database password, which only the owner has) (stored in git-ignored `supabase/.temp`). After that, `supabase db push` before deploying app code that needs new migrations. |
 | Deploy settings (secrets) | **Same:** `gh secret set NAME --repo kangjin97/project1.0` prompts for the value. |
 | Roll back | **Same:** Netlify → Deploys → publish an earlier deploy. |
 | Manual web build (fallback) | Copy `app/env/prod.json` to this PC by hand, then in Git Bash: `./scripts/build.sh web`, and drag `app/build/web` onto Netlify's Deploys page. |
