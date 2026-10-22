@@ -14,6 +14,7 @@ import '../../data/profile_repository.dart';
 import '../../data/schedule_repository.dart';
 import '../../widgets/async_body.dart';
 import '../../widgets/dialogs.dart';
+import '../../widgets/password_field.dart';
 import '../../widgets/user_avatar.dart';
 import 'edit_profile_page.dart';
 import 'timezone_picker.dart';
@@ -518,7 +519,6 @@ class _ChangePasswordDialogState extends ConsumerState<_ChangePasswordDialog> {
 
   @override
   Widget build(BuildContext context) {
-    InputDecoration field(String label) => InputDecoration(labelText: label, border: const OutlineInputBorder());
     return AlertDialog(
       title: const Text('Change password'),
       content: Form(
@@ -526,24 +526,21 @@ class _ChangePasswordDialogState extends ConsumerState<_ChangePasswordDialog> {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            TextFormField(
+            PasswordField(
               controller: _current,
-              obscureText: true,
-              decoration: field('Current password'),
+              label: 'Current password',
               validator: (v) => (v ?? '').isEmpty ? 'Enter your current password' : null,
             ),
             const SizedBox(height: 12),
-            TextFormField(
+            PasswordField(
               controller: _next,
-              obscureText: true,
-              decoration: field('New password'),
+              label: 'New password',
               validator: (v) => (v ?? '').length >= 8 ? null : 'At least 8 characters',
             ),
             const SizedBox(height: 12),
-            TextFormField(
+            PasswordField(
               controller: _confirm,
-              obscureText: true,
-              decoration: field('Repeat new password'),
+              label: 'Repeat new password',
               validator: (v) => v == _next.text ? null : 'Doesn’t match',
             ),
             if (_error != null) ...[
