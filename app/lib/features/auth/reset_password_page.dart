@@ -7,6 +7,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../data/auth_repository.dart';
 import '../../widgets/dialogs.dart';
+import '../../widgets/password_field.dart';
 
 /// Opened from a password-reset email. The link signs the user in briefly;
 /// they choose a new password here.
@@ -81,18 +82,16 @@ class _ResetPasswordPageState extends ConsumerState<ResetPasswordPage> {
           children: [
             Text('Choose a new password', style: theme.textTheme.headlineSmall),
             const SizedBox(height: 24),
-            TextFormField(
+            PasswordField(
               controller: _password,
-              obscureText: true,
-              decoration: const InputDecoration(labelText: 'New password', border: OutlineInputBorder()),
+              label: 'New password',
               validator: (v) => (v ?? '').length >= 8 ? null : 'At least 8 characters',
             ),
             const SizedBox(height: 12),
-            TextFormField(
+            PasswordField(
               controller: _confirm,
-              obscureText: true,
+              label: 'Repeat new password',
               onFieldSubmitted: (_) => _save(),
-              decoration: const InputDecoration(labelText: 'Repeat new password', border: OutlineInputBorder()),
               validator: (v) => v == _password.text ? null : 'Doesn’t match',
             ),
             const SizedBox(height: 20),

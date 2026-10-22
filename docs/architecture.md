@@ -41,7 +41,7 @@ There is no custom server of our own. The Flutter app talks to Supabase directly
 | Data | `data/geo.dart` | "Near…" (#94): `GeoPoint`, `distanceKm` (haversine), `formatDistance`, `NearFilter`, `applyNear`; coordinates come from `PlacesRepository.coordinates`, the device position from `PlacesRepository.currentPosition` (`geolocator`) |
 | Data | `data/app_clock.dart` | `AppClock` (display time zone) and `TimezoneController`, which loads and saves the profile's zone through `ProfileRepository` |
 | Features | `features/<area>/` | Screens, sheets and widgets for one area |
-| Shared UI | `widgets/` | `AsyncBody`, `EmptyState` (`async_body.dart`); prompt and confirm dialogs, `showMessage`, `showError` (`dialogs.dart`); `UserAvatar` (`user_avatar.dart`) |
+| Shared UI | `widgets/` | `AsyncBody`, `EmptyState` (`async_body.dart`); prompt and confirm dialogs, `showMessage`, `showError` (`dialogs.dart`); `UserAvatar` (`user_avatar.dart`); `PasswordField` with a show/hide button, used for every password (`password_field.dart`) |
 
 ### Routing
 

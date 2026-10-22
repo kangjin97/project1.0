@@ -9,6 +9,7 @@ import '../../data/auth_repository.dart';
 import '../../data/groups_repository.dart';
 import '../../data/profile_repository.dart';
 import '../../widgets/dialogs.dart';
+import '../../widgets/password_field.dart';
 
 final _usernamePattern = RegExp(r'^[a-z0-9_]{3,30}$');
 
@@ -23,6 +24,7 @@ class _AuthPageState extends ConsumerState<AuthPage> {
   final _form = GlobalKey<FormState>();
   final _email = TextEditingController();
   final _password = TextEditingController();
+  final _confirm = TextEditingController();
   final _username = TextEditingController();
   final _displayName = TextEditingController();
   bool _signUp = false;
@@ -31,7 +33,7 @@ class _AuthPageState extends ConsumerState<AuthPage> {
 
   @override
   void dispose() {
-    for (final c in [_email, _password, _username, _displayName]) {
+    for (final c in [_email, _password, _confirm, _username, _displayName]) {
       c.dispose();
     }
     super.dispose();
@@ -164,13 +166,21 @@ class _AuthPageState extends ConsumerState<AuthPage> {
                     },
                   ),
                   const SizedBox(height: 12),
-                  TextFormField(
+                  PasswordField(
                     controller: _password,
-                    decoration: const InputDecoration(labelText: 'Password', border: OutlineInputBorder()),
-                    obscureText: true,
-                    onFieldSubmitted: (_) => _submit(),
+                    label: 'Password',
+                    onFieldSubmitted: (_) => _signUp ? null : _submit(),
                     validator: (v) => (v ?? '').length >= 8 ? null : 'At least 8 characters',
                   ),
+                  if (_signUp) ...[
+                    const SizedBox(height: 12),
+                    PasswordField(
+                      controller: _confirm,
+                      label: 'Confirm password',
+                      onFieldSubmitted: (_) => _submit(),
+                      validator: (v) => v == _password.text ? null : 'Passwords don’t match',
+                    ),
+                  ],
                   if (_error != null) ...[
                     const SizedBox(height: 12),
                     Text(_error!, style: TextStyle(color: theme.colorScheme.error)),
