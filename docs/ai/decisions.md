@@ -39,6 +39,9 @@ Product and technical decisions, with the reason. Newest last. When a decision c
 | 2026-10-19 | **Itinerary export** (#96): from a group's Schedule tab for a date range, as an Excel itinerary (detail and costs), a PDF timetable with **days as columns**, a PNG of it, and text for a chat. **Google Calendar** (#97) as a per-plan "Add to Google Calendar" button plus an .ics file, no account permission; a live subscription maybe later, full sync not planned. Owner's choices. |
 | 2026-10-22 | **Sign in with a username** (#107): one "Email or username" field; the email is looked up on the server so it stays private; 10 failed tries for a username in 15 minutes pause it for 15 minutes. Owner's choices. |
 | 2026-10-26 | The import template (#111) comes with a **filled-in example row** for people to copy. Owner's request. |
+| 2026-10-26 | The template's example row is skipped on import while every cell is exactly as written (a sheet with nothing else says so); one changed cell makes it a normal row. Exports never include it: importing an untouched template shouldn't create a fake activity, and a copied-then-edited row must still count. Proposed by the agent in #113; confirmed by the owner. |
+| 2026-10-26 | Import repeats (#111) also match on the Google place, not just the location text, and are re-checked after matching; a row the person ticked or unticked keeps their choice. Imports save Google's text, so without this the same scraped sheet imported twice would add everything again. Proposed by the agent in #113; confirmed by the owner. |
+| 2026-10-26 | "Newest first" on My activities breaks ties by name, since rows imported in one request share a creation time and otherwise showed in a jumbled order. Proposed by the agent in #113; confirmed by the owner. |
 
 ## Choices made on the owner's behalf (confirm or revise)
 
@@ -77,9 +80,6 @@ Product and technical decisions, with the reason. Newest last. When a decision c
 | 2026-10-15 | Handing over ownership is immediate; the new owner doesn't have to accept. The old owner becomes a member. (Owner's choice.) | Simple; an offer/accept flow would need pending offers, cancel and expiry. |
 | 2026-10-15 | Owner-only actions (Rename, Delete, Make owner, Remove) are hidden from other members. | They'd only get a permission error. |
 | 2026-10-15 | Drag to reschedule (#12) works on wide screens only (≥720 px, where the side rail shows); phones keep tap → Change time. Plans snap to 15 minutes and keep their length; only timed plans drag. A move offers Undo in the snackbar. | The issue scoped it to wide screens; drag on a phone fights scrolling. 15 minutes is fine enough for plans without fiddly aiming. |
-| 2026-10-26 | The template's example row is skipped on import while every cell is exactly as written (a sheet with nothing else says so); one changed cell makes it a normal row. Exports never include it. | Importing an untouched template shouldn't create a fake activity, and a copied-then-edited row must still count. |
-| 2026-10-26 | Import repeats (#111) also match on the Google place, not just the location text, and are re-checked after matching; a row the person ticked or unticked keeps their choice. | Imports save Google's text, so the same scraped sheet imported twice would otherwise add everything again. |
-| 2026-10-26 | "Newest first" on My activities breaks ties by name. | Rows imported in one request share a creation time and otherwise showed in a jumbled order. |
 
 ## Technical
 
