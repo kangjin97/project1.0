@@ -195,7 +195,7 @@ class _ActivitiesPageState extends ConsumerState<ActivitiesPage> {
                       child: ListTile(
                         leading: Icon(Icons.download),
                         title: Text('Download template'),
-                        subtitle: Text('A blank sheet to fill in'),
+                        subtitle: Text('A sheet to fill in, with an example row'),
                       ),
                     ),
                   ],

@@ -23,7 +23,7 @@ Future<int?> showActivityImport(BuildContext context) => Navigator.of(
 
 /// The blank spreadsheet to fill in.
 Future<void> downloadActivityTemplate() => saveFile(
-  Uint8List.fromList(activitiesToExcel(const [])),
+  Uint8List.fromList(activitiesToExcel(const [], withExample: true)),
   name: 'EasyPlan activities template.xlsx',
   mimeType: _xlsxType,
 );
@@ -513,6 +513,11 @@ class _HowToImport extends StatelessWidget {
         ),
         const SizedBox(height: 4),
         Text('Got a file from a friend’s “Select to export”? Import it as it is.', style: small),
+        const SizedBox(height: 4),
+        Text(
+          'The template has an example row to copy. Change or delete it; left as it is, it’s skipped on import.',
+          style: small,
+        ),
         const SizedBox(height: 8),
         OutlinedButton.icon(
           onPressed: onTemplate,

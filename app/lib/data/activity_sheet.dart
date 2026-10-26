@@ -28,6 +28,19 @@ enum SheetColumn {
 /// How many rows one import takes.
 const maxImportRows = 300;
 
+/// The example row under the template's header, for people to copy. Left
+/// exactly as it is, an import skips it; changed in any way, it's a real row.
+const templateExample = {
+  SheetColumn.name: 'Bishan Pickleball',
+  SheetColumn.description: 'Indoor courts. Book on ActiveSG, up to 2 weeks ahead.',
+  SheetColumn.location: 'Bishan Sports Hall',
+  SheetColumn.priceFrom: '10',
+  SheetColumn.priceTo: '15',
+  SheetColumn.currency: 'SGD',
+  SheetColumn.link: 'https://www.activesg.gov.sg',
+  SheetColumn.label: 'Pickleball',
+};
+
 /// One activity read from a sheet, with what's wrong with it, if anything.
 class ImportRow {
   ImportRow({required this.line});
@@ -124,6 +137,7 @@ ParsedSheet parseActivitySheet(List<int> bytes, String fileName) {
   }
 
   final rows = <ImportRow>[];
+  var onlyExample = false;
   for (var r = headerRow + 1; r < table.length; r++) {
     String? cell(SheetColumn col) {
       final i = columns[col];
@@ -133,9 +147,20 @@ ParsedSheet parseActivitySheet(List<int> bytes, String fileName) {
     }
 
     if (SheetColumn.values.every((c) => cell(c) == null)) continue; // blank row
+    if (SheetColumn.values.every((c) => cell(c) == templateExample[c])) {
+      onlyExample = true; // the template's untouched example
+      continue;
+    }
     rows.add(_row(r + 1, cell, priceIsRange: !columns.containsKey(SheetColumn.priceTo)));
   }
-  if (rows.isEmpty) return ParsedSheet(const [], 'That sheet has no activities under its header row.');
+  if (rows.isEmpty) {
+    return ParsedSheet(
+      const [],
+      onlyExample
+          ? 'That sheet only has the template’s example row. Add your activities under it (or change it), then choose the file again.'
+          : 'That sheet has no activities under its header row.',
+    );
+  }
   if (rows.length > maxImportRows) {
     return ParsedSheet(const [], 'That sheet has ${rows.length} activities; import at most $maxImportRows at a time.');
   }
@@ -292,8 +317,8 @@ List<List<String>> _csvTable(List<int> bytes) {
 }
 
 /// [activities] as an .xlsx in the import layout (an "Activities" sheet), plus
-/// a "How to fill" sheet. With none, it's the blank template.
-List<int> activitiesToExcel(List<Activity> activities) {
+/// a "How to fill" sheet. The template is none, [withExample].
+List<int> activitiesToExcel(List<Activity> activities, {bool withExample = false}) {
   final excel = Excel.createExcel();
   final defaultSheet = excel.getDefaultSheet()!;
   final sheet = excel['Activities'];
@@ -304,6 +329,17 @@ List<int> activitiesToExcel(List<Activity> activities) {
   }
   CellValue? text(String? s) => s == null || s.trim().isEmpty ? null : TextCellValue(s);
   CellValue? number(double? d) => d == null ? null : DoubleCellValue(d);
+  if (withExample) {
+    sheet.appendRow([
+      for (final c in SheetColumn.values)
+        switch (templateExample[c]) {
+          null => null,
+          // Prices as numbers, as people will type them.
+          final v when c == SheetColumn.priceFrom || c == SheetColumn.priceTo => number(double.parse(v)),
+          final v => TextCellValue(v),
+        },
+    ]);
+  }
   for (final a in activities) {
     sheet.appendRow([
       TextCellValue(a.name),
@@ -333,6 +369,14 @@ List<int> activitiesToExcel(List<Activity> activities) {
     ['Currency', 'Optional: ${supportedCurrencies.join(', ')}. SGD when empty.'],
     ['Link', 'Optional web address.'],
     ['Label', 'Optional. One of your labels, or a new one (created on import).'],
+    if (withExample) ...[
+      <String>[],
+      [
+        'Example row',
+        'Row 2 of "Activities" is an example: copy it for your own rows, then change or delete it. '
+            'Left exactly as it is, it’s skipped when you import.',
+      ],
+    ],
   ]) {
     help.appendRow([for (final t in line) TextCellValue(t)]);
   }

@@ -1,5 +1,6 @@
 import 'dart:convert';
 
+import 'package:excel/excel.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:group_planner/data/activity_sheet.dart';
 import 'package:group_planner/data/models.dart';
@@ -106,8 +107,43 @@ Swapped,30,10,usd,,,
     expect(sheet.rows.last.ok, isTrue);
   });
 
-  test('the blank template has the header and nothing else', () {
-    expect(parseActivitySheet(activitiesToExcel(const []), 'template.xlsx').error, startsWith('That sheet has no activities'));
+  test('the template has an example row, which an import skips until it is changed', () {
+    final template = activitiesToExcel(const [], withExample: true);
+    // Untouched: nothing to import.
+    expect(parseActivitySheet(template, 'template.xlsx').error, startsWith('That sheet only has the template’s example row'));
+    final rows = Excel.decodeBytes(template).tables['Activities']!.rows;
+    expect(rows, hasLength(2));
+    final example = rows[1];
+    expect(example[SheetColumn.name.index]?.value, TextCellValue(templateExample[SheetColumn.name]!));
+    expect(example[SheetColumn.priceFrom.index]?.value, anyOf(isA<IntCellValue>(), isA<DoubleCellValue>()), reason: 'prices are numbers');
+    expect(example[SheetColumn.placeId.index]?.value, isNull);
+    expect(Excel.decodeBytes(activitiesToExcel(const [])).tables['Activities']!.rows, hasLength(1));
+
+    // The example is really there, prices as numbers, and reads back as a good row once edited.
+    final edited = csv(
+      'Name,Description,Location,Google place ID,Price from,Price to,Currency,Link,Label\n'
+      '"${templateExample[SheetColumn.name]}","${templateExample[SheetColumn.description]}",'
+      '${templateExample[SheetColumn.location]},,10,15,SGD,${templateExample[SheetColumn.link]},Pickleball\n'
+      'My court,,Toa Payoh,,10,15,SGD,,Pickleball\n',
+    );
+    final sheet = parseActivitySheet(edited, 'x.csv');
+    expect([for (final r in sheet.rows) r.name], ['My court'], reason: 'an unchanged example row is skipped anywhere');
+
+    final changed = parseActivitySheet(
+      csv('Name,Location,Price from,Price to,Currency,Link,Label,Description\n'
+          '"${templateExample[SheetColumn.name]}",${templateExample[SheetColumn.location]},10,20,SGD,'
+          '${templateExample[SheetColumn.link]},Pickleball,"${templateExample[SheetColumn.description]}"\n'),
+      'x.csv',
+    );
+    expect(changed.rows.single.ok, isTrue, reason: 'one changed cell (price to 20) makes it a real row');
+    expect(changed.rows.single.priceMax, 20.0);
+  });
+
+  test('exports never include the example row', () {
+    final out = activitiesToExcel([
+      Activity(id: 'a', ownerId: 'u', name: 'Only me', createdAt: DateTime.utc(2026), updatedAt: DateTime.utc(2026)),
+    ]);
+    expect([for (final r in parseActivitySheet(out, 'x.xlsx').rows) r.name], ['Only me']);
   });
 
   group('duplicates', () {
