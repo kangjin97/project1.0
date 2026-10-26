@@ -1,8 +1,12 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../data/activities_repository.dart';
+import '../../data/activity_sheet.dart';
+import '../../data/app_clock.dart';
+import '../../data/export/save_file.dart';
 import '../../data/geo.dart';
 import '../../data/models.dart';
 import '../../data/places_repository.dart';
@@ -10,6 +14,7 @@ import '../../widgets/async_body.dart';
 import '../../widgets/dialogs.dart';
 import 'activity_form_page.dart';
 import 'activity_widgets.dart';
+import 'import_activities_page.dart';
 import 'near_filter.dart';
 
 enum _Sort { newest, name, priceLow }
@@ -32,15 +37,46 @@ class _ActivitiesPageState extends ConsumerState<ActivitiesPage> {
   bool _withLink = false;
   bool _withPhotos = false;
   NearFilter? _near;
+
+  /// Picking activities to export (#111).
+  bool _selecting = false;
+  final Set<String> _selected = {};
+  List<Activity> _shown = const [];
   _Sort _sort = _Sort.newest;
 
   bool get _filtering =>
-      _labels.isNotEmpty ||
-      _sharing != _Sharing.all ||
-      _maxBudget != null ||
-      _withLink ||
-      _withPhotos ||
-      _near != null;
+      _labels.isNotEmpty || _sharing != _Sharing.all || _maxBudget != null || _withLink || _withPhotos || _near != null;
+
+  Future<void> _import() async {
+    final count = await showActivityImport(context);
+    if (count != null && mounted) showMessage(context, 'Imported $count ${count == 1 ? 'activity' : 'activities'}.');
+  }
+
+  /// The selected activities in the import layout, so someone else can import them.
+  Future<void> _exportSelected(List<Activity> all) async {
+    final chosen = [
+      for (final a in all)
+        if (_selected.contains(a.id)) a,
+    ];
+    if (chosen.isEmpty) return;
+    try {
+      final now = AppClock.today();
+      final date = '${now.year}-${now.month.toString().padLeft(2, '0')}-${now.day.toString().padLeft(2, '0')}';
+      await saveFile(
+        Uint8List.fromList(activitiesToExcel(chosen)),
+        name: 'EasyPlan activities $date.xlsx',
+        mimeType: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+      );
+      if (!mounted) return;
+      setState(() {
+        _selecting = false;
+        _selected.clear();
+      });
+      showMessage(context, 'Exported ${chosen.length} ${chosen.length == 1 ? 'activity' : 'activities'}.');
+    } catch (e) {
+      if (mounted) showError(context, e);
+    }
+  }
 
   Future<void> _create() async {
     final id = await showActivityForm(context);
@@ -48,11 +84,13 @@ class _ActivitiesPageState extends ConsumerState<ActivitiesPage> {
   }
 
   Future<void> _setBudget() async {
-    final v = await promptText(context,
-        title: 'Maximum budget',
-        label: 'Amount (leave empty for any)',
-        action: 'Apply',
-        initial: _maxBudget?.toStringAsFixed(0) ?? '');
+    final v = await promptText(
+      context,
+      title: 'Maximum budget',
+      label: 'Amount (leave empty for any)',
+      action: 'Apply',
+      initial: _maxBudget?.toStringAsFixed(0) ?? '',
+    );
     if (v == null) return;
     setState(() => _maxBudget = double.tryParse(v.trim()));
   }
@@ -92,30 +130,96 @@ class _ActivitiesPageState extends ConsumerState<ActivitiesPage> {
     // Distances for the "Near…" filter: the places of all your activities, looked up once.
     final coordinates = _near == null
         ? null
-        : ref.watch(placeCoordinatesProvider(
-            placeKey((ref.watch(myActivitiesProvider).value ?? const <Activity>[]).map((a) => a.placeId))));
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('My activities'),
-        actions: [
-          TextButton.icon(
-            onPressed: () => showModalBottomSheet(
-              context: context,
-              useRootNavigator: true,
-              isScrollControlled: true,
-              showDragHandle: true,
-              builder: (_) => const _LabelsSheet(),
+        : ref.watch(
+            placeCoordinatesProvider(
+              placeKey((ref.watch(myActivitiesProvider).value ?? const <Activity>[]).map((a) => a.placeId)),
             ),
-            icon: const Icon(Icons.label_outline),
-            label: const Text('Labels'),
-          ),
-        ],
-      ),
-      floatingActionButton: FloatingActionButton.extended(
-        onPressed: _create,
-        icon: const Icon(Icons.add),
-        label: const Text('New activity'),
-      ),
+          );
+    return Scaffold(
+      appBar: _selecting
+          ? AppBar(
+              leading: IconButton(
+                tooltip: 'Cancel',
+                icon: const Icon(Icons.close),
+                onPressed: () => setState(() {
+                  _selecting = false;
+                  _selected.clear();
+                }),
+              ),
+              title: Text('${_selected.length} selected'),
+              actions: [
+                TextButton(
+                  onPressed: () => setState(() => _selected.addAll(_shown.map((a) => a.id))),
+                  child: const Text('Select all'),
+                ),
+                FilledButton.icon(
+                  onPressed: _selected.isEmpty
+                      ? null
+                      : () => _exportSelected(ref.read(myActivitiesProvider).value ?? const []),
+                  icon: const Icon(Icons.download),
+                  label: const Text('Export'),
+                ),
+                const SizedBox(width: 8),
+              ],
+            )
+          : AppBar(
+              title: const Text('My activities'),
+              actions: [
+                PopupMenuButton<String>(
+                  tooltip: 'Import or export',
+                  icon: const Icon(Icons.import_export),
+                  onSelected: (v) => switch (v) {
+                    'import' => _import(),
+                    'export' => setState(() => _selecting = true),
+                    _ => downloadActivityTemplate(),
+                  },
+                  itemBuilder: (_) => const [
+                    PopupMenuItem(
+                      value: 'import',
+                      child: ListTile(
+                        leading: Icon(Icons.upload_file),
+                        title: Text('Import from a spreadsheet'),
+                        subtitle: Text('Many activities at once from Excel or CSV'),
+                      ),
+                    ),
+                    PopupMenuItem(
+                      value: 'export',
+                      child: ListTile(
+                        leading: Icon(Icons.checklist),
+                        title: Text('Select to export'),
+                        subtitle: Text('Tick activities to save as a sheet others can import'),
+                      ),
+                    ),
+                    PopupMenuItem(
+                      value: 'template',
+                      child: ListTile(
+                        leading: Icon(Icons.download),
+                        title: Text('Download template'),
+                        subtitle: Text('A blank sheet to fill in'),
+                      ),
+                    ),
+                  ],
+                ),
+                TextButton.icon(
+                  onPressed: () => showModalBottomSheet(
+                    context: context,
+                    useRootNavigator: true,
+                    isScrollControlled: true,
+                    showDragHandle: true,
+                    builder: (_) => const _LabelsSheet(),
+                  ),
+                  icon: const Icon(Icons.label_outline),
+                  label: const Text('Labels'),
+                ),
+              ],
+            ),
+      floatingActionButton: _selecting
+          ? null
+          : FloatingActionButton.extended(
+              onPressed: _create,
+              icon: const Icon(Icons.add),
+              label: const Text('New activity'),
+            ),
       body: RefreshIndicator(
         onRefresh: () async {
           ref.invalidate(labelsProvider);
@@ -144,6 +248,7 @@ class _ActivitiesPageState extends ConsumerState<ActivitiesPage> {
               distances.addAll({for (final (a, km) in near.within) a.id: km});
               unmeasured = near.unmeasured;
             }
+            _shown = list;
             return ListView(
               padding: const EdgeInsets.only(bottom: 96),
               children: [
@@ -191,8 +296,9 @@ class _ActivitiesPageState extends ConsumerState<ActivitiesPage> {
                         ],
                         child: Chip(
                           avatar: const Icon(Icons.group_outlined, size: 18),
-                          backgroundColor:
-                              _sharing == _Sharing.all ? null : Theme.of(context).colorScheme.secondaryContainer,
+                          backgroundColor: _sharing == _Sharing.all
+                              ? null
+                              : Theme.of(context).colorScheme.secondaryContainer,
                           label: Text(switch (_sharing) {
                             _Sharing.all => 'Sharing',
                             _Sharing.private => 'Private',
@@ -252,11 +358,20 @@ class _ActivitiesPageState extends ConsumerState<ActivitiesPage> {
                 if (list.isEmpty && !(coordinates?.isLoading ?? false))
                   EmptyState(
                     icon: Icons.search_off,
-                    message: _near == null ? 'Nothing matches.' : 'Nothing within ${formatDistance(_near!.km)} of ${_near!.label}.',
+                    message: _near == null
+                        ? 'Nothing matches.'
+                        : 'Nothing within ${formatDistance(_near!.km)} of ${_near!.label}.',
                   ),
                 for (final a in list)
                   ActivityCard(
                     activity: a,
+                    trailing: _selecting
+                        ? Checkbox(
+                            value: _selected.contains(a.id),
+                            onChanged: (on) =>
+                                setState(() => on == true ? _selected.add(a.id) : _selected.remove(a.id)),
+                          )
+                        : null,
                     typeName: a.personalTypeName,
                     distanceKm: distances[a.id],
                     footer: switch (a.sharedGroupCount ?? 0) {
@@ -264,7 +379,9 @@ class _ActivitiesPageState extends ConsumerState<ActivitiesPage> {
                       1 => 'In 1 group',
                       final n => 'In $n groups',
                     },
-                    onTap: () => context.push('/activities/${a.id}'),
+                    onTap: _selecting
+                        ? () => setState(() => _selected.contains(a.id) ? _selected.remove(a.id) : _selected.add(a.id))
+                        : () => context.push('/activities/${a.id}'),
                   ),
               ],
             );
@@ -322,8 +439,13 @@ class _LabelsSheet extends ConsumerWidget {
                       tooltip: 'Rename',
                       icon: const Icon(Icons.edit_outlined),
                       onPressed: () async {
-                        final name =
-                            await promptText(context, title: 'Rename label', label: 'Label', action: 'Save', initial: l.name);
+                        final name = await promptText(
+                          context,
+                          title: 'Rename label',
+                          label: 'Label',
+                          action: 'Save',
+                          initial: l.name,
+                        );
                         if (name == null || name.trim().isEmpty || !context.mounted) return;
                         await _run(context, ref, () => repo.renameLabel(l.id, name));
                       },
@@ -332,10 +454,12 @@ class _LabelsSheet extends ConsumerWidget {
                       tooltip: 'Delete',
                       icon: const Icon(Icons.delete_outline),
                       onPressed: () async {
-                        final ok = await confirm(context,
-                            title: 'Delete “${l.name}”?',
-                            message: 'Activities lose this label but keep their types in groups.',
-                            action: 'Delete');
+                        final ok = await confirm(
+                          context,
+                          title: 'Delete “${l.name}”?',
+                          message: 'Activities lose this label but keep their types in groups.',
+                          action: 'Delete',
+                        );
                         if (ok && context.mounted) await _run(context, ref, () => repo.deleteLabel(l.id));
                       },
                     ),

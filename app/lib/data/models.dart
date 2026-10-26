@@ -145,6 +145,20 @@ class SentInvitation {
   final DateTime createdAt;
 }
 
+/// Currencies an activity's price can be in (the form's list; imports check against it).
+const supportedCurrencies = ['SGD', 'MYR', 'USD', 'EUR', 'GBP', 'AUD', 'JPY', 'KRW', 'THB', 'IDR'];
+
+/// e.g. "SGD 80–150", "Up to SGD 30", "Free"; null when no price is set.
+/// Shared by activities and the import preview (#111), so both read the same.
+String? formatPriceRange(double? lo, double? hi, String currency) {
+  String fmt(double v) => v == v.roundToDouble() ? v.toStringAsFixed(0) : v.toStringAsFixed(2);
+  if (lo == null && hi == null) return null;
+  if ((lo ?? 0) == 0 && (hi ?? 0) == 0) return 'Free';
+  if (lo != null && hi != null) return lo == hi ? '$currency ${fmt(lo)}' : '$currency ${fmt(lo)}–${fmt(hi)}';
+  if (hi != null) return 'Up to $currency ${fmt(hi)}';
+  return 'From $currency ${fmt(lo!)}';
+}
+
 class Activity {
   Activity({
     required this.id,
@@ -221,15 +235,7 @@ class Activity {
   bool get hasPhotos => photos.isNotEmpty;
 
   /// e.g. "SGD 80–150", "Up to SGD 30", "Free"; null when no price is set.
-  String? get priceLabel {
-    String fmt(double v) => v == v.roundToDouble() ? v.toStringAsFixed(0) : v.toStringAsFixed(2);
-    final lo = priceMin, hi = priceMax;
-    if (lo == null && hi == null) return null;
-    if ((lo ?? 0) == 0 && (hi ?? 0) == 0) return 'Free';
-    if (lo != null && hi != null) return lo == hi ? '$currency ${fmt(lo)}' : '$currency ${fmt(lo)}–${fmt(hi)}';
-    if (hi != null) return 'Up to $currency ${fmt(hi)}';
-    return 'From $currency ${fmt(lo!)}';
-  }
+  String? get priceLabel => formatPriceRange(priceMin, priceMax, currency);
 
   /// True when the price range overlaps [min, max] (either bound optional).
   bool fitsBudget({double? min, double? max}) {
