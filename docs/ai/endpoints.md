@@ -91,6 +91,7 @@ Select string `Activity.columns` (in `models.dart`):
 | A `myActivities()` | REST `GET activities?select=<columns>,group_activities(group_id)&owner_id=eq.<me>&deleted_at=is.null&order=created_at.desc` | owner | `group_activities` length → `sharedGroupCount` (only groups the user is in). |
 | A `activity(id)` | REST `GET activities?select=<columns>&id=eq` (maybeSingle) | owner or member of a sharing group | null if deleted / not visible. `personal_type` is null for non-owners (RLS). |
 | A `create(input)` | REST `POST activities <ActivityInput.toJson()>` → `id` | signed in | `owner_id` defaults to caller. 23503 if `personal_type_id` isn't the caller's label. |
+| A `createMany(inputs)` | REST `POST activities [<ActivityInput.toJson()>, …]`, 100 rows per request → count | signed in | Spreadsheet import (#111). Same rules as `create` for every row; a failing request stops the import (earlier batches stay). |
 | A `update(id, input)` | REST `PATCH activities?id=eq <fields>` | owner or sharing-group member | Columns granted: name, description, location, place_id, price_min, price_max, currency, url, personal_type_id. Changing `location` without a new `place_id` clears the place (trigger). `personal_type_id` only sent when `setLabel` (owner); non-owner change → 42501. Label change re-files in all groups. |
 | A `delete(id)` | `rpc delete_activity(p_activity uuid) → void` | owner | P0001 "only the owner can delete this activity". Unshares everywhere (entries → events), sets `deleted_at`. |
 
@@ -114,6 +115,7 @@ Select string `Activity.columns` (in `models.dart`):
 | A `addLabel(name)` | REST `POST personal_types {name}` → `id` | signed in | 23505 duplicate (case/space-insensitive). |
 | A `renameLabel(id, name)` | REST `PATCH personal_types {name}` | owner | Re-files every activity with this label in all groups. |
 | A `deleteLabel(id)` | REST `DELETE personal_types?id=eq` | owner | Activities' `personal_type_id` → null; group types unchanged. |
+| A `labelIdsFor(names)` | REST `GET personal_types`, then `POST personal_types {name}` for each missing one | owner | For imports (#111): lower-cased name → id; creates the labels it doesn't find. |
 
 ## Photos (Storage)
 

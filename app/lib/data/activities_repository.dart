@@ -84,6 +84,20 @@ class ActivitiesRepository {
     return row['id'] as String;
   }
 
+  /// Creates many at once (#111, spreadsheet import), 100 per request.
+  /// Returns how many were created.
+  Future<int> createMany(List<ActivityInput> inputs) async {
+    var created = 0;
+    for (var i = 0; i < inputs.length; i += 100) {
+      final rows = await _db
+          .from('activities')
+          .insert([for (final input in inputs.sublist(i, min(i + 100, inputs.length))) input.toJson()])
+          .select('id');
+      created += rows.length;
+    }
+    return created;
+  }
+
   Future<void> update(String id, ActivityInput input) =>
       _db.from('activities').update(input.toJson()).eq('id', id);
 
@@ -143,6 +157,17 @@ class ActivitiesRepository {
   Future<String> addLabel(String name) async {
     final row = await _db.from('personal_types').insert({'name': name.trim()}).select('id').single();
     return row['id'] as String;
+  }
+
+  /// Label ids for [names] (ignoring case and spaces), creating the ones the
+  /// user doesn't have yet. Keyed by the lower-cased, trimmed name.
+  Future<Map<String, String>> labelIdsFor(Iterable<String> names) async {
+    final ids = {for (final l in await labels()) l.name.trim().toLowerCase(): l.id};
+    for (final name in names.map((n) => n.trim()).where((n) => n.isNotEmpty)) {
+      final key = name.toLowerCase();
+      if (!ids.containsKey(key)) ids[key] = await addLabel(name);
+    }
+    return ids;
   }
 
   /// Renaming re-files every activity with this label in its groups.

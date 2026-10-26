@@ -29,6 +29,7 @@ EasyPlan (repo: group-planner) is a web and mobile app for friends to plan thing
 | Group history: who did what in a group, with links to the activity, plan or person | Done |
 | Live updates: other people's changes appear without refreshing | Done (Supabase Realtime broadcasts) |
 | Itinerary export (Excel, PDF timetable, image, chat text) and Google Calendar (per-plan button, .ics file) | Done |
+| Import activities from Excel/CSV and export selected ones | Done |
 
 See [`docs/ai/features.md`](docs/ai/features.md) for the detailed feature map. The backlog and bugs live in [GitHub Issues](https://github.com/kangjin97/project1.0/issues); see [`docs/development.md`](docs/development.md#git-workflow) for the issue → branch → pull request workflow.
 

@@ -12,8 +12,6 @@ import 'activity_widgets.dart';
 import 'fill_from_link_sheet.dart';
 import 'place_field.dart';
 
-const _currencies = ['SGD', 'MYR', 'USD', 'EUR', 'GBP', 'AUD', 'JPY', 'KRW', 'THB', 'IDR'];
-
 /// Opens the create/edit form. Returns the activity id when saved.
 Future<String?> showActivityForm(BuildContext context, {Activity? activity}) {
   return Navigator.of(context, rootNavigator: true).push<String>(
@@ -104,7 +102,7 @@ class _ActivityFormPageState extends ConsumerState<ActivityFormPage> {
       }
       _priceMin.text = num(fill.priceMin);
       _priceMax.text = num(fill.priceMax);
-      if (fill.currency != null && _currencies.contains(fill.currency)) _currency = fill.currency!;
+      if (fill.currency != null && supportedCurrencies.contains(fill.currency)) _currency = fill.currency!;
       if (fill.url != null) _url.text = fill.url!;
       if (existing != null) _labelId = existing.id;
       _suggestedLabel = existing == null ? fill.labelName : null;
@@ -250,9 +248,9 @@ class _ActivityFormPageState extends ConsumerState<ActivityFormPage> {
                           child: DropdownButtonFormField<String>(
                             // initialValue is read once; a fill can change it.
                             key: ValueKey(_currency),
-                            initialValue: _currencies.contains(_currency) ? _currency : null,
+                            initialValue: supportedCurrencies.contains(_currency) ? _currency : null,
                             decoration: const InputDecoration(border: OutlineInputBorder()),
-                            items: [for (final c in _currencies) DropdownMenuItem(value: c, child: Text(c))],
+                            items: [for (final c in supportedCurrencies) DropdownMenuItem(value: c, child: Text(c))],
                             onChanged: (v) => setState(() => _currency = v ?? 'SGD'),
                           ),
                         ),

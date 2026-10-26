@@ -173,4 +173,5 @@ Computer-specific problems are in [`setup-mac.md`](setup-mac.md#mac-only-notes-a
 |---|---|
 | `Assertion failed: The targeted input element must be the active input element` in the web console | Debug-only Flutter web engine assertion, seen with automated or synthetic clicks. Harmless. |
 | App shows "You don't have permission to do that." | An RLS policy or column grant rejected the request (Postgres code 42501). See [`database.md`](database.md) for who can do what. |
+| `supabase test db` fails in `realtime.test.sql` (and the broadcast checks in `invite_management.test.sql`), with `WARNING: WarnSendingBroadcastMessage: no partition of relation "messages" found for row`; live updates stop locally | The Realtime container creates `realtime.messages` partitions a few days ahead only when it connects, so after days of running it has none for today. `docker restart supabase_realtime_group-planner` (keeps data), then re-run. |
 | Empty lists right after `supabase db reset` | Expected: the reset deleted all data. Sign up again or use the seed accounts. |
