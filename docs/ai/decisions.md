@@ -43,6 +43,7 @@ Product and technical decisions, with the reason. Newest last. When a decision c
 | 2026-10-26 | Import repeats (#111) also match on the Google place, not just the location text, and are re-checked after matching; a row the person ticked or unticked keeps their choice. Imports save Google's text, so without this the same scraped sheet imported twice would add everything again. Proposed by the agent in #113; confirmed by the owner. |
 | 2026-10-26 | "Newest first" on My activities breaks ties by name, since rows imported in one request share a creation time and otherwise showed in a jumbled order. Proposed by the agent in #113; confirmed by the owner. |
 | 2026-10-27 | **Save a copy** (#112), owner's choices: the copy's label is the activity's group type (reuse or create); the copy quietly shows "Saved from @tom's activity" and the owner isn't told; one copy at a time ("Open your copy", delete it to save again); the button is on the activity page only. Photos come along (2026-10-23). |
+| 2026-10-27 | When the activity is in several of the saver's groups with different types, the copy's label comes from the group it was shared into first: predictable, and the activity page has no "current group" (`copy_activity` also takes a group for callers that know one). Proposed by the agent in #114; confirmed by the owner. |
 
 ## Choices made on the owner's behalf (confirm or revise)
 
@@ -81,7 +82,6 @@ Product and technical decisions, with the reason. Newest last. When a decision c
 | 2026-10-15 | Handing over ownership is immediate; the new owner doesn't have to accept. The old owner becomes a member. (Owner's choice.) | Simple; an offer/accept flow would need pending offers, cancel and expiry. |
 | 2026-10-15 | Owner-only actions (Rename, Delete, Make owner, Remove) are hidden from other members. | They'd only get a permission error. |
 | 2026-10-15 | Drag to reschedule (#12) works on wide screens only (≥720 px, where the side rail shows); phones keep tap → Change time. Plans snap to 15 minutes and keep their length; only timed plans drag. A move offers Undo in the snackbar. | The issue scoped it to wide screens; drag on a phone fights scrolling. 15 minutes is fine enough for plans without fiddly aiming. |
-| 2026-10-27 | When the activity is in several of the saver's groups with different types, the copy's label comes from the group it was shared into first. | Predictable, and the app's detail page has no "current group"; `copy_activity` also takes a group for callers that know one. |
 
 ## Technical
 
