@@ -169,10 +169,10 @@ Notes:
 
 While the app is open, screens update by themselves within a second or two when other people change something (no banners or pop-ups); the Alerts badge counts up live.
 
-1. **Auth:** sign up (pick a unique username) or log in, with email and password or **Continue with Google**; a first Google sign-in goes to a **Welcome** step to pick a username
+1. **Auth:** sign up (pick a unique username, password twice) or log in with your email or username and password, or **Continue with Google**; password fields have a show/hide button; a first Google sign-in goes to a **Welcome** step to pick a username
 2. **Home / My Schedule:** list (agenda), week and month views across all groups; clash badges. The list starts today and can show earlier weeks; plans that are over are muted (the group Schedule tab works the same).
-3. **My Activities:** private and shared activities; create/edit; share to a group; "Near…" filter by distance
-4. **Activity detail:** fields, photos, groups it's in, change history
+3. **My Activities:** private and shared activities; create/edit; share to a group; "Near…" filter by distance; an import/export menu (import from a spreadsheet with a preview, select activities to export, download the template)
+4. **Activity detail:** fields, photos, groups it's in, change history; on someone else's activity **Save to my activities** (or **Open your copy**), and on a copy "Saved from …"
 5. **Groups list:** create group, pending invitations
 6. **Group home:** tabs for Activities (search/filter, incl. "Near…"), Schedule (with unscheduled events as "Ideas"; **Export itinerary**), Members (invite people or create a link; active invite links with Revoke; invitations "Waiting for an answer" with Cancel; the member list, where the owner can remove people or make another member the owner), Types; **History** (the group's change log) from the group's menu.
 7. **Schedule entry sheet:** pick activity or name an event, all-day or a time range, pick members, then the clash confirmation dialog; a plan's detail sheet has **Add to Google Calendar**
