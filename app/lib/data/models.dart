@@ -177,11 +177,12 @@ class Activity {
     this.personalTypeId,
     this.personalTypeName,
     this.placeId,
+    this.copiedFrom,
   });
 
   /// Columns to select for an activity, including its photos.
   static const columns = 'id, owner_id, name, description, location, place_id, price_min, price_max, currency, url, '
-      'created_at, updated_at, personal_type_id, activity_photos(id, storage_path, position), '
+      'created_at, updated_at, personal_type_id, copied_from, activity_photos(id, storage_path, position), '
       'personal_type:personal_types!activities_personal_type_fk(name)';
 
   factory Activity.fromJson(Map<String, dynamic> j) => Activity(
@@ -204,6 +205,7 @@ class Activity {
         personalTypeId: j['personal_type_id'] as String?,
         personalTypeName: (j['personal_type'] as Map?)?['name'] as String?,
         placeId: j['place_id'] as String?,
+        copiedFrom: j['copied_from'] as String?,
       );
 
   final String id;
@@ -229,7 +231,9 @@ class Activity {
   final String? personalTypeId;
   final String? personalTypeName;
 
-  /// Has a link to open; a blank one doesn't count.
+  /// The activity this one was saved from (#112), when it's a copy.
+  final String? copiedFrom;
+
   /// "Newest first". Activities saved in one request (a spreadsheet import,
   /// #111) share a `created_at`, so ties go by name to keep a fixed order.
   static int newestFirst(Activity x, Activity y) {
@@ -237,6 +241,7 @@ class Activity {
     return byTime != 0 ? byTime : x.name.toLowerCase().compareTo(y.name.toLowerCase());
   }
 
+  /// Has a link to open; a blank one doesn't count.
   bool get hasLink => url?.trim().isNotEmpty ?? false;
 
   bool get hasPhotos => photos.isNotEmpty;

@@ -141,6 +141,7 @@ List<ProviderOrFamily> providersAffectedBy(String topic, String table) {
   final activities = <ProviderOrFamily>[
     myActivitiesProvider,
     activityProvider,
+    myCopyProvider,
     groupActivities,
     activityHistoryProvider,
     groupHistory,

@@ -20,6 +20,10 @@ void main() {
     expect(affected, contains(myActivitiesProvider));
   });
 
+  test('a copy saved or deleted elsewhere updates "Open your copy" (#112)', () {
+    expect(providersAffectedBy('user:u1', 'activities'), contains(myCopyProvider));
+  });
+
   test('notifications keep the badge and the invitations live', () {
     final affected = providersAffectedBy('user:u1', 'notifications');
     expect(affected, containsAll([unreadCountProvider, notificationsProvider, invitationsProvider]));

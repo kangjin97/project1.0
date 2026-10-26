@@ -29,6 +29,7 @@ Source of truth: `supabase/migrations/`. Test coverage: `supabase/tests/database
 | `20261019022546_google_sign_in.sql` | Sign in with Google (#87): `profiles.needs_username`; `handle_new_user` takes Google's `full_name`/`name` as the display name and flags sign-ups without a username; trigger `profiles_username_chosen` (`mark_username_chosen`) clears the flag when the username is written |
 | `20261019114043_place_coordinates.sql` | Distance filter (#94): `place_coordinates` cache (no client access; written by the `place-coordinates` Edge Function with the service role); `pg_cron` job `expire-place-coordinates` deletes rows older than 30 days daily; `consume_api_quota` gains `place_coords` (200 a day) |
 | `20261022115126_username_sign_in.sql` | Sign in with a username (#107): `username_sign_in_failures`; `email_for_username` (PT429 after 10 failures in 15 minutes), `record_username_sign_in_failure`, `clear_username_sign_in_failures`, all for the service role only; `pg_cron` job `expire-username-sign-in-failures` |
+| `20261026192618_copy_activity.sql` | Save a copy of someone's activity (#112): `activities.copied_from` (FK, `on delete set null`), unique index `activities_one_copy_per_owner` (one live copy per person), trigger `activities_guard_copied_from` (only `copy_activity` sets it), RPC `copy_activity` |
 
 ## Tables
 
@@ -79,6 +80,7 @@ Access:
 | `personal_type_id` | The owner's label. Composite FK `(personal_type_id, owner_id)` → `personal_types`, so it must be the owner's own label. Set to null if the label is deleted. Only the owner can change it (guard trigger, 42501). |
 | `updated_at`, `updated_by` | Set by trigger |
 | `deleted_at` | Soft delete, through `delete_activity` only |
+| `copied_from` | The activity this one was saved from (#112), or null. Set only by `copy_activity` (guard trigger, 42501 on any other insert; no update grant); `on delete set null`. Unique with `owner_id` among live rows (`activities_one_copy_per_owner`), so a person holds at most one live copy of an activity |
 
 Access: the owner, plus members of any group it's shared into, can read and update the editable columns. Nobody can delete rows directly.
 
@@ -192,6 +194,7 @@ See [`ai/endpoints.md`](ai/endpoints.md) for parameters, return shapes and error
 | `join_group_via_link(token)` / `preview_invite_link(token)` | Invite links |
 | `respond_to_invitation(id, accept)` | Accept or decline |
 | `cancel_invitation(id)` | Any member cancels a pending invitation from their group |
+| `copy_activity(activity, group?)` | Saves a private copy of an activity the caller can see but doesn't own (#112); label from the activity's group type; one live copy per person. Photo files are copied by the app afterwards |
 | `consume_api_quota(kind)` | Counts one paid outside-API call for the caller today and refuses past the daily limit (`places`: 100, `ai_fill`: 30, `place_coords`: 200) with PT429 / HTTP 429. Called by Edge Functions with the user's token |
 | `group_deletion_summary(group)` | Owner only: members, upcoming plans, undated ideas, for the delete confirmation |
 | `delete_group(group, confirm_name)` | Owner only; the name must match. Notifies members and plan participants (`group_deleted`), then deletes the group (cascades: members, invites, types, group activities, plans and participants; activities stay) |
@@ -250,6 +253,7 @@ Not executable by clients (`function_privileges.test.sql` checks all of this):
 | `group_invite_links` | `group_invite_links_guard_insert` | Before insert: expiry at most 7 days; server-picked token, `created_at`, `use_count`, `revoked_at` |
 | `group_invite_links` | `group_invite_links_guard_revoke` | Revoking is one-way; sets `revoked_at` to `now()` |
 | `activities` | `activities_touch` | Sets `updated_at` / `updated_by` |
+| `activities` | `activities_guard_copied_from` | Before insert: `copied_from` only through `copy_activity` (42501) |
 | `activities` | `activities_drop_stale_place` | Changing `location` without a new `place_id` clears the place |
 | `activities` | `activities_guard_personal_type` | Only the owner may change the label (42501) |
 | `activities` | `activities_refile` | Label change → re-resolve type in every group (label removed → only `source_type_name` is cleared; types stay) |

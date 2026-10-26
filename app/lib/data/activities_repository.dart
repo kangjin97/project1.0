@@ -177,6 +177,45 @@ class ActivitiesRepository {
   /// Activities keep their current group types.
   Future<void> deleteLabel(String id) => _db.from('personal_types').delete().eq('id', id);
 
+  // ---- Copies (#112) ------------------------------------------------------
+
+  /// Saves a private copy of someone else's [source] into my activities and
+  /// copies its photo files into the copy's own folder. The label comes from
+  /// the activity's type in [groupId] (or the group it was shared into first).
+  /// Returns the copy's id and how many photos couldn't be copied; the copy is
+  /// kept either way.
+  Future<({String id, int photosMissed})> saveCopy(Activity source, {String? groupId}) async {
+    final id = await _db.rpc(
+          'copy_activity',
+          params: {'p_activity': source.id, 'p_group': ?groupId},
+        )
+        as String;
+    var missed = 0;
+    for (final photo in source.photos) {
+      try {
+        final name = photo.storagePath.split('/').last;
+        final path = '$id/$name';
+        await _db.storage.from(photoBucket).copy(photo.storagePath, path);
+        await _db.from('activity_photos').insert({'activity_id': id, 'storage_path': path, 'position': photo.position});
+      } catch (_) {
+        missed++;
+      }
+    }
+    return (id: id, photosMissed: missed);
+  }
+
+  /// My live copy of [activityId], if I've saved one.
+  Future<String?> myCopyOf(String activityId) async {
+    final row = await _db
+        .from('activities')
+        .select('id')
+        .eq('owner_id', _db.auth.currentUser!.id)
+        .eq('copied_from', activityId)
+        .isFilter('deleted_at', null)
+        .maybeSingle();
+    return row?['id'] as String?;
+  }
+
   /// Removes it from the group only; the activity itself is kept.
   Future<void> unshare({required String activityId, required String groupId}) =>
       _db.from('group_activities').delete().eq('group_id', groupId).eq('activity_id', activityId);
@@ -248,6 +287,10 @@ final activityProvider =
 
 final groupActivitiesProvider = FutureProvider.family<List<GroupActivity>, String>(
     (ref, groupId) => ref.watch(activitiesRepositoryProvider).groupActivities(groupId));
+
+/// The id of my copy of an activity (#112), or null.
+final myCopyProvider =
+    FutureProvider.family<String?, String>((ref, id) => ref.watch(activitiesRepositoryProvider).myCopyOf(id));
 
 final sharedInProvider = FutureProvider.family(
     (ref, String activityId) => ref.watch(activitiesRepositoryProvider).sharedIn(activityId));
