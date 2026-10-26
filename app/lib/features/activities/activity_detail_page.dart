@@ -10,6 +10,7 @@ import '../../data/app_clock.dart';
 import '../../data/groups_repository.dart';
 import '../../data/models.dart';
 import '../../data/places_repository.dart';
+import '../../data/profile_repository.dart';
 import '../../widgets/async_body.dart';
 import '../../widgets/dialogs.dart';
 import '../schedule/entry_editor.dart';
@@ -68,16 +69,17 @@ class ActivityDetailPage extends ConsumerWidget {
         value: activity,
         builder: (a) => a == null
             ? const EmptyState(icon: Icons.visibility_off_outlined, message: 'This activity was deleted or isn’t shared with you.')
-            : _Body(activity: a),
+            : _Body(activity: a, me: me),
       ),
     );
   }
 }
 
 class _Body extends ConsumerWidget {
-  const _Body({required this.activity});
+  const _Body({required this.activity, required this.me});
 
   final Activity activity;
+  final String me;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -113,10 +115,12 @@ class _Body extends ConsumerWidget {
                 const SizedBox(height: 8),
                 Text(a.description!, style: theme.textTheme.bodyLarge),
               ],
+              if (a.ownerId != me) ...[const SizedBox(height: 12), _SaveCopyButton(activity: a)],
             ],
           ),
         ),
         const SizedBox(height: 8),
+        if (a.copiedFrom != null && a.ownerId == me) _SavedFrom(sourceId: a.copiedFrom!),
         if (a.personalTypeName != null)
           ListTile(
             leading: const Icon(Icons.label_outline),
@@ -341,5 +345,89 @@ String describeChange(ChangeEntry e, Map<String, String> groupNames) {
       return 'changed its type in ${group()}';
     default:
       return '${e.action.replaceAll('_', ' ')} (${e.entityType.replaceAll('_', ' ')})';
+  }
+}
+
+/// "Save to my activities" on someone else's activity (#112), or "Open your
+/// copy" once you have one. The database allows one live copy per person.
+class _SaveCopyButton extends ConsumerStatefulWidget {
+  const _SaveCopyButton({required this.activity});
+
+  final Activity activity;
+
+  @override
+  ConsumerState<_SaveCopyButton> createState() => _SaveCopyButtonState();
+}
+
+class _SaveCopyButtonState extends ConsumerState<_SaveCopyButton> {
+  bool _saving = false;
+
+  Future<void> _save() async {
+    setState(() => _saving = true);
+    try {
+      final result = await ref.read(activitiesRepositoryProvider).saveCopy(widget.activity);
+      invalidateActivity(ref, result.id);
+      invalidateLabels(ref);
+      ref.invalidate(myCopyProvider(widget.activity.id));
+      ref.invalidate(myStatsProvider);
+      if (!mounted) return;
+      final missed = result.photosMissed;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            missed == 0
+                ? 'Saved to your activities.'
+                : 'Saved to your activities, but $missed ${missed == 1 ? 'photo' : 'photos'} couldn’t be copied.',
+          ),
+          action: SnackBarAction(label: 'Open', onPressed: () => context.push('/activities/${result.id}')),
+        ),
+      );
+    } catch (e) {
+      if (mounted) showError(context, e);
+    } finally {
+      if (mounted) setState(() => _saving = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final copy = ref.watch(myCopyProvider(widget.activity.id));
+    final copyId = copy.value;
+    if (copy.isLoading && copyId == null) return const SizedBox(height: 40);
+    if (copyId != null) {
+      return OutlinedButton.icon(
+        onPressed: () => context.push('/activities/$copyId'),
+        icon: const Icon(Icons.bookmark_added_outlined),
+        label: const Text('Open your copy'),
+      );
+    }
+    return FilledButton.tonalIcon(
+      onPressed: _saving ? null : _save,
+      icon: _saving
+          ? const SizedBox.square(dimension: 18, child: CircularProgressIndicator(strokeWidth: 2))
+          : const Icon(Icons.bookmark_add_outlined),
+      label: const Text('Save to my activities'),
+    );
+  }
+}
+
+/// On a copy: where it came from, while the original can still be seen.
+class _SavedFrom extends ConsumerWidget {
+  const _SavedFrom({required this.sourceId});
+
+  final String sourceId;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final source = ref.watch(activityProvider(sourceId)).value;
+    if (source == null) return const SizedBox.shrink();
+    final owner = ref.watch(profileProvider(source.ownerId)).value;
+    return ListTile(
+      leading: const Icon(Icons.bookmark_outline),
+      title: Text(owner == null ? 'Saved from another activity' : 'Saved from @${owner.username}’s activity'),
+      subtitle: const Text('Your copy; changes don’t affect the original'),
+      trailing: const Icon(Icons.chevron_right),
+      onTap: () => context.push('/activities/$sourceId'),
+    );
   }
 }
