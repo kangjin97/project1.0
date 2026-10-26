@@ -230,6 +230,13 @@ class Activity {
   final String? personalTypeName;
 
   /// Has a link to open; a blank one doesn't count.
+  /// "Newest first". Activities saved in one request (a spreadsheet import,
+  /// #111) share a `created_at`, so ties go by name to keep a fixed order.
+  static int newestFirst(Activity x, Activity y) {
+    final byTime = y.createdAt.compareTo(x.createdAt);
+    return byTime != 0 ? byTime : x.name.toLowerCase().compareTo(y.name.toLowerCase());
+  }
+
   bool get hasLink => url?.trim().isNotEmpty ?? false;
 
   bool get hasPhotos => photos.isNotEmpty;

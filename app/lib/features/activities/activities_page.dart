@@ -115,7 +115,7 @@ class _ActivitiesPageState extends ConsumerState<ActivitiesPage> {
     double price(Activity a) => a.priceMin ?? a.priceMax ?? double.infinity;
     switch (_sort) {
       case _Sort.newest:
-        list.sort((x, y) => y.createdAt.compareTo(x.createdAt));
+        list.sort(Activity.newestFirst);
       case _Sort.name:
         list.sort((x, y) => x.name.toLowerCase().compareTo(y.name.toLowerCase()));
       case _Sort.priceLow:
